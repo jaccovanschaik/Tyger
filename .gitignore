@@ -17,5 +17,8 @@
 *.out
 *.app
 
+# VIM
+*.swp
+
 # Subversion admin
 .svn
