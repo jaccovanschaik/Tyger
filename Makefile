@@ -60,8 +60,7 @@ deftype.h: deftype.txt
 	gen_enum -h -p DT -t DefinitionType $< > $@
 
 version.h:
-	svn update
-	printf '#define VERSION "%s"\n' `svnversion` > $@
+	-svn update && printf '#define VERSION "%s"\n' `svnversion` > $@
 
 tokenizer-test: tokenizer.c tokentype.o
 	$(CC) $(CFLAGS) -DTEST -o $@ $^ $(JVS_LIB)
