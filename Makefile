@@ -2,7 +2,7 @@
 #
 # Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
 # Created:   2016-08-24
-# Version:   $Id: Makefile 123 2017-01-11 11:11:10Z jacco $
+# Version:   $Id: Makefile 133 2017-05-14 17:43:43Z jacco $
 #
 # This software is distributed under the terms of the MIT license. See
 # http://www.opensource.org/licenses/mit-license.php for details.
@@ -48,16 +48,16 @@ test: tokenizer-test libtyger-test test_objects Objects.py
 	./test_objects.py
 
 tokentype.c: tokentype.txt
-	gen_enum -c -p TT -t tkType $< > $@
+	./gen_enum -c -p TT -t tkType $< > $@
 
 tokentype.h: tokentype.txt
-	gen_enum -h -p TT -t tkType $< > $@
+	./gen_enum -h -p TT -t tkType $< > $@
 
 deftype.c: deftype.txt
-	gen_enum -c -p DT -t DefinitionType $< > $@
+	./gen_enum -c -p DT -t DefinitionType $< > $@
 
 deftype.h: deftype.txt
-	gen_enum -h -p DT -t DefinitionType $< > $@
+	./gen_enum -h -p DT -t DefinitionType $< > $@
 
 version.h:
 	-svn update && printf '#define VERSION "%s"\n' `svnversion` > $@
