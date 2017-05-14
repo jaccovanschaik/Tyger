@@ -1,0 +1,416 @@
+/* lang-python.c: Generate Python code.
+ *
+ * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Created:   2016-12-08
+ * Version:   $Id: lang-python.c 118 2017-01-06 10:20:03Z jacco $
+ *
+ * This software is distributed under the terms of the MIT license. See
+ * http://www.opensource.org/licenses/mit-license.php for details.
+ */
+
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+
+#include <libjvs/list.h>
+#include <libjvs/utils.h>
+
+#include "switches.h"
+#include "parser.h"
+#include "utils.h"
+#include "lang-python.h"
+
+static int do_pack = 0;
+static int do_unpack = 0;
+static int do_recv = 0;
+static int do_send_mx = 0;
+static int do_bcast_mx = 0;
+
+static Switch switches[] = {
+    { "--py-pack",     &do_pack,     "Generate pack functions" },
+    { "--py-unpack",   &do_unpack,   "Generate unpack functions" },
+    { "--py-recv",     &do_recv,     "Generate recv functions" },
+    { "--py-send-mx",  &do_send_mx,  "Generate MX send functions" },
+    { "--py-bcast-mx", &do_bcast_mx, "Generate MX broadcast functions" },
+};
+
+static int num_switches = sizeof(switches) / sizeof(switches[0]);
+
+/*
+ * Return the switches that the C language generator accepts.
+ */
+Switch *python_switches(int *switch_count_ptr)
+{
+    *switch_count_ptr = num_switches;
+
+    return switches;
+}
+
+static const char *interface_type(Definition *def)
+{
+    switch(def->type) {
+    case DT_INT:
+    case DT_ENUM:
+        return "int";
+    case DT_FLOAT:
+        return "float";
+    case DT_ASTRING:
+        return "str";
+    case DT_USTRING:
+        return "unicode";
+    case DT_ARRAY:
+        return "list";
+    case DT_ALIAS:
+    case DT_STRUCT:
+    case DT_UNION:
+        return def->name;
+    default:
+        return NULL;
+    }
+}
+
+static void emit_class(FILE *fp, Definition *def)
+{
+    if (def->type == DT_STRUCT) {
+        StructItem *item;
+
+        ifprintf(fp, 0, "class %s(object):\n", def->name);
+
+        if (!listIsEmpty(&def->u.struct_def.items)) {
+            ifprintf(fp, 1, "def __init__(self");
+
+            for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+                fprintf(fp, ", %s = None", item->name);
+            }
+
+            fprintf(fp, "):\n");
+
+            for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+                ifprintf(fp, 2, "self.%s = %s\n", item->name, item->name);
+            }
+
+            fprintf(fp, "\n");
+        }
+
+        ifprintf(fp, 1, "def __repr__(self):\n");
+        ifprintf(fp, 2, "return '%s(", def->name);
+
+        for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+            fprintf(fp, "%s = %%r%s", item->name, listNext(item) == NULL ? "" : ", ");
+        }
+
+        fprintf(fp, ")'");
+
+        if (!listIsEmpty(&def->u.struct_def.items)) {
+            fprintf(fp, " %% (");
+
+            for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+                fprintf(fp, "self.%s%s", item->name, listNext(item) == NULL ? ")" : ", ");
+            }
+        }
+
+        fprintf(fp, "\n\n");
+    }
+    else if (def->type == DT_ENUM) {
+        EnumItem *item;
+
+        ifprintf(fp, 0, "class %s(object):\n", def->name);
+
+        for (item = listHead(&def->u.enum_def.items); item; item = listNext(item)) {
+            ifprintf(fp, 1, "%s = %d\n", item->name, item->value);
+        }
+
+        fprintf(fp, "\n");
+    }
+    else if (def->type == DT_UNION) {
+        UnionItem *item;
+
+        ifprintf(fp, 0, "class %s(object):\n", def->name);
+
+        ifprintf(fp, 1, "def __init__(self, %s = None, u = None):\n",
+                def->u.union_def.discr_name);
+
+        ifprintf(fp, 2, "self.%s = %s\n",
+                def->u.union_def.discr_name, def->u.union_def.discr_name);
+        ifprintf(fp, 2, "self.u = None\n\n");
+
+        ifprintf(fp, 2, "if u is None:\n");
+        ifprintf(fp, 3, "return\n");
+
+        for (item = listHead(&def->u.union_def.items); item; item = listNext(item)) {
+            ifprintf(fp, 2, "elif self.%s == %s.%s:\n",
+                    def->u.union_def.discr_name,
+                    def->u.union_def.discr_def->name,
+                    item->value);
+            ifprintf(fp, 3, "assert isinstance(u, %s)\n",
+                    interface_type(item->def));
+        }
+
+        fprintf(fp, "\n");
+
+        ifprintf(fp, 2, "self.u = u\n\n");
+
+        ifprintf(fp, 1, "def __repr__(self):\n");
+        ifprintf(fp, 2, "return '%s(%s = %%r, u = %%r)' %% (self.%s, self.u)\n\n",
+                def->name,
+                def->u.union_def.discr_name,
+                def->u.union_def.discr_name);
+    }
+}
+
+static void emit_packer(FILE *fp, Definition *def)
+{
+    if (def->type == DT_ALIAS) {
+        ifprintf(fp, 0, "class %sPacker(%sPacker):\n", def->name, def->u.alias_def.alias->name);
+        ifprintf(fp, 1, "pass\n\n");
+    }
+    else if (def->type == DT_ARRAY) {
+        ifprintf(fp, 0, "class %sPacker(object):\n", def->name);
+
+        if (do_pack) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def pack(value):\n");
+            ifprintf(fp, 2, "count = len(value)\n\n");
+            ifprintf(fp, 2, "buf = uint32Packer.pack(count)\n\n");
+            ifprintf(fp, 2, "for i in range(count):\n");
+            ifprintf(fp, 3, "buf += %sPacker.pack(value[i])\n\n",
+                    def->u.array_def.item_type->name);
+            ifprintf(fp, 2, "return buf\n\n");
+        }
+
+        if (do_unpack) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def unpack(buf, offset = 0):\n");
+            ifprintf(fp, 2, "count, offset = uint32Packer.unpack(buf, offset)\n\n");
+            ifprintf(fp, 2, "value = count * [ None ]\n\n");
+            ifprintf(fp, 2, "for i in range(count):\n");
+            ifprintf(fp, 3, "value[i], offset = %sPacker.unpack(buf, offset)\n\n",
+                    def->u.array_def.item_type->name);
+            ifprintf(fp, 2, "return value, offset\n\n");
+        }
+
+        if (do_recv) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def recv(sock):\n");
+            ifprintf(fp, 2, "count = uint32Packer.recv(sock)\n\n");
+            ifprintf(fp, 2, "value = count * [ None ]\n\n");
+            ifprintf(fp, 2, "for i in range(count):\n");
+            ifprintf(fp, 3, "value[i] = %sPacker.recv(sock)\n\n",
+                    def->u.array_def.item_type->name);
+            ifprintf(fp, 2, "return value\n\n");
+        }
+    }
+    else if (def->type == DT_STRUCT) {
+        StructItem *item;
+
+        ifprintf(fp, 0, "class %sPacker(object):\n", def->name);
+
+        if (do_pack) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def pack(value):\n");
+
+            ifprintf(fp, 2, "buf = ''\n\n");
+
+            for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+                ifprintf(fp, 2, "buf += %sPacker.pack(value.%s)%s",
+                        item->def->name,
+                        item->name,
+                        listNext(item) == NULL ? "\n\n" : "\n");
+            }
+
+            ifprintf(fp, 2, "return buf\n\n");
+        }
+
+        if (do_unpack) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def unpack(buf, offset = 0):\n");
+
+            ifprintf(fp, 2, "value = %s()\n\n", def->name);
+
+            for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+                ifprintf(fp, 2, "value.%s, offset = %sPacker.unpack(buf, offset)%s",
+                        item->name, item->def->name,
+                        listNext(item) == NULL ? "\n\n" : "\n");
+            }
+
+            ifprintf(fp, 2, "return value, offset\n\n");
+        }
+
+        if (do_recv) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def recv(sock):\n");
+
+            ifprintf(fp, 2, "value = %s()\n\n", def->name);
+
+            for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+                ifprintf(fp, 2, "value.%s = %sPacker.recv(sock)%s",
+                        item->name, item->def->name,
+                        listNext(item) == NULL ? "\n\n" : "\n");
+            }
+
+            ifprintf(fp, 2, "return value\n\n");
+        }
+    }
+    else if (def->type == DT_ENUM) {
+        ifprintf(fp, 0, "class %sPacker(uint32Packer):\n", def->name);
+        ifprintf(fp, 1, "pass\n\n");
+    }
+    else if (def->type == DT_UNION) {
+        UnionItem *item;
+
+        ifprintf(fp, 0, "class %sPacker(object):\n", def->name);
+
+        if (do_pack) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def pack(value):\n");
+
+            ifprintf(fp, 2, "buf = uint32Packer.pack(value.%s)\n\n",
+                    def->u.union_def.discr_name);
+
+            for (item = listHead(&def->u.union_def.items); item; item = listNext(item)) {
+                ifprintf(fp, 2, "%s value.%s == %s.%s:\n",
+                        item == listHead(&def->u.union_def.items) ? "if" : "elif",
+                        def->u.union_def.discr_name,
+                        def->u.union_def.discr_def->name,
+                        item->value);
+
+                ifprintf(fp, 3, "buf += %sPacker.pack(value.u)\n", item->def->name);
+            }
+
+            ifprintf(fp, 0, "\n");
+
+            ifprintf(fp, 2, "return buf\n\n");
+        }
+
+        if (do_unpack) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def unpack(buf, offset = 0):\n");
+
+            ifprintf(fp, 2, "value = %s()\n\n", def->name);
+            ifprintf(fp, 2, "value.%s, offset = uint32Packer.unpack(buf, offset)\n\n",
+                    def->u.union_def.discr_name);
+
+            for (item = listHead(&def->u.union_def.items); item; item = listNext(item)) {
+                ifprintf(fp, 2, "%s value.%s == %s.%s:\n",
+                        item == listHead(&def->u.union_def.items) ? "if" : "elif",
+                        def->u.union_def.discr_name,
+                        def->u.union_def.discr_def->name,
+                        item->value);
+
+                ifprintf(fp, 3, "value.u, offset = %sPacker.unpack(buf, offset)\n",
+                        item->def->name);
+            }
+
+            ifprintf(fp, 0, "\n");
+
+            ifprintf(fp, 2, "return value, offset\n\n");
+        }
+
+        if (do_recv) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def recv(sock):\n");
+
+            ifprintf(fp, 2, "value = %s()\n\n", def->name);
+            ifprintf(fp, 2, "value.%s = uint32Packer.recv(sock)\n\n",
+                    def->u.union_def.discr_name);
+
+            for (item = listHead(&def->u.union_def.items); item; item = listNext(item)) {
+                ifprintf(fp, 2, "%s value.%s == %s.%s:\n",
+                        item == listHead(&def->u.union_def.items) ? "if" : "elif",
+                        def->u.union_def.discr_name,
+                        def->u.union_def.discr_def->name,
+                        item->value);
+
+                ifprintf(fp, 3, "value.u = %sPacker.recv(sock)\n",
+                        item->def->name);
+            }
+
+            ifprintf(fp, 0, "\n");
+
+            ifprintf(fp, 2, "return value\n\n");
+        }
+    }
+
+    if (!def->builtin && def->type != DT_CONST) {
+        if (do_send_mx) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def sendMX(mx, fd, msg_type, msg_ver, value):\n");
+
+            ifprintf(fp, 2, "assert isinstance(value, %s)\n\n", def->name);
+            ifprintf(fp, 2, "payload = %sPacker.pack(value)\n\n", def->name);
+            ifprintf(fp, 2, "mx.send(fd, msg_type, msg_ver, payload)\n\n");
+        }
+
+        if (do_bcast_mx) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def broadcastMX(mx, msg_type, msg_ver, value):\n");
+
+            ifprintf(fp, 2, "assert isinstance(value, %s)\n\n", def->name);
+            ifprintf(fp, 2, "payload = %sPacker.pack(value)\n\n", def->name);
+            ifprintf(fp, 2, "mx.broadcast(msg_type, msg_ver, payload)\n\n");
+        }
+    }
+}
+
+/*
+ * Emit python code.
+ */
+int emit_python_src(const char *out_file,
+                    const char *in_file,
+                    const char *prog_name,
+                    List *definitions)
+{
+    FILE *fp;
+
+    Definition *def;
+
+    const char *time_str = time_as_string();
+
+    if ((fp = fopen(out_file, "w")) == NULL) {
+        fprintf(stderr, "Could not open file \"%s\": %s\n",
+            out_file, strerror(errno));
+        return 1;
+    }
+
+    fprintf(fp, "#!/usr/bin/env python\n");
+    fprintf(fp, "# -*- coding: utf-8 -*-\n\n");
+
+    fprintf(fp, "'''\n");
+    fprintf(fp, "  GENERATED CODE. DO NOT EDIT.\n");
+    fprintf(fp, "\n");
+    fprintf(fp, "  Generated by %s from \"%s\" on %s", prog_name, in_file, time_str);
+    fprintf(fp, "'''\n\n");
+    fprintf(fp, "from tyger import *\n\n");
+
+    for (def = listHead(definitions); def; def = listNext(def)) {
+        if (def->type != DT_CONST) continue;
+
+        fprintf(fp, "%s = ", def->name);
+
+        switch (def->u.const_def.const_type->type) {
+        case DT_INT:
+            fprintf(fp, "%ld\n\n", def->u.const_def.value.l);
+            break;
+        case DT_FLOAT:
+            fprintf(fp, "%g\n\n", def->u.const_def.value.d);
+            break;
+        case DT_ASTRING:
+            fprintf(fp, "\"%s\"\n\n", def->u.const_def.value.s);
+            break;
+        case DT_USTRING:
+            fprintf(fp, "u\"%s\"\n\n", def->u.const_def.value.s);
+            break;
+        default:
+            break;
+        }
+    }
+
+    for (def = listHead(definitions); def; def = listNext(def)) {
+        if (def->type != DT_CONST) {
+            emit_class(fp, def);
+            emit_packer(fp, def);
+        }
+    }
+
+    return 0;
+}

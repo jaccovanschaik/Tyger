@@ -1,0 +1,17 @@
+#include "Primitives.tgr"
+
+/* A general shape, which can be any primitive. */
+
+ShapeType = enum {
+    ST_LINE    = 1
+    ST_POLYGON = 2
+    ST_PLANE   = 3
+    ST_SPHERE  = 4
+}
+
+Shape = union(ShapeType shape_type) {
+    ST_LINE:    Line    line
+    ST_POLYGON: Polygon polygon
+    ST_PLANE:   Plane   plane
+    ST_SPHERE:  Sphere  sphere
+}

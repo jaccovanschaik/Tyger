@@ -1,0 +1,13 @@
+#pragma once
+
+#include "Coordinate.tgr"
+
+/* A vector with an X, Y and Z coordinate. */
+
+Dimensions = const uint32 3
+
+Vector = struct {
+    Coordinate x
+    Coordinate y
+    Coordinate z
+}

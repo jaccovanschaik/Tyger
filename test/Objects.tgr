@@ -1,0 +1,9 @@
+#include "Shape.tgr"
+
+Object = struct {
+    astring name
+    ustring creator
+    Shape shape
+}
+
+Objects = array(Object object)

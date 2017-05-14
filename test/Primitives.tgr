@@ -1,0 +1,29 @@
+#pragma once
+
+#include "Coordinate.tgr"
+#include "Vector.tgr"
+
+/*
+ * There are four primitives:
+ *  - Polygons, consisting of an array of vectors;
+ *  - Lines, consisting of a support and a direction vector;
+ *  - Planes, consisting of a support vector and a normal vector;
+ *  - Spheres, consisting of a center and a radius.
+ */
+
+Polygon = array(Vector vector)
+
+Line = struct {
+    Vector sv
+    Vector dv
+}
+
+Plane = struct {
+    Vector sv
+    Vector nv
+}
+
+Sphere = struct {
+    Vector c
+    Coordinate r
+}

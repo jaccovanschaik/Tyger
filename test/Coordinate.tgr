@@ -1,0 +1,7 @@
+#pragma once
+
+/*
+ * Definition of a Coordinate.
+ */
+
+Coordinate = int32

@@ -1,0 +1,14 @@
+# Token types in Tyger description files.
+
+long
+double
+ustring
+dstring
+sstring
+obrace
+cbrace
+oparen
+cparen
+colon
+equals
+eof
