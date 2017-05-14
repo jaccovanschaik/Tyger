@@ -8,6 +8,8 @@ language. The generated code can be used to read or write them to
 (binary) files, send and receive them across a network, or pack and
 unpack them into byte buffers.
 
+Tyger requires [libjvs](https://github.com/jaccovanschaik/libjvs).
+
 ## Usage
 
 When called without any parameters, Tyger displays its usage, which
