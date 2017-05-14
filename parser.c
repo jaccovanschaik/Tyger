@@ -128,7 +128,7 @@ static int process_const(Definition *def, List *defs, tkToken **token, Buffer *e
     else {
         bufSetF(error, "%s:%d:%d: invalid const type %s.\n",
             (*token)->file, (*token)->line, (*token)->column,
-            tokentype_enum_to_string(type_def->type));
+            deftype_enum_to_string(type_def->type));
         return 1;
     }
 
