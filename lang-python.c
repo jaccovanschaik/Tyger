@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-12-08
- * Version:   $Id: lang-python.c 118 2017-01-06 10:20:03Z jacco $
+ * Version:   $Id: lang-python.c 137 2017-05-26 12:19:43Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -23,15 +23,15 @@
 static int do_pack = 0;
 static int do_unpack = 0;
 static int do_recv = 0;
-static int do_send_mx = 0;
-static int do_bcast_mx = 0;
+static int do_mx_send = 0;
+static int do_mx_bcast = 0;
 
 static Switch switches[] = {
     { "--py-pack",     &do_pack,     "Generate pack functions" },
     { "--py-unpack",   &do_unpack,   "Generate unpack functions" },
     { "--py-recv",     &do_recv,     "Generate recv functions" },
-    { "--py-send-mx",  &do_send_mx,  "Generate MX send functions" },
-    { "--py-bcast-mx", &do_bcast_mx, "Generate MX broadcast functions" },
+    { "--py-mx-send",  &do_mx_send,  "Generate MX send functions" },
+    { "--py-mx-bcast", &do_mx_bcast, "Generate MX broadcast functions" },
 };
 
 static int num_switches = sizeof(switches) / sizeof(switches[0]);
@@ -332,7 +332,7 @@ static void emit_packer(FILE *fp, Definition *def)
     }
 
     if (!def->builtin && def->type != DT_CONST) {
-        if (do_send_mx) {
+        if (do_mx_send) {
             ifprintf(fp, 1, "@staticmethod\n");
             ifprintf(fp, 1, "def sendMX(mx, fd, msg_type, msg_ver, value):\n");
 
@@ -341,7 +341,7 @@ static void emit_packer(FILE *fp, Definition *def)
             ifprintf(fp, 2, "mx.send(fd, msg_type, msg_ver, payload)\n\n");
         }
 
-        if (do_bcast_mx) {
+        if (do_mx_bcast) {
             ifprintf(fp, 1, "@staticmethod\n");
             ifprintf(fp, 1, "def broadcastMX(mx, msg_type, msg_ver, value):\n");
 

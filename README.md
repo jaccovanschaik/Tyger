@@ -40,15 +40,15 @@ looks (at this moment) like this:
 		  --c-copy	Generate copy functions
 		  --c-clear	Generate clear functions
 		  --c-destroy	Generate destroy functions
-		  --c-send-mx	Generate MX send functions
-		  --c-bcast-mx	Generate MX broadcast functions
+		  --c-mx-send	Generate MX send functions
+		  --c-mx-bcast	Generate MX broadcast functions
 	
 		Switches accepted by the Python code generator
 		  --py-pack	Generate pack functions
 		  --py-unpack	Generate unpack functions
 		  --py-recv	Generate recv functions
-		  --py-send-mx	Generate MX send functions
-		  --py-bcast-mx	Generate MX broadcast functions
+		  --py-mx-send	Generate MX send functions
+		  --py-mx-bcast	Generate MX broadcast functions
 
 ## Input files
 
@@ -199,11 +199,11 @@ This section explains the switches accepted by the C code generator.
   
   Generate destroy functions
 
-- `--c-send-mx`
+- `--c-mx-send`
   
   Generate MX send functions
 
-- `--c-bcast-mx`
+- `--c-mx-bcast`
   
   Generate MX broadcast functions
 

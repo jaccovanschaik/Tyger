@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-10-24
- * Version:   $Id: lang-c.c 118 2017-01-06 10:20:03Z jacco $
+ * Version:   $Id: lang-c.c 137 2017-05-26 12:19:43Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -40,8 +40,8 @@ static int do_set = 0;
 static int do_copy = 0;
 static int do_clear = 0;
 static int do_destroy = 0;
-static int do_send_mx = 0;
-static int do_bcast_mx = 0;
+static int do_mx_send = 0;
+static int do_mx_bcast = 0;
 
 static Switch switches[] = {
     { "--c-packsize", &do_packsize, "Generate packsize functions" },
@@ -59,8 +59,8 @@ static Switch switches[] = {
     { "--c-copy",     &do_copy,     "Generate copy functions" },
     { "--c-clear",    &do_clear,    "Generate clear functions" },
     { "--c-destroy",  &do_destroy,  "Generate destroy functions" },
-    { "--c-send-mx",  &do_send_mx,  "Generate MX send functions" },
-    { "--c-bcast-mx", &do_bcast_mx, "Generate MX broadcast functions" },
+    { "--c-mx-send",  &do_mx_send,  "Generate MX send functions" },
+    { "--c-mx-bcast", &do_mx_bcast, "Generate MX broadcast functions" },
 };
 
 static int num_switches = sizeof(switches) / sizeof(switches[0]);
@@ -1293,7 +1293,7 @@ static void emit_destroy_body(FILE *fp, Definition *def)
     fprintf(fp, "}\n");
 }
 
-static void emit_send_mx_signature(FILE *fp, Definition *def)
+static void emit_mx_send_signature(FILE *fp, Definition *def)
 {
     if (def->type == DT_CONST) return;
 
@@ -1305,7 +1305,7 @@ static void emit_send_mx_signature(FILE *fp, Definition *def)
             def->name, def->name);
 }
 
-static void emit_send_mx_body(FILE *fp, Definition *def)
+static void emit_mx_send_body(FILE *fp, Definition *def)
 {
     if (def->type == DT_CONST) return;
 
@@ -1318,7 +1318,7 @@ static void emit_send_mx_body(FILE *fp, Definition *def)
     fprintf(fp, "}\n");
 }
 
-static void emit_bcast_mx_signature(FILE *fp, Definition *def)
+static void emit_mx_bcast_signature(FILE *fp, Definition *def)
 {
     if (def->type == DT_CONST) return;
 
@@ -1331,7 +1331,7 @@ static void emit_bcast_mx_signature(FILE *fp, Definition *def)
             def->name, def->name);
 }
 
-static void emit_bcast_mx_body(FILE *fp, Definition *def)
+static void emit_mx_bcast_body(FILE *fp, Definition *def)
 {
     if (def->type == DT_CONST) return;
 
@@ -1353,8 +1353,8 @@ static void set_dependencies(void)
     if (do_copy)    do_clear = TRUE;
     if (do_destroy) do_clear = TRUE;
 
-    if (do_send_mx)  do_pack = TRUE;
-    if (do_bcast_mx) do_pack = TRUE;
+    if (do_mx_send)  do_pack = TRUE;
+    if (do_mx_bcast) do_pack = TRUE;
 }
 
 /*
@@ -1400,7 +1400,7 @@ int emit_c_hdr(const char *out_file, const char *in_file, const char *prog_name,
     fprintf(fp, "#include <stdint.h>\t/* int types */\n");
     fprintf(fp, "#include <wchar.h>\t/* wchar_t */\n\n");
 
-    if (do_send_mx || do_bcast_mx) {
+    if (do_mx_send || do_mx_bcast) {
         fprintf(fp, "#include <libmx.h>\t/* MX functions. */\n");
     }
 
@@ -1478,12 +1478,12 @@ int emit_c_hdr(const char *out_file, const char *in_file, const char *prog_name,
                 emit_destroy_signature(fp, def);
                 fprintf(fp, ";\n");
             }
-            if (do_send_mx) {
-                emit_send_mx_signature(fp, def);
+            if (do_mx_send) {
+                emit_mx_send_signature(fp, def);
                 fprintf(fp, ";\n");
             }
-            if (do_bcast_mx) {
-                emit_bcast_mx_signature(fp, def);
+            if (do_mx_bcast) {
+                emit_mx_bcast_signature(fp, def);
                 fprintf(fp, ";\n");
             }
         }
@@ -1536,7 +1536,7 @@ int emit_c_src(const char *out_file, const char *in_file, const char *prog_name,
 
     fprintf(fp, "#include <stdlib.h>\t/* size_t */\n");
 
-    if (do_send_mx || do_bcast_mx) {
+    if (do_mx_send || do_mx_bcast) {
         fprintf(fp, "\n#include <libmx.h>\t/* MX functions. */");
     }
 
@@ -1612,13 +1612,13 @@ int emit_c_src(const char *out_file, const char *in_file, const char *prog_name,
                 emit_destroy_signature(fp, def);
                 emit_destroy_body(fp, def);
             }
-            if (do_send_mx) {
-                emit_send_mx_signature(fp, def);
-                emit_send_mx_body(fp, def);
+            if (do_mx_send) {
+                emit_mx_send_signature(fp, def);
+                emit_mx_send_body(fp, def);
             }
-            if (do_bcast_mx) {
-                emit_bcast_mx_signature(fp, def);
-                emit_bcast_mx_body(fp, def);
+            if (do_mx_bcast) {
+                emit_mx_bcast_signature(fp, def);
+                emit_mx_bcast_body(fp, def);
             }
         }
     }

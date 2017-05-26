@@ -2,7 +2,7 @@
 #
 # Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
 # Created:   2016-08-24
-# Version:   $Id: Makefile 133 2017-05-14 17:43:43Z jacco $
+# Version:   $Id: Makefile 137 2017-05-26 12:19:43Z jacco $
 #
 # This software is distributed under the terms of the MIT license. See
 # http://www.opensource.org/licenses/mit-license.php for details.
@@ -100,7 +100,7 @@ Objects.o: Objects.c Objects.h
 Objects.py: test/Objects.tgr tyger
 	./tyger --indent='  ' --python $@ \
             --py-pack --py-unpack --py-recv \
-            --py-send-mx --py-bcast-mx $<
+            --py-mx-send --py-mx-bcast $<
 
 clean:
 	rm -f *.o *.pyc tyger core vgcore.* tyger.tgz libtyger.a libtyger.so \
