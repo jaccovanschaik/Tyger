@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-12-08
- * Version:   $Id: lang-python.c 137 2017-05-26 12:19:43Z jacco $
+ * Version:   $Id: lang-python.c 138 2017-05-26 19:11:25Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -209,7 +209,7 @@ static void emit_packer(FILE *fp, Definition *def)
             ifprintf(fp, 1, "@staticmethod\n");
             ifprintf(fp, 1, "def pack(value):\n");
 
-            ifprintf(fp, 2, "buf = ''\n\n");
+            ifprintf(fp, 2, "buf = b''\n\n");
 
             for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
                 ifprintf(fp, 2, "buf += %sPacker.pack(value.%s)%s",

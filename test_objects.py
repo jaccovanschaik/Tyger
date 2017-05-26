@@ -6,11 +6,13 @@
  
   Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
   Created:   2016-11-25
-  Version:   $Id: test_objects.py 127 2017-05-14 17:20:46Z jacco $
+  Version:   $Id: test_objects.py 138 2017-05-26 19:11:25Z jacco $
  
   This software is distributed under the terms of the MIT license. See
   http://www.opensource.org/licenses/mit-license.php for details.
 '''
+
+from __future__ import division, print_function
 
 from Objects import *
 
@@ -26,15 +28,15 @@ assert n.x == 4
 assert n.y == 5
 assert n.z == -6
 
-s.x = 10.0
+s.x = 10
 
-assert s.x == 10.0
+assert s.x == 10
 assert s.y == 2
 assert s.z == 3
 
 buf = VectorPacker.pack(s)
 
-assert buf == '\x00\x00\x00\x0a\x00\x00\x00\x02\x00\x00\x00\x03'
+assert buf == b'\x00\x00\x00\x0a\x00\x00\x00\x02\x00\x00\x00\x03'
 
 p = Plane(s, n)
 
@@ -48,8 +50,8 @@ assert p.nv.z == -6
 
 buf = PlanePacker.pack(p)
 
-assert buf == '\x00\x00\x00\x0a\x00\x00\x00\x02\x00\x00\x00\x03\x00\x00\x00\x04' \
-            + '\x00\x00\x00\x05\xff\xff\xff\xfa'
+assert buf == b'\x00\x00\x00\x0a\x00\x00\x00\x02\x00\x00\x00\x03\x00\x00\x00\x04' \
+            + b'\x00\x00\x00\x05\xff\xff\xff\xfa'
 
 p, offset = PlanePacker.unpack(buf)
 
@@ -81,15 +83,15 @@ assert o.shape.u.nv.z == -6
 buf = ObjectPacker.pack(o)
 
 expected = \
-  "\x00\x00\x00\x07A plane" \
-+ "\x00\x00\x00\x06Bj\xc3\xb6rn" \
-+ "\x00\x00\x00\x03" \
-+ "\x00\x00\x00\x0a" \
-+ "\x00\x00\x00\x02" \
-+ "\x00\x00\x00\x03" \
-+ "\x00\x00\x00\x04" \
-+ "\x00\x00\x00\x05" \
-+ "\xff\xff\xff\xfa"
+  b"\x00\x00\x00\x07A plane" \
++ b"\x00\x00\x00\x06Bj\xc3\xb6rn" \
++ b"\x00\x00\x00\x03" \
++ b"\x00\x00\x00\x0a" \
++ b"\x00\x00\x00\x02" \
++ b"\x00\x00\x00\x03" \
++ b"\x00\x00\x00\x04" \
++ b"\x00\x00\x00\x05" \
++ b"\xff\xff\xff\xfa"
 
 assert buf == expected
 
@@ -107,7 +109,7 @@ l = 3 * [ o ]
 
 buf = ObjectsPacker.pack(l)
 
-assert buf == "\x00\x00\x00\x03" + expected + expected + expected
+assert buf == b"\x00\x00\x00\x03" + expected + expected + expected
 
 l, offset = ObjectsPacker.unpack(buf)
 

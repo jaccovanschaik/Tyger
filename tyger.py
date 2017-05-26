@@ -6,11 +6,13 @@
  
   Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
   Created:   2016-11-25
-  Version:   $Id: tyger.py 127 2017-05-14 17:20:46Z jacco $
+  Version:   $Id: tyger.py 138 2017-05-26 19:11:25Z jacco $
  
   This software is distributed under the terms of the MIT license. See
   http://www.opensource.org/licenses/mit-license.php for details.
 '''
+
+from __future__ import division, print_function
 
 import struct
 
@@ -83,15 +85,17 @@ class float64Packer(basePacker):
 class astringPacker(object):
   @staticmethod
   def pack(value):
-    buf = uint32Packer.pack(len(value))
+    asc = value.encode('ascii')
 
-    return buf + value
+    return struct.pack(">I", len(asc)) + asc
 
   @staticmethod
   def unpack(buf, offset = 0):
     length, offset = uint32Packer.unpack(buf, offset)
 
-    return buf[offset:offset + length], offset + length
+    asc = buf[offset:offset + length]
+
+    return asc.decode('ascii'), offset + length
 
   @staticmethod
   def recv(sock):
@@ -125,22 +129,20 @@ class ustringPacker(object):
     return data.decode('utf-8')
 
 if __name__ == '__main__':
-  from hexdump import hexdump
-
   s = "abc"
-  print "s = %s" % s
+  print("s = %s" % s)
 
   buf = astringPacker.pack(s)
-  print "packed:\n", hexdump(buf)
+  print("packed:\n", repr(buf))
 
   s, offset = astringPacker.unpack(buf)
-  print "unpacked: s =", s, ", offset =", offset
+  print("unpacked: s =", s, ", offset =", offset)
 
   s = U"αß¢"
-  print "s = %s" % s
+  print("s = %s" % s)
 
   buf = ustringPacker.pack(s)
-  print "packed:\n", hexdump(buf)
+  print("packed:\n", repr(buf))
 
   s, offset = ustringPacker.unpack(buf)
-  print "unpacked: s =", s, ", offset =", offset
+  print("unpacked: s =", s, ", offset =", offset)

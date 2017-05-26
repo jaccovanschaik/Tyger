@@ -2,7 +2,7 @@
 #
 # Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
 # Created:   2016-08-24
-# Version:   $Id: Makefile 137 2017-05-26 12:19:43Z jacco $
+# Version:   $Id: Makefile 138 2017-05-26 19:11:25Z jacco $
 #
 # This software is distributed under the terms of the MIT license. See
 # http://www.opensource.org/licenses/mit-license.php for details.
@@ -45,7 +45,8 @@ test: tokenizer-test libtyger-test test_objects Objects.py
 	./tokenizer-test
 	./libtyger-test
 	./test_objects
-	./test_objects.py
+	python2 ./test_objects.py
+	python3 ./test_objects.py
 
 tokentype.c: tokentype.txt
 	./gen_enum -c -p TT -t tkType $< > $@
@@ -103,7 +104,8 @@ Objects.py: test/Objects.tgr tyger
             --py-mx-send --py-mx-bcast $<
 
 clean:
-	rm -f *.o *.pyc tyger core vgcore.* tyger.tgz libtyger.a libtyger.so \
+	rm -rf *.o *.pyc __pycache__ tyger \
+            core vgcore.* tyger.tgz libtyger.a libtyger.so \
             tokenizer-test libtyger-test \
             test_objects Objects.c Objects.h Objects.py \
             version.h tokentype.c tokentype.h deftype.c deftype.h
