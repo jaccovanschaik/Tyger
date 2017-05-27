@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <!-- vim: set textwidth=100: -->
+  <head>
+    <title>Tyger</title>
+    <style>
+        body {
+          margin-left: 30px;
+        }
+        pre {
+          background: #E0E0F0;
+          border: 1px solid black;
+          padding: 5px;
+        }
+        span.func {
+          padding: 5px;
+          border: 1px solid black;
+          background: #E0F0E0;
+          font-family: monospace;
+          font-size: 120%;
+          font-weight: bold;
+        }
+        div.func {
+          padding: 5px;
+          border: 1px solid black;
+          background: #E0F0E0;
+          font-family: monospace;
+          font-size: 120%;
+          font-weight: bold;
+        }
+        span.parameter {
+          font-family: monospace;
+        }
+        table {
+          border-collapse:collapse;
+        }
+        table, td {
+          padding: 5px;
+          border: 1px solid black;
+          background: #F0E0E0;
+        }
+        img {
+          padding: 5px;
+          margin: 5px;
+          background: #F0F0E8;
+        }
+        h1,h2,h3 {
+          margin-left: -15px;
+        }
+    </style>
+  </head>
+  <body>
+    <pre>** Documentation for Tyger.
+**
+** Copyright:   (c) 2017 Jacco van Schaik (jacco@jaccovanschaik.net)
+** Version:     $Id: index.html 140 2017-05-27 15:20:37Z jacco $
+**
+** This software is distributed under the terms of the MIT license. See
+** http://www.opensource.org/licenses/mit-license.php for details.</pre>
+    <h1>Tyger</h1>
+    <h2>Introduction</h2>
+    <p>
+      Tyger is a program that generates code to manipulate data types. Its primary mission is to
+      create serializers and deserializers so these types can be sent across a network, or saved and
+      retrieved from binary files. Additional functions can be generated for various other tasks,
+      such as printing them in a human-readable fashion, or creating, modifying and deleting them.
+      Currently, Tyger can generate code in C or Python (versions 2.x and 3.x).
+    </p>
+    <p>
+      The generated code can be incorporated into your own project. In addition, you'll need to use
+      a run-time library that comes with Tyger. This library contains functions that are called by
+      the generated code. These functions take care of handling the basic types thay Tyger uses to
+      build its data structures out of (integers, floating point numbers, strings etc.)
+    </p>
+    <p>
+      There is a Git repository for Tyger at <a
+      href="https://github.com/jaccovanschaik/Tyger">https://github.com/jaccovanschaik/Tyger</a>
+      and a Subversion repository at <a
+      href="https://www.jaccovanschaik.net/svn/tyger">https://www.jaccovanschaik.net/svn/tyger</a>.
+    </p>
+    <p>
+      Tyger requires <a href="https://github.com/jaccovanschaik/libjvs">libjvs</a>.
+    </p>
+    <h2>Operation</h2>
+    <p>
+      When called without any parameters, Tyger displays its usage, which looks like this:
+    </p>
+    <pre>Usage: tyger &lt;options&gt; &lt;input-file&gt;
+  
+Options:
+        -V, --version                   Print version and exit.
+        -c, --c-src &lt;C-source-output&gt;   Output C source file here.
+        -h, --c-hdr &lt;C-header-output&gt;   Output C header file here.
+        -p, --python &lt;python-output&gt;    Output python code here.
+        -i, --indent &lt;indent-string&gt;    Use this string as indent.
+
+        Switches accepted by the C code generator
+          --c-packsize  Generate packsize functions
+          --c-pack      Generate pack functions
+          --c-unpack    Generate unpack functions
+          --c-wrap      Generate wrap functions
+          --c-unwrap    Generate unwrap functions
+          --c-read-fd   Generate functions to read from an fd
+          --c-write-fd  Generate functions to write to an fd
+          --c-read-fp   Generate functions to read from an FP
+          --c-write-fp  Generate functions to write to an FP
+          --c-print-fp  Generate print functions
+          --c-create    Generate create functions
+          --c-set       Generate set functions
+          --c-copy      Generate copy functions
+          --c-clear     Generate clear functions
+          --c-destroy   Generate destroy functions
+          --c-mx-send   Generate MX send functions
+          --c-mx-bcast  Generate MX broadcast functions
+  
+        Switches accepted by the Python code generator
+          --py-pack     Generate pack functions
+          --py-unpack   Generate unpack functions
+          --py-recv     Generate recv functions
+          --py-mx-send  Generate MX send functions
+          --py-mx-bcast Generate MX broadcast functions</pre>
+    <p>
+      Normally, Tyger will be called with the name of an input file containing type descriptions,
+      one or more options telling it what output files to generate, and a number of options telling
+      it which functions to generate for each type and each language. Tyger tries to be smart about
+      the used include files (when generating C code) or imported modules (when generating Python
+      code) so you don't need to provide include files or modules unless they are required.
+    </p>
+    <h2>Languages</h2>
+    <p>
+      Tyger can generate C or Python code. For C code it can generate:
+    </p>
+    <ul>
+      <li>
+        a C header file that contains typedefs for all the defined types and prototypes for all the
+        generated functions;
+      </li>
+      <li>
+        a C source file that contains the bodies of all the generated functions.
+      </li>
+    </ul>
+    <p>
+      For Python code it will generate a single Python file that contains, for each defined type:
+    </p>
+    <ul>
+      <li>
+        A class that defines the type (only for compound types, i.e. structures and unions);
+      </li>
+      <li>
+        A <code>Packer</code> class that knows how to pack and unpack the type.
+      </li>
+    </ul>
+    <h2>Data types</h2>
+    <p>
+      Tyger supports the following data types:
+    </p>
+    <ul>
+      <li>Integers</li>
+      <li>Floating point numbers</li>
+      <li>Strings</li>
+      <li>Enums</li>
+      <li>Structures</li>
+      <li>Tagged unions</li>
+      <li>Arrays</li>
+      <li>Constants</li>
+    </ul>
+    <h3>Integers</h3>
+    <p>
+      Integers are simple whole numbers. Their name is either <code>int</code> or <code>uint</code>
+      (to indicate a signed or an unsigned integer), followed by 8, 16, 32 or 64 (to indicate the
+      number of bits they contain). Integers are serialized as one or more bytes, most-significant
+      byte first.
+    </p>
+    <p>
+      Example:
+    </p>
+    <pre>Counter = int32</pre>
+    <h3>Floating point numbers</h3>
+    <p>
+      Floating point numbers are standard IEEE-754 floating point numbers. Their names is
+      <code>float</code> followed by either 32 (to indicate a standard, single precision float with
+      32 bits) or 64 (to indicate a double precision float with 64 bits). Floating point numbers are
+      serialized as a 4 or 8-byte sequence, most significat byte first.
+    </p>
+    <p>
+      Example:
+    </p>
+    <pre>Coordinate = float64</pre>
+    <h3>Strings</h3>
+    <p>
+      There are two types of strings: <code>astring</code> is a standard, 1 byte per character ASCII
+      string, <code>ustring</code> is a multiple byte per character Unicode string. Strings are
+      serialized using a 4-byte big-endian character count, followed by the character data (encoded
+      as UTF-8 in the case of a <code>ustring</code>).
+    </p>
+    <p>
+      Example:
+    </p>
+    <pre>ident = astring
+name = ustring</pre>
+    <h3>Enumerations</h3>
+    <p>
+      Example:
+    </p>
+    <pre>ShapeType = enum {
+    ST_LINE    = 1
+    ST_POLYGON = 2
+    ST_PLANE   = 3
+    ST_SPHERE  = 4
+}</pre>
+    <h3>Structures</h3>
+    <p>
+      Example:
+    </p>
+    <pre>Vector = struct {
+    Coordinate x
+    Coordinate y
+    Coordinate z
+}</pre>
+    <h3>Unions</h3>
+    <p>
+      Example:
+    </p>
+    <pre>Shape = union(ShapeType shape_type) {
+    ST_LINE:    Line    line
+    ST_POLYGON: Polygon polygon
+    ST_PLANE:   Plane   plane
+    ST_SPHERE:  Sphere  sphere
+}</pre>
+    <h3>Arrays</h3>
+    <p>
+      Example:
+    </p>
+    <pre>Polygon = array(Vector vector)</pre>
+    <h3>Constants</h3>
+    <p>
+      Example:
+    </p>
+    <pre>Dimensions = const uint32 3</pre>
+    <h2>General options</h2>
+    <p>
+      This section describes Tygers general options.
+    </p>
+    <ul>
+      <li>
+        <p>
+          <code>-V</code> or <code>--version</code>
+        </p>
+        <p>
+          Print version and exit.
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>-c</code> or <code>--c-src &lt;C-source-output&gt;</code>
+        </p>
+        <p>
+          Output C source file to the file given in <code>&lt;C-source-output&gt;</code>.
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>-h</code> or <code>--c-hdr &lt;C-header-output&gt;</code>
+        </p>
+        <p>
+          Output C header file to the file given in <code>&lt;C-header-output&gt;</code>.
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>-p</code> or <code>--python &lt;python-output&gt;</code>
+        </p>
+        <p>
+          Output python code to the file given in <code>&lt;python-output&gt;</code>.
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>-i</code> or <code>--indent &lt;indent-string&gt;</code>
+        </p>
+        <p>
+          Use the string given in <code>&lt;indent-string&gt;</code> as one level of indent.
+        </p>
+      </li>
+    </ul>
+    <h2>Language-specific switches</h2>
+    <p>
+      This section describes language specific switches.
+    </p>
+    <h3>C code generator</h3>
+    <p>
+      This section explains the switches accepted by the C code generator.
+    </p>
+    <ul>
+      <li>
+        <p>
+          <code>--c-packsize</code>
+        </p>
+        <p>
+          Generate packsize functions.
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-pack</code>
+        </p>
+        <p>
+          Generate pack functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-unpack</code>
+        </p>
+        <p>
+          Generate unpack functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-wrap</code>
+        </p>
+        <p>
+          Generate wrap functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-unwrap</code>
+        </p>
+        <p>
+          Generate unwrap functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-read-fd</code>
+        </p>
+        <p>
+          Generate functions to read from an fd
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-write-fd</code>
+        </p>
+        <p>
+          Generate functions to write to an fd
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-read-fp</code>
+        </p>
+        <p>
+          Generate functions to read from an FP
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-write-fp</code>
+        </p>
+        <p>
+          Generate functions to write to an FP
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-print-fp</code>
+        </p>
+        <p>
+          Generate print functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-create</code>
+        </p>
+        <p>
+          Generate create functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-set</code>
+        </p>
+        <p>
+          Generate set functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-copy</code>
+        </p>
+        <p>
+          Generate copy functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-clear</code>
+        </p>
+        <p>
+          Generate clear functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-destroy</code>
+        </p>
+        <p>
+          Generate destroy functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-mx-send</code>
+        </p>
+        <p>
+          Generate MX send functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--c-mx-bcast</code>
+        </p>
+        <p>
+          Generate MX broadcast functions
+        </p>
+      </li>
+    </ul>
+  </body>
+</html>
