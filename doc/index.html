@@ -57,7 +57,7 @@
     <pre>** Documentation for Tyger.
 **
 ** Copyright:   (c) 2017 Jacco van Schaik (jacco@jaccovanschaik.net)
-** Version:     $Id: index.html 141 2017-07-21 10:31:30Z jacco $
+** Version:     $Id: index.html 142 2017-07-21 10:48:11Z jacco $
 **
 ** This software is distributed under the terms of the MIT license. See
 ** http://www.opensource.org/licenses/mit-license.php for details.</pre>
@@ -282,7 +282,18 @@ Options:
       Constants are not serialized. They are available to both the sender and receiver (or writer 
       and reader) in the generated code.
     </p>
-    <h2>General options</h2>
+    <h2>Input files</h2>
+    <p>
+      This section describes the input files for Tyger. These are used to specify, using a 
+      high-level description, the types to be generated.
+    </p>
+    <h2>Options</h2>
+    <p>
+      This section describes the command line options for the <code>tyger</code> command. First 
+      we'll talk about the general options, the we'll look at the options specicifc to the C and 
+      Python code generators.
+    </p>
+    <h3>General options</h3>
     <p>
       This section describes Tygers general options.
     </p>
@@ -328,11 +339,7 @@ Options:
         </p>
       </li>
     </ul>
-    <h2>Language-specific switches</h2>
-    <p>
-      This section describes language specific switches.
-    </p>
-    <h3>C code generator</h3>
+    <h3>C code generator options</h3>
     <p>
       This section explains the switches accepted by the C code generator.
     </p>
@@ -468,6 +475,54 @@ Options:
       <li>
         <p>
           <code>--c-mx-bcast</code>
+        </p>
+        <p>
+          Generate MX broadcast functions
+        </p>
+      </li>
+    </ul>
+    <h3>Python code generator options</h3>
+    <p>
+      This section explains the switches accepted by the Python code generator. In Python it is much
+      easier to get added functionality by combining generated functions and existing language 
+      features, so we need far fewer generated functions.
+    </p>
+    <ul>
+      <li>
+        <p>
+          <code>--py-pack</code>
+        </p>
+        <p>
+          Generate pack functions.
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--py-unpack</code>
+        </p>
+        <p>
+          Generate unpack functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--py-recv</code>
+        </p>
+        <p>
+          Generate recv functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--py-mx-send</code>
+        </p>
+        <p>
+          Generate MX send functions
+        </p>
+      </li>
+      <li>
+        <p>
+          <code>--py-mx-bcast</code>
         </p>
         <p>
           Generate MX broadcast functions

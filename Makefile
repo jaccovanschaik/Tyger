@@ -2,7 +2,7 @@
 #
 # Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
 # Created:   2016-08-24
-# Version:   $Id: Makefile 138 2017-05-26 19:11:25Z jacco $
+# Version:   $Id: Makefile 142 2017-07-21 10:48:11Z jacco $
 #
 # This software is distributed under the terms of the MIT license. See
 # http://www.opensource.org/licenses/mit-license.php for details.
@@ -112,6 +112,9 @@ clean:
 
 tags:
 	ctags -R . $(JVS_TOP)/include /usr/include
+
+commit:
+	read msg && svn commit -m "$$msg" && git commit -a -m "$$msg" && git push
 
 tyger.tgz: clean
 	tar cvf - `ls | grep -v tyger.tgz` | gzip > tyger.tgz
