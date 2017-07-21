@@ -57,7 +57,7 @@
     <pre>** Documentation for Tyger.
 **
 ** Copyright:   (c) 2017 Jacco van Schaik (jacco@jaccovanschaik.net)
-** Version:     $Id: index.html 142 2017-07-21 10:48:11Z jacco $
+** Version:     $Id: index.html 145 2017-07-21 16:19:09Z jacco $
 **
 ** This software is distributed under the terms of the MIT license. See
 ** http://www.opensource.org/licenses/mit-license.php for details.</pre>
@@ -270,8 +270,8 @@ Options:
     </p>
     <h3>Constants</h3>
     <p>
-      A constant has a name and a value. The value can be any of the pre-defined types: int, 
-      float or string.
+      A constant has a name and a value. The value can be any of the built-in types: 
+      <code>int</code>, <code>float</code>, <code>astring</code> and <code>ustring</code>.
     </p>
     <p>
       In C a constant is defined as a <code>const</code> in the generated .c file and declared as an
@@ -287,6 +287,113 @@ Options:
       This section describes the input files for Tyger. These are used to specify, using a 
       high-level description, the types to be generated.
     </p>
+    <p>
+      The examples show here are derived from the test code that comes with Tyger. So if you want to 
+      see them in their "natural habitat", see some more examples, and see the C and Python code 
+      that is generated based on these definitions: go to the top-level directory of the software, 
+      type "make test" and look at the generated code (<code>Objects.c</code>, 
+      <code>Objects.h</code> and <code>Objects.py</code>).
+    </p>
+    <h3>Deriving types from a built-in type</h3>
+    <p>
+      Built-in types are the various <code>int</code>, <code>float</code> and <code>string</code> 
+      types. You can created a new type derived from these using the following syntax:
+    </p>
+    <p>
+      <pre>&lt;new_type_name&gt; = &lt;builtin_type_name&gt;</pre>
+    </p>
+    <p>
+      For example, to define a new type called <code>Coordinate</code> and make it a signed 32-bit 
+      integer you would use:
+    </p>
+    <p>
+      <pre>Coordinate = int32</pre>
+    </p>
+    <h3>Defining a struct type</h3>
+    <p>
+      Structs are defined as follows:
+    </p>
+    <pre>&lt;new_type_name&gt; = struct {
+    &lt;type_of_first_element&gt; &lt;name_of_first_element&gt;
+    &lt;type_of_second_element&gt; &lt;name_of_second_element&gt;
+    ...
+}</pre>
+    <p>
+      You can add an arbitrary number of fields to a struct.
+    </p>
+    <p>
+      So if you wanted to define a type called <code>Object</code> that contains an ASCII string 
+      <code>ident</code>, a Unicode string <code>creator</code> and a third field named 
+      <code>shape</code> with type <code>Shape</code>, you'd do that as follows:
+    </p>
+    <pre>Object = struct {
+    astring ident
+    ustring creator
+    Shape shape
+}</pre>
+    <h3>Defining an enumeration</h3>
+    <p>
+      This is how an enumeration is defined:
+    </p>
+    <pre>&lt;new_type_name&gt; = enum {
+    &lt;first_symbolic_name&gt; [ = &lt;first_value&gt; ]
+    &lt;second_symbolic_name&gt; [ = &lt;second_value&gt; ]
+    ...
+}</pre>
+    <p>
+      Again, you can add arbitrary number of entries, as long as the greatest value is 
+      2<sup>32</sup> - 1 or less (since enums are serialized as 32-bit unsigned integers).
+    </p>
+    <p>
+      As indicated, values are optional. If a value is not specified, it is set to the previous one
+      incremented by 1. If the first value is not specified it is set to 0.
+    </p>
+    <p>
+      For example, if we wanted to create an enum called <code>ShapeType</code> to indicate 
+      different types of shapes, we might do it like this:
+    </p>
+    <pre>ShapeType = enum {
+    ST_LINE    = 1
+    ST_POLYGON = 2
+    ST_PLANE   = 3
+    ST_SPHERE  = 4
+}</pre>
+    <h3>Defining a union type</h3>
+    <p>
+      A union is defined like this:
+    </p>
+    <pre>&lt;new_type_name&gt; = union(&lt;discriminator_type&gt; &lt;discriminator_name&gt;) {
+    &lt;discriminator_value_for_first_choice&gt;: &lt;type_of_first_choice&gt; &lt;name_of_first_choice&gt;
+    &lt;discriminator_value_for_second_choice&gt;: &lt;type_of_second_choice&gt; &lt;name_of_second_choice&gt;
+    ...
+}</pre>
+    <p>
+      Based on the value of the discriminator (i.e. variable with name 
+      <code>discriminator_name</code>) the associated field will be active.
+    </p>
+    <p>
+      For example, let's say we wanted to define a union name <code>Shape</code>, which would 
+      contain one of a number of internal fields based on <code>shape_type</code> (which is a 
+      discriminator field of type <code>ShapeType</code> as shown above). This is how we would do 
+      that:
+    </p>
+    <pre>Shape = union(ShapeType shape_type) {
+    ST_LINE:    Line    line
+    ST_POLYGON: Polygon polygon
+    ST_PLANE:   Plane   plane
+    ST_SPHERE:  Sphere  sphere
+}</pre>
+
+    <h3>Defining a constant</h3>
+    <p>
+      Constants are defined like this:
+    </p>
+    <pre>&lt;constant_name&gt; = const &lt;constant_type&gt; &lt;constant_value&gt;</pre>
+    <p>
+      For example, let's say you wanted to define a constant unsigned 32-bit int named 
+      <code>Dimensions</code> with the value 3, you'd do this like so:
+    </p>
+    <pre>Dimensions = const uint32 3</pre>
     <h2>Options</h2>
     <p>
       This section describes the command line options for the <code>tyger</code> command. First 
