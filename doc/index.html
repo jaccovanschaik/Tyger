@@ -12,6 +12,10 @@
           border: 1px solid black;
           padding: 5px;
         }
+        code {
+          background: #E0F0F0;
+          padding: 2px;
+        }
         span.func {
           padding: 5px;
           border: 1px solid black;
@@ -53,7 +57,7 @@
     <pre>** Documentation for Tyger.
 **
 ** Copyright:   (c) 2017 Jacco van Schaik (jacco@jaccovanschaik.net)
-** Version:     $Id: index.html 140 2017-05-27 15:20:37Z jacco $
+** Version:     $Id: index.html 141 2017-07-21 10:31:30Z jacco $
 **
 ** This software is distributed under the terms of the MIT license. See
 ** http://www.opensource.org/licenses/mit-license.php for details.</pre>
@@ -73,13 +77,21 @@
       build its data structures out of (integers, floating point numbers, strings etc.)
     </p>
     <p>
+      The types to generate are defined in an input file with a very simple syntax. Tyger uses the C
+      pre-processor (cpp) to read these input files, so all facilities that cpp offers (includes, 
+      pragmas, defines) are available in Tyger input files.
+    </p>
+    <p>
       There is a Git repository for Tyger at <a
       href="https://github.com/jaccovanschaik/Tyger">https://github.com/jaccovanschaik/Tyger</a>
       and a Subversion repository at <a
       href="https://www.jaccovanschaik.net/svn/tyger">https://www.jaccovanschaik.net/svn/tyger</a>.
     </p>
     <p>
-      Tyger requires <a href="https://github.com/jaccovanschaik/libjvs">libjvs</a>.
+      Tyger requires the GNU C pre-processor (cpp) to be available when generating code (but not 
+      when running the generated code). Tyger also requires <a 
+      href="https://github.com/jaccovanschaik/libjvs">libjvs</a>, both to compile Tyger itself and 
+      to compile the generated code.
     </p>
     <h2>Operation</h2>
     <p>
@@ -128,7 +140,7 @@ Options:
     </p>
     <h2>Languages</h2>
     <p>
-      Tyger can generate C or Python code. For C code it can generate:
+      Tyger can generate C or Python code. For C code it will generate:
     </p>
     <ul>
       <li>
@@ -168,75 +180,108 @@ Options:
     <p>
       Integers are simple whole numbers. Their name is either <code>int</code> or <code>uint</code>
       (to indicate a signed or an unsigned integer), followed by 8, 16, 32 or 64 (to indicate the
-      number of bits they contain). Integers are serialized as one or more bytes, most-significant
-      byte first.
+      number of bits they contain).
     </p>
     <p>
-      Example:
+      In C, the type used for these is one of the <code>stdint.h</code> types (<code>uint8_t</code> 
+      etc). In Python the type for all of these is <code>int</code>.
     </p>
-    <pre>Counter = int32</pre>
+    <p>
+      Integers are serialized as one or more bytes, most-significant byte first.
+    </p>
     <h3>Floating point numbers</h3>
     <p>
       Floating point numbers are standard IEEE-754 floating point numbers. Their names is
       <code>float</code> followed by either 32 (to indicate a standard, single precision float with
-      32 bits) or 64 (to indicate a double precision float with 64 bits). Floating point numbers are
+      32 bits) or 64 (to indicate a double precision float with 64 bits).
+    </p>
+    <p>
+      In C, the type for these is 
+      <code>float</code> or <code>double</code>. In Python, the type for both of these is 
+      <code>float</code>.
+    </p>
+    <p>
+      Floating point numbers are
       serialized as a 4 or 8-byte sequence, most significat byte first.
     </p>
-    <p>
-      Example:
-    </p>
-    <pre>Coordinate = float64</pre>
     <h3>Strings</h3>
     <p>
-      There are two types of strings: <code>astring</code> is a standard, 1 byte per character ASCII
-      string, <code>ustring</code> is a multiple byte per character Unicode string. Strings are
-      serialized using a 4-byte big-endian character count, followed by the character data (encoded
-      as UTF-8 in the case of a <code>ustring</code>).
+      There are two types of strings: <code>astring</code> is a string of single-byte ASCII 
+      characters, <code>ustring</code> is a string of multibyte Unicode characters.
     </p>
     <p>
-      Example:
+      In C, these are arrays of <code>char</code> or <code>wchar_t</code> characters. In Python 2, 
+      <code>str</code> objects are used for <code>astrings</code> and <code>unicode</code> objects 
+      for <code>ustrings</code>. In Python 3, <code>str</code> objects are used for both 
+      <code>astrings</code> and <code>ustrings</code>.
     </p>
-    <pre>ident = astring
-name = ustring</pre>
+    <p>
+      Strings are serialized using a 4-byte unsigned big-endian <em>byte</em> count, followed by the
+      character data (encoded as UTF-8 in the case of a <code>ustring</code>).
+    </p>
     <h3>Enumerations</h3>
     <p>
-      Example:
+      Enumerations are simple mappings of symbolic names to integers, as used in many programming 
+      languages.
     </p>
-    <pre>ShapeType = enum {
-    ST_LINE    = 1
-    ST_POLYGON = 2
-    ST_PLANE   = 3
-    ST_SPHERE  = 4
-}</pre>
+    <p>
+      In C these are translated to <code>enums</code>. In Python, they are translated to a class 
+      that contains class variables with the given names and the given value.
+    </p>
+    <p>
+      They are serialized as 4-byte unsigned big-endian integers.
+    </p>
     <h3>Structures</h3>
     <p>
-      Example:
+      These are abstract types containing multiple internal fields.
     </p>
-    <pre>Vector = struct {
-    Coordinate x
-    Coordinate y
-    Coordinate z
-}</pre>
+    <p>
+      In C these are translated to <code>typedef struct</code> definitions. In Python they are 
+      translated to classes that have a class member for each field.
+    </p>
+    <p>
+      They are serialized by simply serializing each field in turn.
+    </p>
     <h3>Unions</h3>
     <p>
-      Example:
+      These are abstract types that contain one of a number of possible internal fields, as 
+      indicated by a "discriminator".
     </p>
-    <pre>Shape = union(ShapeType shape_type) {
-    ST_LINE:    Line    line
-    ST_POLYGON: Polygon polygon
-    ST_PLANE:   Plane   plane
-    ST_SPHERE:  Sphere  sphere
-}</pre>
+    <p>
+      In C, these are translated to a <code>typedef struct</code> that contains the discriminator 
+      and a <code>union</code> <em>u</em> that contains the internal fields. In Python, it is 
+      translated to a class that contains the discriminator and a member named <em>u</em> that is 
+      set to the indicated internal field.
+    </p>
+    <p>
+      Unions are serialized by first serializing the discriminator as an unsigned big-endian 32-bit 
+      integer and then the internal field indicated by the discriminator.
+    </p>
     <h3>Arrays</h3>
     <p>
-      Example:
+      Arrays consist of a number of identically-typed fields.
     </p>
-    <pre>Polygon = array(Vector vector)</pre>
+    <p>
+      In C these are translated to standard arrays. In Python they are translated to lists.
+    </p>
+    <p>
+      They are serialized by first serializing the member count as an unsigned big-endian 32-bit
+      integer and then the contained members.
+    </p>
     <h3>Constants</h3>
     <p>
-      Example:
+      A constant has a name and a value. The value can be any of the pre-defined types: int, 
+      float or string.
     </p>
-    <pre>Dimensions = const uint32 3</pre>
+    <p>
+      In C a constant is defined as a <code>const</code> in the generated .c file and declared as an
+      <code>extern const</code> in the accompanying .h file. In Python, it is set as a global 
+      variable in the generated .py file.
+    </p>
+    <p>
+      Constants are not serialized. They are available to both the sender and receiver (or writer 
+      and reader) in the generated code.
+    </p>
     <h2>General options</h2>
     <p>
       This section describes Tygers general options.
