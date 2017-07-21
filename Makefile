@@ -2,7 +2,7 @@
 #
 # Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
 # Created:   2016-08-24
-# Version:   $Id: Makefile 143 2017-07-21 10:58:26Z jacco $
+# Version:   $Id: Makefile 144 2017-07-21 11:07:25Z jacco $
 #
 # This software is distributed under the terms of the MIT license. See
 # http://www.opensource.org/licenses/mit-license.php for details.
@@ -114,7 +114,9 @@ tags:
 	ctags -R . $(JVS_TOP)/include /usr/include
 
 commit:
+	@echo "\033[7mSubversion status:\033[0m"
 	@svn status
+	@echo "\033[7mGit status:\033[0m"
 	@git status
 	@echo -n 'Message: '
 	@read msg && svn commit -m "$$msg" && git commit -a -m "$$msg" && git push
