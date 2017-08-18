@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-10-24
- * Version:   $Id: lang-c.c 137 2017-05-26 12:19:43Z jacco $
+ * Version:   $Id: lang-c.c 147 2017-08-18 13:01:20Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -322,6 +322,7 @@ static void emit_packsize_body(FILE *fp, Definition *def)
             ifprintf(fp, 1, "size += %sPackSize(%s&data->%s);%s",
                     struct_item->def->name,
                     const_double_pointer_cast(struct_item->def),
+                    def->u.array_def.item_name,
                     listNext(struct_item) == NULL ? "\n\n" : "\n");
         }
 
@@ -576,7 +577,7 @@ static void emit_wrap_signature(FILE *fp, Definition *def)
 
         if (listPrev(struct_item) == NULL) {
             fprintf(fp, ",\n");
-            ifprintf(fp, 2, "");
+            findent(fp, 2);
         }
         else {
             fprintf(fp, ", ");
@@ -642,7 +643,7 @@ static void emit_unwrap_signature(FILE *fp, Definition *def)
     {
         if (listPrev(struct_item) == NULL) {
             fprintf(fp, ",\n");
-            ifprintf(fp, 2, "");
+            findent(fp, 2);
         }
         else {
             fprintf(fp, ", ");

@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-12-08
- * Version:   $Id: lang-python.c 138 2017-05-26 19:11:25Z jacco $
+ * Version:   $Id: lang-python.c 147 2017-08-18 13:01:20Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -117,7 +117,7 @@ static void emit_class(FILE *fp, Definition *def)
         ifprintf(fp, 0, "class %s(object):\n", def->name);
 
         for (item = listHead(&def->u.enum_def.items); item; item = listNext(item)) {
-            ifprintf(fp, 1, "%s = %d\n", item->name, item->value);
+            ifprintf(fp, 1, "%s = %ld\n", item->name, item->value);
         }
 
         fprintf(fp, "\n");
