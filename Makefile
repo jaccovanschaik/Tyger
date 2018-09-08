@@ -2,7 +2,7 @@
 #
 # Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
 # Created:   2016-08-24
-# Version:   $Id: Makefile 144 2017-07-21 11:07:25Z jacco $
+# Version:   $Id: Makefile 148 2018-09-08 18:08:57Z jacco $
 #
 # This software is distributed under the terms of the MIT license. See
 # http://www.opensource.org/licenses/mit-license.php for details.
@@ -96,7 +96,7 @@ Objects.h: test/Objects.tgr tyger
             --c-create --c-destroy $<
 
 Objects.o: Objects.c Objects.h
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -I. -c -o $@ $<
 	
 Objects.py: test/Objects.tgr tyger
 	./tyger --indent='  ' --python $@ \

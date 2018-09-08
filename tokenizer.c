@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-24
- * Version:   $Id: tokenizer.c 127 2017-05-14 17:20:46Z jacco $
+ * Version:   $Id: tokenizer.c 148 2018-09-08 18:08:57Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -22,7 +22,7 @@
 
 #define DEBUG 0
 
-/* tkTokenizer state. */
+/* Tokenizer state. */
 typedef enum {
     STATE_SPACE,
     STATE_USTRING,
@@ -710,7 +710,7 @@ int main(int argc, char *argv[])
             TT_USTRING, "<string>", 1, 1, "Test3a",
             TT_DSTRING, "<string>", 1, 8, "Test3b",
             TT_SSTRING, "<string>", 1, 17, "Goodbye",
-            TT_LONG,    "<string>", 1, 27, 123,
+            TT_LONG,    "<string>", 1, 27, 123L,
             TT_DOUBLE,  "<string>", 1, 31, 0.5,
             TT_DOUBLE,  "<string>", 1, 35, 100.0,
             TT_LONG,    "<string>", 1, 39, 16,
