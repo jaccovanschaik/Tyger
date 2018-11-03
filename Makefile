@@ -2,7 +2,7 @@
 #
 # Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
 # Created:   2016-08-24
-# Version:   $Id: Makefile 148 2018-09-08 18:08:57Z jacco $
+# Version:   $Id: Makefile 150 2018-11-03 19:48:51Z jacco $
 #
 # This software is distributed under the terms of the MIT license. See
 # http://www.opensource.org/licenses/mit-license.php for details.
@@ -16,7 +16,7 @@ JVS_TOP=$(HOME)
 JVS_INC=-I$(JVS_TOP)/include
 JVS_LIB=-L$(JVS_TOP)/lib -ljvs
 
-CFLAGS = -g -Wall -fPIC $(JVS_INC)
+CFLAGS = -g -Wall -Wpointer-arith -fPIC -std=gnu99 $(JVS_INC)
 
 MAKE_ALIB=ar rv
 MAKE_SLIB=$(CC) -shared -o
