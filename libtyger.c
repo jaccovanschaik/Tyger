@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-31
- * Version:   $Id: libtyger.c 127 2017-05-14 17:20:46Z jacco $
+ * Version:   $Id: libtyger.c 151 2018-11-03 19:54:39Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -78,7 +78,7 @@ static size_t read_FD(int fd, void *data, size_t size)
     size_t count = 0;
 
     while (count < size) {
-        int status = read(fd, data + count, size - count);
+        int status = read(fd, (char *) data + count, size - count);
 
         if (status > 0) {
             count += status;
@@ -104,7 +104,7 @@ static size_t write_FD(int fd, const void *data, size_t size)
     size_t count = 0;
 
     while (count < size) {
-        int status = write(fd, data + count, size - count);
+        int status = write(fd, (char *) data + count, size - count);
 
         if (status > 0) {
             count += status;
