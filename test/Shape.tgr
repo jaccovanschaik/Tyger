@@ -7,6 +7,7 @@ ShapeType = enum {
     ST_POLYGON = 2
     ST_PLANE   = 3
     ST_SPHERE  = 4
+    ST_NONE    = 5
 }
 
 Shape = union(ShapeType shape_type) {
@@ -14,4 +15,5 @@ Shape = union(ShapeType shape_type) {
     ST_POLYGON: Polygon polygon
     ST_PLANE:   Plane   plane
     ST_SPHERE:  Sphere  sphere
+    ST_NONE:    void
 }

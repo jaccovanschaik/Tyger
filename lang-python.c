@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-12-08
- * Version:   $Id: lang-python.c 147 2017-08-18 13:01:20Z jacco $
+ * Version:   $Id: lang-python.c 152 2019-01-11 11:10:13Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -64,6 +64,8 @@ static const char *interface_type(Definition *def)
     case DT_STRUCT:
     case DT_UNION:
         return def->name;
+    case DT_VOID:
+        return "None";
     default:
         return NULL;
     }
@@ -138,6 +140,8 @@ static void emit_class(FILE *fp, Definition *def)
         ifprintf(fp, 3, "return\n");
 
         for (item = listHead(&def->u.union_def.items); item; item = listNext(item)) {
+            if (is_void_type(item->def)) continue;
+
             ifprintf(fp, 2, "elif self.%s == %s.%s:\n",
                     def->u.union_def.discr_name,
                     def->u.union_def.discr_def->name,
@@ -274,7 +278,12 @@ static void emit_packer(FILE *fp, Definition *def)
                         def->u.union_def.discr_def->name,
                         item->value);
 
-                ifprintf(fp, 3, "buf += %sPacker.pack(value.u)\n", item->def->name);
+                if (is_void_type(item->def)) {
+                    ifprintf(fp, 3, "pass\n");
+                }
+                else {
+                    ifprintf(fp, 3, "buf += %sPacker.pack(value.u)\n", item->def->name);
+                }
             }
 
             ifprintf(fp, 0, "\n");
@@ -297,8 +306,13 @@ static void emit_packer(FILE *fp, Definition *def)
                         def->u.union_def.discr_def->name,
                         item->value);
 
-                ifprintf(fp, 3, "value.u, offset = %sPacker.unpack(buf, offset)\n",
-                        item->def->name);
+                if (is_void_type(item->def)) {
+                    ifprintf(fp, 3, "pass\n");
+                }
+                else {
+                    ifprintf(fp, 3, "value.u, offset = %sPacker.unpack(buf, offset)\n",
+                            item->def->name);
+                }
             }
 
             ifprintf(fp, 0, "\n");
@@ -321,8 +335,13 @@ static void emit_packer(FILE *fp, Definition *def)
                         def->u.union_def.discr_def->name,
                         item->value);
 
-                ifprintf(fp, 3, "value.u = %sPacker.recv(sock)\n",
-                        item->def->name);
+                if (is_void_type(item->def)) {
+                    ifprintf(fp, 3, "pass\n");
+                }
+                else {
+                    ifprintf(fp, 3, "value.u = %sPacker.recv(sock)\n",
+                            item->def->name);
+                }
             }
 
             ifprintf(fp, 0, "\n");

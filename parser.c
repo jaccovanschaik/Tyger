@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-25
- * Version:   $Id: parser.c 135 2017-05-14 19:43:29Z jacco $
+ * Version:   $Id: parser.c 152 2019-01-11 11:10:13Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -19,6 +19,7 @@
 
 #include "tokenizer.h"
 #include "parser.h"
+#include "utils.h"
 
 typedef enum {
     ST_INITIAL,
@@ -158,6 +159,11 @@ static int process_array(Definition *def, List *defs, tkToken **token, Buffer *e
                 (*token)->file, (*token)->line, (*token)->column, item_type);
         return 1;
     }
+    else if (item_def->type == DT_VOID) {
+        bufSetF(error, "%s:%d:%d: can not have an array of void.\n",
+                (*token)->file, (*token)->line, (*token)->column);
+        return 1;
+    }
     else if (expect_string(token, TT_USTRING, &item_name, error) != 0) {
         return 1;
     }
@@ -189,6 +195,11 @@ static int process_struct(Definition *def, List *defs, tkToken **token, Buffer *
         if (elem_def == NULL) {
             bufSetF(error, "%s:%d:%d: unknown type: \"%s\".\n",
                     (*token)->file, (*token)->line, (*token)->column, elem_type);
+            return 1;
+        }
+        else if (elem_def->type == DT_VOID) {
+            bufSetF(error, "%s:%d:%d: can not have void as structure element.\n",
+                (*token)->file, (*token)->line, (*token)->column);
             return 1;
         }
 
@@ -277,6 +288,11 @@ static int process_union(Definition *def, List *defs, tkToken **token, Buffer *e
                 (*token)->file, (*token)->line, (*token)->column, discr_type);
         return 1;
     }
+    else if (!is_integer_type(discr_def)) {
+        bufSetF(error, "%s:%d:%d: can't use %s as discriminator type.\n",
+                (*token)->file, (*token)->line, (*token)->column, discr_type);
+        return 1;
+    }
     else if (expect_string(token, TT_USTRING, &discr_name, error) != 0) {
         return 1;
     }
@@ -313,6 +329,14 @@ static int process_union(Definition *def, List *defs, tkToken **token, Buffer *e
             bufSetF(error, "%s:%d:%d: unknown type: \"%s\".\n",
                     (*token)->file, (*token)->line, (*token)->column, item_type);
             return 1;
+        }
+        else if ((item_def->type == DT_VOID)) {
+            item->def = item_def;
+            item->name = NULL;
+
+            listAppendTail(&def->u.union_def.items, item);
+
+            continue;
         }
         else if (expect_string(token, TT_USTRING, &item_name, error) != 0) {
             return 1;

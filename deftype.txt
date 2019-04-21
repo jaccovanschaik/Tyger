@@ -8,3 +8,4 @@ array
 struct
 enum
 union
+void

@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-10-24
- * Version:   $Id: lang-c.c 147 2017-08-18 13:01:20Z jacco $
+ * Version:   $Id: lang-c.c 152 2019-01-11 11:10:13Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -266,6 +266,8 @@ static void emit_typedef(FILE *fp, Definition *def)
 
         for (union_item = listHead(&def->u.union_def.items);
              union_item; union_item = listNext(union_item)) {
+            if (is_void_type(union_item->def)) continue;
+
             ifprintf(fp, 2, "%s %s;\n", union_item->def->name, union_item->name);
         }
         ifprintf(fp, 1, "} u;\n");
@@ -341,11 +343,16 @@ static void emit_packsize_body(FILE *fp, Definition *def)
 
         for (union_item = listHead(&def->u.union_def.items);
              union_item; union_item = listNext(union_item)) {
+
             ifprintf(fp, 1, "case %s:\n", union_item->value);
-            ifprintf(fp, 2, "size += %sPackSize(%s&data->u.%s);\n",
-                    union_item->def->name,
-                    const_double_pointer_cast(union_item->def),
-                    union_item->name);
+
+            if (!is_void_type(union_item->def)) {
+                ifprintf(fp, 2, "size += %sPackSize(%s&data->u.%s);\n",
+                        union_item->def->name,
+                        const_double_pointer_cast(union_item->def),
+                        union_item->name);
+            }
+
             ifprintf(fp, 2, "break;\n");
         }
 
@@ -435,10 +442,14 @@ static void emit_pack_body(FILE *fp, Definition *def)
         for (union_item = listHead(&def->u.union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
-            ifprintf(fp, 2, "byte_count += %sPack(%s&data->u.%s, buffer, size, pos);\n",
-                    union_item->def->name,
-                    const_double_pointer_cast(union_item->def),
-                    union_item->name);
+
+            if (!is_void_type(union_item->def)) {
+                ifprintf(fp, 2, "byte_count += %sPack(%s&data->u.%s, buffer, size, pos);\n",
+                        union_item->def->name,
+                        const_double_pointer_cast(union_item->def),
+                        union_item->name);
+            }
+
             ifprintf(fp, 2, "break;\n");
         }
 
@@ -531,9 +542,13 @@ static void emit_unpack_body(FILE *fp, Definition *def)
         for (union_item = listHead(&def->u.union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
-            ifprintf(fp, 2, "offset += %sUnpack(buffer + offset, "
-                "size > offset ? size - offset : 0, &data->u.%s);\n",
-                    union_item->def->name, union_item->name);
+
+            if (!is_void_type(union_item->def)) {
+                ifprintf(fp, 2, "offset += %sUnpack(buffer + offset, "
+                    "size > offset ? size - offset : 0, &data->u.%s);\n",
+                        union_item->def->name, union_item->name);
+            }
+
             ifprintf(fp, 2, "break;\n");
         }
 
@@ -764,10 +779,14 @@ static void emit_read_body(FILE *fp, Definition *def, FileAttributes *attr)
         for (union_item = listHead(&def->u.union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
-            ifprintf(fp, 2, "byte_count += %sReadFrom%s(%s, &data->u.%s);\n",
-                    union_item->def->name,
-                    attr->suffix, attr->varname,
-                    union_item->name);
+
+            if (!is_void_type(union_item->def)) {
+                ifprintf(fp, 2, "byte_count += %sReadFrom%s(%s, &data->u.%s);\n",
+                        union_item->def->name,
+                        attr->suffix, attr->varname,
+                        union_item->name);
+            }
+
             ifprintf(fp, 2, "break;\n");
         }
 
@@ -855,10 +874,12 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
         for (union_item = listHead(&def->u.union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
-            ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, &data->u.%s);\n",
-                    union_item->def->name,
-                    attr->suffix, attr->varname,
-                    union_item->name);
+            if (!is_void_type(union_item->def)) {
+                ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, &data->u.%s);\n",
+                        union_item->def->name,
+                        attr->suffix, attr->varname,
+                        union_item->name);
+            }
             ifprintf(fp, 2, "break;\n");
         }
 
@@ -962,9 +983,13 @@ static void emit_print_body(FILE *fp, Definition *def)
         for (union_item = listHead(&def->u.union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
-            ifprintf(fp, 2, "%sPrint(fp, &data->u.%s, level);\n",
-                    union_item->def->name,
-                    union_item->name);
+
+            if (!is_void_type(union_item->def)) {
+                ifprintf(fp, 2, "%sPrint(fp, &data->u.%s, level);\n",
+                        union_item->def->name,
+                        union_item->name);
+            }
+
             ifprintf(fp, 2, "break;\n");
         }
 
@@ -1185,11 +1210,13 @@ static void emit_copy_body(FILE *fp, Definition *def)
         for (union_item = listHead(&def->u.union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
-            ifprintf(fp, 2, "%sCopy(&dst->u.%s, %s&src->u.%s);\n",
-                    union_item->def->name,
-                    union_item->name,
-                    const_double_pointer_cast(union_item->def),
-                    union_item->name);
+            if (!is_void_type(union_item->def)) {
+                ifprintf(fp, 2, "%sCopy(&dst->u.%s, %s&src->u.%s);\n",
+                        union_item->def->name,
+                        union_item->name,
+                        const_double_pointer_cast(union_item->def),
+                        union_item->name);
+            }
             ifprintf(fp, 2, "break;\n");
         }
 
@@ -1257,9 +1284,11 @@ static void emit_clear_body(FILE *fp, Definition *def)
         for (union_item = listHead(&def->u.union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
-            ifprintf(fp, 2, "%sClear(&data->u.%s);\n",
-                    union_item->def->name,
-                    union_item->name);
+            if (!is_void_type(union_item->def)) {
+                ifprintf(fp, 2, "%sClear(&data->u.%s);\n",
+                        union_item->def->name,
+                        union_item->name);
+            }
             ifprintf(fp, 2, "break;\n");
         }
 

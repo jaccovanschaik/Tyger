@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-25
- * Version:   $Id: tyger.c 127 2017-05-14 17:20:46Z jacco $
+ * Version:   $Id: tyger.c 152 2019-01-11 11:10:13Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -94,6 +94,19 @@ static void make_float_types(List *definitions)
 
         listAppendTail(definitions, def);
     }
+}
+
+static void make_void_type(List *definitions)
+{
+    Definition *def;
+
+    def = calloc(1, sizeof(*def));
+
+    def->type = DT_VOID;
+    def->name = strdup("void");
+    def->builtin = 1;
+
+    listAppendTail(definitions, def);
 }
 
 static void dump_definitions(FILE *fp, List *definitions)
@@ -266,6 +279,7 @@ int main(int argc, char *argv[])
     make_ustring_type(&definitions);
     make_int_types(&definitions);
     make_float_types(&definitions);
+    make_void_type(&definitions);
 
     msg = parse(argv[file_arg], &definitions);
 
