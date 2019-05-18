@@ -3,11 +3,11 @@
 
 '''
   test_objects.py: Tests for generated Python code.
- 
+
   Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
   Created:   2016-11-25
-  Version:   $Id: test_objects.py 138 2017-05-26 19:11:25Z jacco $
- 
+  Version:   $Id: test_objects.py 153 2019-05-06 12:05:42Z jacco $
+
   This software is distributed under the terms of the MIT license. See
   http://www.opensource.org/licenses/mit-license.php for details.
 '''

@@ -57,7 +57,7 @@
     <pre>** Documentation for Tyger.
 **
 ** Copyright:   (c) 2017 Jacco van Schaik (jacco@jaccovanschaik.net)
-** Version:     $Id: index.html 145 2017-07-21 16:19:09Z jacco $
+** Version:     $Id: index.html 153 2019-05-06 12:05:42Z jacco $
 **
 ** This software is distributed under the terms of the MIT license. See
 ** http://www.opensource.org/licenses/mit-license.php for details.</pre>
@@ -78,7 +78,7 @@
     </p>
     <p>
       The types to generate are defined in an input file with a very simple syntax. Tyger uses the C
-      pre-processor (cpp) to read these input files, so all facilities that cpp offers (includes, 
+      pre-processor (cpp) to read these input files, so all facilities that cpp offers (includes,
       pragmas, defines) are available in Tyger input files.
     </p>
     <p>
@@ -88,9 +88,9 @@
       href="https://www.jaccovanschaik.net/svn/tyger">https://www.jaccovanschaik.net/svn/tyger</a>.
     </p>
     <p>
-      Tyger requires the GNU C pre-processor (cpp) to be available when generating code (but not 
-      when running the generated code). Tyger also requires <a 
-      href="https://github.com/jaccovanschaik/libjvs">libjvs</a>, both to compile Tyger itself and 
+      Tyger requires the GNU C pre-processor (cpp) to be available when generating code (but not
+      when running the generated code). Tyger also requires <a
+      href="https://github.com/jaccovanschaik/libjvs">libjvs</a>, both to compile Tyger itself and
       to compile the generated code.
     </p>
     <h2>Operation</h2>
@@ -98,7 +98,7 @@
       When called without any parameters, Tyger displays its usage, which looks like this:
     </p>
     <pre>Usage: tyger &lt;options&gt; &lt;input-file&gt;
-  
+
 Options:
         -V, --version                   Print version and exit.
         -c, --c-src &lt;C-source-output&gt;   Output C source file here.
@@ -124,7 +124,7 @@ Options:
           --c-destroy   Generate destroy functions
           --c-mx-send   Generate MX send functions
           --c-mx-bcast  Generate MX broadcast functions
-  
+
         Switches accepted by the Python code generator
           --py-pack     Generate pack functions
           --py-unpack   Generate unpack functions
@@ -183,7 +183,7 @@ Options:
       number of bits they contain).
     </p>
     <p>
-      In C, the type used for these is one of the <code>stdint.h</code> types (<code>uint8_t</code> 
+      In C, the type used for these is one of the <code>stdint.h</code> types (<code>uint8_t</code>
       etc). In Python the type for all of these is <code>int</code>.
     </p>
     <p>
@@ -196,8 +196,8 @@ Options:
       32 bits) or 64 (to indicate a double precision float with 64 bits).
     </p>
     <p>
-      In C, the type for these is 
-      <code>float</code> or <code>double</code>. In Python, the type for both of these is 
+      In C, the type for these is
+      <code>float</code> or <code>double</code>. In Python, the type for both of these is
       <code>float</code>.
     </p>
     <p>
@@ -206,13 +206,13 @@ Options:
     </p>
     <h3>Strings</h3>
     <p>
-      There are two types of strings: <code>astring</code> is a string of single-byte ASCII 
+      There are two types of strings: <code>astring</code> is a string of single-byte ASCII
       characters, <code>ustring</code> is a string of multibyte Unicode characters.
     </p>
     <p>
-      In C, these are arrays of <code>char</code> or <code>wchar_t</code> characters. In Python 2, 
-      <code>str</code> objects are used for <code>astrings</code> and <code>unicode</code> objects 
-      for <code>ustrings</code>. In Python 3, <code>str</code> objects are used for both 
+      In C, these are arrays of <code>char</code> or <code>wchar_t</code> characters. In Python 2,
+      <code>str</code> objects are used for <code>astrings</code> and <code>unicode</code> objects
+      for <code>ustrings</code>. In Python 3, <code>str</code> objects are used for both
       <code>astrings</code> and <code>ustrings</code>.
     </p>
     <p>
@@ -221,11 +221,11 @@ Options:
     </p>
     <h3>Enumerations</h3>
     <p>
-      Enumerations are simple mappings of symbolic names to integers, as used in many programming 
+      Enumerations are simple mappings of symbolic names to integers, as used in many programming
       languages.
     </p>
     <p>
-      In C these are translated to <code>enums</code>. In Python, they are translated to a class 
+      In C these are translated to <code>enums</code>. In Python, they are translated to a class
       that contains class variables with the given names and the given value.
     </p>
     <p>
@@ -236,7 +236,7 @@ Options:
       These are abstract types containing multiple internal fields.
     </p>
     <p>
-      In C these are translated to <code>typedef struct</code> definitions. In Python they are 
+      In C these are translated to <code>typedef struct</code> definitions. In Python they are
       translated to classes that have a class member for each field.
     </p>
     <p>
@@ -244,17 +244,17 @@ Options:
     </p>
     <h3>Unions</h3>
     <p>
-      These are abstract types that contain one of a number of possible internal fields, as 
+      These are abstract types that contain one of a number of possible internal fields, as
       indicated by a "discriminator".
     </p>
     <p>
-      In C, these are translated to a <code>typedef struct</code> that contains the discriminator 
-      and a <code>union</code> <em>u</em> that contains the internal fields. In Python, it is 
-      translated to a class that contains the discriminator and a member named <em>u</em> that is 
+      In C, these are translated to a <code>typedef struct</code> that contains the discriminator
+      and a <code>union</code> <em>u</em> that contains the internal fields. In Python, it is
+      translated to a class that contains the discriminator and a member named <em>u</em> that is
       set to the indicated internal field.
     </p>
     <p>
-      Unions are serialized by first serializing the discriminator as an unsigned big-endian 32-bit 
+      Unions are serialized by first serializing the discriminator as an unsigned big-endian 32-bit
       integer and then the internal field indicated by the discriminator.
     </p>
     <h3>Arrays</h3>
@@ -270,40 +270,40 @@ Options:
     </p>
     <h3>Constants</h3>
     <p>
-      A constant has a name and a value. The value can be any of the built-in types: 
+      A constant has a name and a value. The value can be any of the built-in types:
       <code>int</code>, <code>float</code>, <code>astring</code> and <code>ustring</code>.
     </p>
     <p>
       In C a constant is defined as a <code>const</code> in the generated .c file and declared as an
-      <code>extern const</code> in the accompanying .h file. In Python, it is set as a global 
+      <code>extern const</code> in the accompanying .h file. In Python, it is set as a global
       variable in the generated .py file.
     </p>
     <p>
-      Constants are not serialized. They are available to both the sender and receiver (or writer 
+      Constants are not serialized. They are available to both the sender and receiver (or writer
       and reader) in the generated code.
     </p>
     <h2>Input files</h2>
     <p>
-      This section describes the input files for Tyger. These are used to specify, using a 
+      This section describes the input files for Tyger. These are used to specify, using a
       high-level description, the types to be generated.
     </p>
     <p>
-      The examples show here are derived from the test code that comes with Tyger. So if you want to 
-      see them in their "natural habitat", see some more examples, and see the C and Python code 
-      that is generated based on these definitions: go to the top-level directory of the software, 
-      type "make test" and look at the generated code (<code>Objects.c</code>, 
+      The examples show here are derived from the test code that comes with Tyger. So if you want to
+      see them in their "natural habitat", see some more examples, and see the C and Python code
+      that is generated based on these definitions: go to the top-level directory of the software,
+      type "make test" and look at the generated code (<code>Objects.c</code>,
       <code>Objects.h</code> and <code>Objects.py</code>).
     </p>
     <h3>Deriving types from a built-in type</h3>
     <p>
-      Built-in types are the various <code>int</code>, <code>float</code> and <code>string</code> 
+      Built-in types are the various <code>int</code>, <code>float</code> and <code>string</code>
       types. You can created a new type derived from these using the following syntax:
     </p>
     <p>
       <pre>&lt;new_type_name&gt; = &lt;builtin_type_name&gt;</pre>
     </p>
     <p>
-      For example, to define a new type called <code>Coordinate</code> and make it a signed 32-bit 
+      For example, to define a new type called <code>Coordinate</code> and make it a signed 32-bit
       integer you would use:
     </p>
     <p>
@@ -322,8 +322,8 @@ Options:
       You can add an arbitrary number of fields to a struct.
     </p>
     <p>
-      So if you wanted to define a type called <code>Object</code> that contains an ASCII string 
-      <code>ident</code>, a Unicode string <code>creator</code> and a third field named 
+      So if you wanted to define a type called <code>Object</code> that contains an ASCII string
+      <code>ident</code>, a Unicode string <code>creator</code> and a third field named
       <code>shape</code> with type <code>Shape</code>, you'd do that as follows:
     </p>
     <pre>Object = struct {
@@ -341,7 +341,7 @@ Options:
     ...
 }</pre>
     <p>
-      Again, you can add arbitrary number of entries, as long as the greatest value is 
+      Again, you can add arbitrary number of entries, as long as the greatest value is
       2<sup>32</sup> - 1 or less (since enums are serialized as 32-bit unsigned integers).
     </p>
     <p>
@@ -349,7 +349,7 @@ Options:
       incremented by 1. If the first value is not specified it is set to 0.
     </p>
     <p>
-      For example, if we wanted to create an enum called <code>ShapeType</code> to indicate 
+      For example, if we wanted to create an enum called <code>ShapeType</code> to indicate
       different types of shapes, we might do it like this:
     </p>
     <pre>ShapeType = enum {
@@ -368,13 +368,13 @@ Options:
     ...
 }</pre>
     <p>
-      Based on the value of the discriminator (i.e. variable with name 
+      Based on the value of the discriminator (i.e. variable with name
       <code>discriminator_name</code>) the associated field will be active.
     </p>
     <p>
-      For example, let's say we wanted to define a union name <code>Shape</code>, which would 
-      contain one of a number of internal fields based on <code>shape_type</code> (which is a 
-      discriminator field of type <code>ShapeType</code> as shown above). This is how we would do 
+      For example, let's say we wanted to define a union name <code>Shape</code>, which would
+      contain one of a number of internal fields based on <code>shape_type</code> (which is a
+      discriminator field of type <code>ShapeType</code> as shown above). This is how we would do
       that:
     </p>
     <pre>Shape = union(ShapeType shape_type) {
@@ -390,14 +390,14 @@ Options:
     </p>
     <pre>&lt;constant_name&gt; = const &lt;constant_type&gt; &lt;constant_value&gt;</pre>
     <p>
-      For example, let's say you wanted to define a constant unsigned 32-bit int named 
+      For example, let's say you wanted to define a constant unsigned 32-bit int named
       <code>Dimensions</code> with the value 3, you'd do this like so:
     </p>
     <pre>Dimensions = const uint32 3</pre>
     <h2>Options</h2>
     <p>
-      This section describes the command line options for the <code>tyger</code> command. First 
-      we'll talk about the general options, the we'll look at the options specicifc to the C and 
+      This section describes the command line options for the <code>tyger</code> command. First
+      we'll talk about the general options, the we'll look at the options specicifc to the C and
       Python code generators.
     </p>
     <h3>General options</h3>
@@ -591,7 +591,7 @@ Options:
     <h3>Python code generator options</h3>
     <p>
       This section explains the switches accepted by the Python code generator. In Python it is much
-      easier to get added functionality by combining generated functions and existing language 
+      easier to get added functionality by combining generated functions and existing language
       features, so we need far fewer generated functions.
     </p>
     <ul>
