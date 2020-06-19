@@ -191,7 +191,7 @@ Options:
     </p>
     <h3>Floating point numbers</h3>
     <p>
-      Floating point numbers are standard IEEE-754 floating point numbers. Their names is
+      Floating point numbers are standard IEEE-754 floating point numbers. Their name is
       <code>float</code> followed by either 32 (to indicate a standard, single precision float with
       32 bits) or 64 (to indicate a double precision float with 64 bits).
     </p>
@@ -216,8 +216,9 @@ Options:
       <code>astrings</code> and <code>ustrings</code>.
     </p>
     <p>
-      Strings are serialized using a 4-byte unsigned big-endian <em>byte</em> count, followed by the
-      character data (encoded as UTF-8 in the case of a <code>ustring</code>).
+      Strings are serialized using a 4-byte unsigned big-endian <em>byte</em> (not character!)
+      count, followed by the character data (encoded as UTF-8 in the case of a
+      <code>ustring</code>).
     </p>
     <h3>Enumerations</h3>
     <p>
@@ -245,7 +246,7 @@ Options:
     <h3>Unions</h3>
     <p>
       These are abstract types that contain one of a number of possible internal fields, as
-      indicated by a "discriminator".
+      indicated by a "discriminator". A discriminator must be an integer type.
     </p>
     <p>
       In C, these are translated to a <code>typedef struct</code> that contains the discriminator
@@ -288,8 +289,8 @@ Options:
       high-level description, the types to be generated.
     </p>
     <p>
-      The examples show here are derived from the test code that comes with Tyger. So if you want to
-      see them in their "natural habitat", see some more examples, and see the C and Python code
+      The examples shown here are derived from the test code that comes with Tyger. So if you want
+      to see them in their "natural habitat", see some more examples, and see the C and Python code
       that is generated based on these definitions: go to the top-level directory of the software,
       type "make test" and look at the generated code (<code>Objects.c</code>,
       <code>Objects.h</code> and <code>Objects.py</code>).
@@ -397,7 +398,7 @@ Options:
     <h2>Options</h2>
     <p>
       This section describes the command line options for the <code>tyger</code> command. First
-      we'll talk about the general options, the we'll look at the options specicifc to the C and
+      we'll talk about the general options, then we'll look at the options specific to the C and
       Python code generators.
     </p>
     <h3>General options</h3>
