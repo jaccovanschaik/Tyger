@@ -2,7 +2,7 @@
 #
 # Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
 # Created:   2016-08-24
-# Version:   $Id: Makefile 153 2019-05-06 12:05:42Z jacco $
+# Version:   $Id: Makefile 156 2021-02-24 14:07:17Z jacco $
 #
 # This software is distributed under the terms of the MIT license. See
 # http://www.opensource.org/licenses/mit-license.php for details.
@@ -119,7 +119,7 @@ commit:
 	@echo "\033[7mGit status:\033[0m"
 	@git status
 	@echo -n 'Message: '
-	@read msg && svn commit -m "$$msg" && git commit -a -m "$$msg" && git push
+	@read msg && if [ "$$msg" != '' ]; then svn commit -m "$$msg" && git commit -a -m "$$msg" && git push; fi
 
 tyger.tgz: clean
 	tar cvf - `ls | grep -v tyger.tgz` | gzip > tyger.tgz
