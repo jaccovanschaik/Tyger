@@ -558,8 +558,11 @@ size_t ustringPackSize(const wchar_t *const *data)
 }
 
 /*
- * Unpack a ustring from <buffer> (which has size <size>) and put it at
- * the address pointed to by <data>.
+ * Unpack a UTF-8 encoded ustring from <buffer> (which has size <size>), write
+ * it to a newly allocated wide-character string whose starting address is
+ * written to <data>, and return the number of bytes consumed from <buffer>.
+ * If <buffer> doesn't contain enough bytes to successfully extract a string
+ * from it return the mininum number of bytes we would need.
  */
 size_t ustringUnpack(const char *buffer, size_t size, wchar_t **data)
 {
@@ -591,8 +594,8 @@ size_t ustringUnpack(const char *buffer, size_t size, wchar_t **data)
 }
 
 /*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
+ * Add <data> to position <pos> in <buffer>, which currently has size <size>,
+ * enlarging it if necessary. Return the number of bytes added to <buffer>.
  */
 size_t ustringPack(const wchar_t *const *data, char **buffer, size_t *size, size_t *pos)
 {
