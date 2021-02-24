@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 '''
@@ -11,8 +11,6 @@
   This software is distributed under the terms of the MIT license. See
   http://www.opensource.org/licenses/mit-license.php for details.
 '''
-
-from __future__ import division, print_function
 
 from Objects import *
 
