@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-10-24
- * Version:   $Id: lang-c.c 157 2021-07-16 09:54:28Z jacco $
+ * Version:   $Id: lang-c.c 158 2021-07-16 12:19:50Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -80,6 +80,33 @@ static FileAttributes file_attr[] = {
     { "FD", "int ", "fd" },
     { "FP", "FILE *", "fp" },
 };
+
+static const char *upper(const char *s)
+{
+#define BUF_COUNT 10
+    static char *buf[BUF_COUNT] = { };
+    static int   cur_buf = -1;
+
+    cur_buf = (cur_buf + 1) % BUF_COUNT;
+
+    if (buf[cur_buf] != NULL) {
+        free(buf[cur_buf]);
+    }
+
+    size_t input_len = strlen(s);
+
+    buf[cur_buf] = malloc(strlen(s) + 1);
+
+    int i;
+
+    for (i = 0; i < input_len; i++) {
+        buf[cur_buf][i] = toupper(s[i]);
+    }
+
+    buf[cur_buf][i] = '\0';
+
+    return buf[cur_buf];
+}
 
 static const char *include_guard_name(const char *filename)
 {
@@ -231,7 +258,29 @@ static void emit_typedef(FILE *fp, Definition *def)
         fprintf(fp, "} %s;\n", def->name);
         break;
     case DT_STRUCT:
+        if (def->struct_def.flag_def != NULL) {
+            fprintf(fp, "\ntypedef enum {\n");
+
+            int flag = 1;
+
+            for (struct_item = listHead(&def->struct_def.items);
+                struct_item; struct_item = listNext(struct_item)) {
+                ifprintf(fp, 1, "%s_%s = 0x%X,\n",
+                        upper(def->name), upper(struct_item->name), flag);
+
+                flag <<= 1;
+            }
+
+            fprintf(fp, "} %sFields;\n", def->name);
+        }
+
         fprintf(fp, "\ntypedef struct {\n");
+
+        if (def->struct_def.flag_def != NULL) {
+            ifprintf(fp, 1, "%s%s;\n",
+                    equivalent_c_type(def->struct_def.flag_def),
+                    def->struct_def.flag_name);
+        }
 
         for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {

@@ -1,6 +1,6 @@
 #include "Shape.tgr"
 
-Object = struct {
+Object = struct(uint8 fields) {
     astring name
     ustring creator
     Shape shape

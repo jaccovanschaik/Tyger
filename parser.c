@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-25
- * Version:   $Id: parser.c 157 2021-07-16 09:54:28Z jacco $
+ * Version:   $Id: parser.c 158 2021-07-16 12:19:50Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -183,23 +183,76 @@ static int process_array(Definition *def, List *defs, tkToken **token, Buffer *e
 
 static int process_struct(Definition *def, List *defs, tkToken **token, Buffer *error)
 {
+    if ((*token)->type == TT_OPAREN) {
+        char *flag_name;
+        Definition *flag_def;
+
+        *token = listNext(*token);
+
+        if ((*token)->type != TT_USTRING) {
+            expected(TT_USTRING, *token, error);
+            return 1;
+        }
+        else if ((flag_def = find_def(defs, (*token)->s)) == NULL) {
+            bufSetF(error, "%s:%d:%d: unknown type: \"%s\".\n",
+                    (*token)->file, (*token)->line, (*token)->column,
+                    (*token)->s);
+            return 1;
+        }
+        else if (flag_def->type != DT_INT || flag_def->int_def.is_signed) {
+            bufSetF(error,
+                    "%s:%d:%d: flag field must be an unsigned integer type.\n",
+                    (*token)->file, (*token)->line, (*token)->column);
+            return 1;
+        }
+
+        *token = listNext(*token);
+
+        if (expect_string(token, TT_USTRING, &flag_name, error) != 0) {
+            return 1;
+        }
+
+        if (expect_token(token, TT_CPAREN, error) != 0) {
+            return 1;
+        }
+
+        def->struct_def.flag_def  = flag_def;
+        def->struct_def.flag_name = strdup(flag_name);
+    }
+
     if (expect_token(token, TT_OBRACE, error) != 0) {
         return 1;
     }
 
+    int elem_count = 0;
+
     while ((*token)->type == TT_USTRING) {
-        char *elem_name;
+        elem_count++;
+
+        if (def->struct_def.flag_def != NULL &&
+            elem_count > 8 * def->struct_def.flag_def->int_def.size) {
+            bufSetF(error,
+                    "%s:%d:%d: too many struct elements for %s flag field.\n",
+                    (*token)->file, (*token)->line, (*token)->column,
+                    def->struct_def.flag_def->name);
+            return 1;
+
+        }
+
         char *elem_type = (*token)->s;
+        char *elem_name;
         Definition *elem_def = find_def(defs, elem_type);
 
         if (elem_def == NULL) {
-            bufSetF(error, "%s:%d:%d: unknown type: \"%s\".\n",
+            bufSetF(error,
+                    "%s:%d:%d: unknown type: \"%s\".\n",
                     (*token)->file, (*token)->line, (*token)->column, elem_type);
             return 1;
         }
         else if (elem_def->type == DT_VOID) {
-            bufSetF(error, "%s:%d:%d: can not have void as structure element.\n",
-                (*token)->file, (*token)->line, (*token)->column);
+            bufSetF(error,
+                    "%s:%d:%d: can not have void as structure element.\n",
+                    (*token)->file, (*token)->line, (*token)->column);
             return 1;
         }
 

@@ -5,7 +5,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-25
- * Version:   $Id: parser.h 157 2021-07-16 09:54:28Z jacco $
+ * Version:   $Id: parser.h 158 2021-07-16 12:19:50Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -54,6 +54,8 @@ typedef struct {
 } StructItem;
 
 typedef struct {
+    Definition *flag_def;
+    char *flag_name;
     List items;
 } StructDefinition;
 
