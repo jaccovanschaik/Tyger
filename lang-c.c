@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-10-24
- * Version:   $Id: lang-c.c 152 2019-01-11 11:10:13Z jacco $
+ * Version:   $Id: lang-c.c 157 2021-07-16 09:54:28Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -133,13 +133,13 @@ static const char *equivalent_c_type(const Definition *def)
     }
     else if (def->type == DT_INT) {
         snprintf(name, sizeof(name), "%sint%d_t ",
-                def->u.int_def.is_signed ? "" : "u",
-                def->u.int_def.size * 8);
+                def->int_def.is_signed ? "" : "u",
+                def->int_def.size * 8);
 
         return name;
     }
     else if (def->type == DT_FLOAT) {
-        if (def->u.float_def.size == 4) {
+        if (def->float_def.size == 4) {
             return "float ";
         }
         else {
@@ -160,7 +160,7 @@ static const char *equivalent_c_type(const Definition *def)
 static Definition *effective_definition(Definition *def)
 {
     if (def->type == DT_ALIAS) {
-        return effective_definition(def->u.alias_def.alias);
+        return effective_definition(def->alias_def.alias);
     }
     else {
         return def;
@@ -183,27 +183,27 @@ static const char *const_double_pointer_cast(Definition *def)
 static void emit_const_declaration(FILE *fp, Definition *def)
 {
     fprintf(fp, "\nextern const %s%s;\n",
-            equivalent_c_type(def->u.const_def.const_type),
+            equivalent_c_type(def->const_def.const_type),
             def->name);
 }
 
 static void emit_const_definition(FILE *fp, Definition *def)
 {
     fprintf(fp, "\nconst %s%s = ",
-            equivalent_c_type(def->u.const_def.const_type), def->name);
+            equivalent_c_type(def->const_def.const_type), def->name);
 
-    switch (def->u.const_def.const_type->type) {
+    switch (def->const_def.const_type->type) {
     case DT_INT:
-        fprintf(fp, "%ld;\n\n", def->u.const_def.value.l);
+        fprintf(fp, "%ld;\n\n", def->const_def.value.l);
         break;
     case DT_FLOAT:
-        fprintf(fp, "%g;\n\n", def->u.const_def.value.d);
+        fprintf(fp, "%g;\n\n", def->const_def.value.d);
         break;
     case DT_ASTRING:
-        fprintf(fp, "\"%s\";\n\n", def->u.const_def.value.s);
+        fprintf(fp, "\"%s\";\n\n", def->const_def.value.s);
         break;
     case DT_USTRING:
-        fprintf(fp, "L\"%s\";\n\n", def->u.const_def.value.s);
+        fprintf(fp, "L\"%s\";\n\n", def->const_def.value.s);
         break;
     default:
         break;
@@ -219,21 +219,21 @@ static void emit_typedef(FILE *fp, Definition *def)
     switch(def->type) {
     case DT_ALIAS:
         fprintf(fp, "\ntypedef %s%s;\n",
-                equivalent_c_type(def->u.alias_def.alias),
+                equivalent_c_type(def->alias_def.alias),
                 def->name);
         break;
     case DT_ARRAY:
         fprintf(fp, "\ntypedef struct {\n");
         ifprintf(fp, 1, "uint32_t count;\n");
         ifprintf(fp, 1, "%s *%s;\n",
-                equivalent_c_type(def->u.array_def.item_type),
-                def->u.array_def.item_name);
+                equivalent_c_type(def->array_def.item_type),
+                def->array_def.item_name);
         fprintf(fp, "} %s;\n", def->name);
         break;
     case DT_STRUCT:
         fprintf(fp, "\ntypedef struct {\n");
 
-        for (struct_item = listHead(&def->u.struct_def.items);
+        for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
             ifprintf(fp, 1, "%s%s;\n",
                     equivalent_c_type(struct_item->def),
@@ -246,7 +246,7 @@ static void emit_typedef(FILE *fp, Definition *def)
     case DT_ENUM:
         fprintf(fp, "\ntypedef enum {\n");
 
-        for (enum_item = listHead(&def->u.enum_def.items);
+        for (enum_item = listHead(&def->enum_def.items);
              enum_item; enum_item = listNext(enum_item)) {
             ifprintf(fp, 1, "%s = %ld,\n",
                     enum_item->name, enum_item->value);
@@ -259,18 +259,18 @@ static void emit_typedef(FILE *fp, Definition *def)
         fprintf(fp, "\ntypedef struct {\n");
 
         ifprintf(fp, 1, "%s %s;\n",
-                def->u.union_def.discr_def->name,
-                def->u.union_def.discr_name);
+                def->union_def.discr_def->name,
+                def->union_def.discr_name);
 
         ifprintf(fp, 1, "union {\n");
 
-        for (union_item = listHead(&def->u.union_def.items);
+        for (union_item = listHead(&def->union_def.items);
              union_item; union_item = listNext(union_item)) {
             if (is_void_type(union_item->def)) continue;
 
             ifprintf(fp, 2, "%s %s;\n", union_item->def->name, union_item->name);
         }
-        ifprintf(fp, 1, "} u;\n");
+        ifprintf(fp, 1, "};\n");
 
         fprintf(fp, "} %s;\n", def->name);
 
@@ -303,7 +303,7 @@ static void emit_packsize_body(FILE *fp, Definition *def)
 
     switch(def->type) {
     case DT_ALIAS:
-        ifprintf(fp, 1, "return %sPackSize(data);\n", def->u.alias_def.alias->name);
+        ifprintf(fp, 1, "return %sPackSize(data);\n", def->alias_def.alias->name);
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n");
@@ -311,20 +311,20 @@ static void emit_packsize_body(FILE *fp, Definition *def)
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
         ifprintf(fp, 2, "size += %sPackSize(data->%s + i);\n",
-                def->u.array_def.item_type->name,
-                def->u.array_def.item_name);
+                def->array_def.item_type->name,
+                def->array_def.item_name);
         ifprintf(fp, 1, "}\n\n");
         ifprintf(fp, 1, "return size;\n");
         break;
     case DT_STRUCT:
         ifprintf(fp, 1, "size_t size = 0;\n\n");
 
-        for (struct_item = listHead(&def->u.struct_def.items);
+        for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
             ifprintf(fp, 1, "size += %sPackSize(%s&data->%s);%s",
                     struct_item->def->name,
                     const_double_pointer_cast(struct_item->def),
-                    def->u.array_def.item_name,
+                    def->array_def.item_name,
                     listNext(struct_item) == NULL ? "\n\n" : "\n");
         }
 
@@ -335,19 +335,19 @@ static void emit_packsize_body(FILE *fp, Definition *def)
         break;
     case DT_UNION:
         ifprintf(fp, 1, "size_t size = %sPackSize(%s&data->%s);\n\n",
-                def->u.union_def.discr_def->name,
-                const_double_pointer_cast(def->u.union_def.discr_def),
-                def->u.union_def.discr_name);
+                def->union_def.discr_def->name,
+                const_double_pointer_cast(def->union_def.discr_def),
+                def->union_def.discr_name);
         ifprintf(fp, 1, "switch(data->%s) {\n",
-                def->u.union_def.discr_name);
+                def->union_def.discr_name);
 
-        for (union_item = listHead(&def->u.union_def.items);
+        for (union_item = listHead(&def->union_def.items);
              union_item; union_item = listNext(union_item)) {
 
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "size += %sPackSize(%s&data->u.%s);\n",
+                ifprintf(fp, 2, "size += %sPackSize(%s&data->%s);\n",
                         union_item->def->name,
                         const_double_pointer_cast(union_item->def),
                         union_item->name);
@@ -399,7 +399,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
     switch(def->type) {
     case DT_ALIAS:
         ifprintf(fp, 1, "return %sPack(data, buffer, size, pos);\n",
-                def->u.alias_def.alias->name);
+                def->alias_def.alias->name);
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n");
@@ -408,16 +408,16 @@ static void emit_pack_body(FILE *fp, Definition *def)
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
         ifprintf(fp, 2, "byte_count += %sPack(%sdata->%s + i, buffer, size, pos);\n",
-                def->u.array_def.item_type->name,
-                const_double_pointer_cast(def->u.array_def.item_type),
-                def->u.array_def.item_name);
+                def->array_def.item_type->name,
+                const_double_pointer_cast(def->array_def.item_type),
+                def->array_def.item_name);
         ifprintf(fp, 1, "}\n\n");
         ifprintf(fp, 1, "return byte_count;\n");
         break;
     case DT_STRUCT:
         ifprintf(fp, 1, "size_t byte_count = 0;\n\n");
 
-        for (struct_item = listHead(&def->u.struct_def.items);
+        for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
             ifprintf(fp, 1, "byte_count += %sPack(%s&data->%s, buffer, size, pos);%s",
                     struct_item->def->name,
@@ -433,18 +433,18 @@ static void emit_pack_body(FILE *fp, Definition *def)
         break;
     case DT_UNION:
         ifprintf(fp, 1, "size_t byte_count = %sPack(%s&data->%s, buffer, size, pos);\n\n",
-                def->u.union_def.discr_def->name,
-                const_double_pointer_cast(def->u.union_def.discr_def),
-                def->u.union_def.discr_name);
+                def->union_def.discr_def->name,
+                const_double_pointer_cast(def->union_def.discr_def),
+                def->union_def.discr_name);
         ifprintf(fp, 1, "switch(data->%s) {\n",
-                def->u.union_def.discr_name);
+                def->union_def.discr_name);
 
-        for (union_item = listHead(&def->u.union_def.items);
+        for (union_item = listHead(&def->union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "byte_count += %sPack(%s&data->u.%s, buffer, size, pos);\n",
+                ifprintf(fp, 2, "byte_count += %sPack(%s&data->%s, buffer, size, pos);\n",
                         union_item->def->name,
                         const_double_pointer_cast(union_item->def),
                         union_item->name);
@@ -488,7 +488,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
 
     switch(def->type) {
     case DT_ALIAS:
-        ifprintf(fp, 1, "return %sUnpack(buffer, size, data);\n", def->u.alias_def.alias->name);
+        ifprintf(fp, 1, "return %sUnpack(buffer, size, data);\n", def->alias_def.alias->name);
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n");
@@ -496,21 +496,21 @@ static void emit_unpack_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "size_t offset = uint32Unpack(buffer, size, &data->count);\n\n");
 
         ifprintf(fp, 1, "data->%s = realloc(data->%s, data->count * sizeof(%s));\n\n",
-                def->u.array_def.item_name,
-                def->u.array_def.item_name,
-                equivalent_c_type(def->u.array_def.item_type));
+                def->array_def.item_name,
+                def->array_def.item_name,
+                equivalent_c_type(def->array_def.item_type));
 
         ifprintf(fp, 1, "if (data->count > old_count) {\n");
         ifprintf(fp, 2, "memset(data->%s + old_count, 0, "
             "sizeof(%s) * (data->count - old_count));\n",
-                def->u.array_def.item_name,
-                equivalent_c_type(def->u.array_def.item_type));
+                def->array_def.item_name,
+                equivalent_c_type(def->array_def.item_type));
         ifprintf(fp, 1, "}\n");
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
         ifprintf(fp, 2, "offset += %sUnpack(buffer + offset, "
             "size > offset ? size - offset : 0, data->%s + i);\n",
-                def->u.array_def.item_type->name, def->u.array_def.item_name);
+                def->array_def.item_type->name, def->array_def.item_name);
 
         ifprintf(fp, 1, "}\n\n");
 
@@ -519,7 +519,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
     case DT_STRUCT:
         ifprintf(fp, 1, "size_t offset = 0;\n\n");
 
-        for (struct_item = listHead(&def->u.struct_def.items);
+        for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
             ifprintf(fp, 1, "offset += %sUnpack(buffer + offset, "
                 "size > offset ? size - offset : 0, &data->%s);%s",
@@ -534,18 +534,18 @@ static void emit_unpack_body(FILE *fp, Definition *def)
         break;
     case DT_UNION:
         ifprintf(fp, 1, "size_t offset = %sUnpack(buffer, size, &data->%s);\n\n",
-                def->u.union_def.discr_def->name,
-                def->u.union_def.discr_name);
+                def->union_def.discr_def->name,
+                def->union_def.discr_name);
         ifprintf(fp, 1, "switch(data->%s) {\n",
-                def->u.union_def.discr_name);
+                def->union_def.discr_name);
 
-        for (union_item = listHead(&def->u.union_def.items);
+        for (union_item = listHead(&def->union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
                 ifprintf(fp, 2, "offset += %sUnpack(buffer + offset, "
-                    "size > offset ? size - offset : 0, &data->u.%s);\n",
+                    "size > offset ? size - offset : 0, &data->%s);\n",
                         union_item->def->name, union_item->name);
             }
 
@@ -580,7 +580,7 @@ static void emit_wrap_signature(FILE *fp, Definition *def)
     fprintf(fp,
             "size_t %sWrap(char **buffer, size_t *size, size_t *pos", def->name);
 
-    for (struct_item = listHead(&def->u.struct_def.items);
+    for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
     {
         Definition *def = effective_definition(struct_item->def);
@@ -618,7 +618,7 @@ static void emit_wrap_body(FILE *fp, Definition *def)
 
     ifprintf(fp, 1, "size_t byte_count = 0;\n\n");
 
-    for (struct_item = listHead(&def->u.struct_def.items);
+    for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item)) {
         Definition *def = effective_definition(struct_item->def);
 
@@ -653,7 +653,7 @@ static void emit_unwrap_signature(FILE *fp, Definition *def)
     fprintf(fp,
             "size_t %sUnwrap(char *buffer, size_t size", def->name);
 
-    for (struct_item = listHead(&def->u.struct_def.items);
+    for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
     {
         if (listPrev(struct_item) == NULL) {
@@ -682,7 +682,7 @@ static void emit_unwrap_body(FILE *fp, Definition *def)
 
     ifprintf(fp, 1, "size_t offset = 0;\n\n");
 
-    for (struct_item = listHead(&def->u.struct_def.items);
+    for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item)) {
         ifprintf(fp, 1, "offset += %sUnpack(buffer + offset, size > offset ? size - offset : 0, %s);\n",
                 struct_item->def->name,
@@ -719,7 +719,7 @@ static void emit_read_body(FILE *fp, Definition *def, FileAttributes *attr)
     switch(def->type) {
     case DT_ALIAS:
         ifprintf(fp, 1, "return %sReadFrom%s(%s, data);\n",
-                def->u.alias_def.alias->name, attr->suffix, attr->varname);
+                def->alias_def.alias->name, attr->suffix, attr->varname);
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "size_t byte_count = 0;\n");
@@ -728,29 +728,29 @@ static void emit_read_body(FILE *fp, Definition *def, FileAttributes *attr)
                 attr->suffix, attr->varname);
 
         ifprintf(fp, 1, "data->%s = realloc(data->%s, data->count * sizeof(%s));\n\n",
-                def->u.array_def.item_name,
-                def->u.array_def.item_name,
-                equivalent_c_type(def->u.array_def.item_type));
+                def->array_def.item_name,
+                def->array_def.item_name,
+                equivalent_c_type(def->array_def.item_type));
 
         ifprintf(fp, 1, "if (data->count > old_count) {\n");
         ifprintf(fp, 2, "memset(data->%s + old_count, 0, "
             "sizeof(%s) * (data->count - old_count));\n",
-                def->u.array_def.item_name,
-                equivalent_c_type(def->u.array_def.item_type));
+                def->array_def.item_name,
+                equivalent_c_type(def->array_def.item_type));
         ifprintf(fp, 1, "}\n\n");
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
         ifprintf(fp, 2, "byte_count += %sReadFrom%s(%s, data->%s + i);\n",
-                def->u.array_def.item_type->name,
+                def->array_def.item_type->name,
                 attr->suffix, attr->varname,
-                def->u.array_def.item_name);
+                def->array_def.item_name);
         ifprintf(fp, 1, "}\n\n");
         ifprintf(fp, 1, "return(byte_count);\n");
         break;
     case DT_STRUCT:
         ifprintf(fp, 1, "size_t byte_count = 0;\n\n");
 
-        for (struct_item = listHead(&def->u.struct_def.items);
+        for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
             ifprintf(fp, 1, "byte_count += %sReadFrom%s(%s, &data->%s);\n",
                     struct_item->def->name, attr->suffix, attr->varname,
@@ -769,19 +769,19 @@ static void emit_read_body(FILE *fp, Definition *def, FileAttributes *attr)
         break;
     case DT_UNION:
         ifprintf(fp, 1, "size_t byte_count = %sReadFrom%s(%s, &data->%s);\n\n",
-                def->u.union_def.discr_def->name,
+                def->union_def.discr_def->name,
                 attr->suffix, attr->varname,
-                def->u.union_def.discr_name);
+                def->union_def.discr_name);
 
         ifprintf(fp, 1, "switch(data->%s) {\n",
-                def->u.union_def.discr_name);
+                def->union_def.discr_name);
 
-        for (union_item = listHead(&def->u.union_def.items);
+        for (union_item = listHead(&def->union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "byte_count += %sReadFrom%s(%s, &data->u.%s);\n",
+                ifprintf(fp, 2, "byte_count += %sReadFrom%s(%s, &data->%s);\n",
                         union_item->def->name,
                         attr->suffix, attr->varname,
                         union_item->name);
@@ -826,7 +826,7 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
     switch(def->type) {
     case DT_ALIAS:
         ifprintf(fp, 1, "return %sWriteTo%s(%s, data);\n",
-                def->u.alias_def.alias->name, attr->suffix, attr->varname);
+                def->alias_def.alias->name, attr->suffix, attr->varname);
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n");
@@ -836,9 +836,9 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
         ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, data->%s + i);\n",
-                def->u.array_def.item_type->name,
+                def->array_def.item_type->name,
                 attr->suffix, attr->varname,
-                def->u.array_def.item_name);
+                def->array_def.item_name);
         ifprintf(fp, 1, "}\n\n");
 
         ifprintf(fp, 1, "return byte_count;\n");
@@ -846,7 +846,7 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
     case DT_STRUCT:
         ifprintf(fp, 1, "size_t byte_count = 0;\n\n");
 
-        for (struct_item = listHead(&def->u.struct_def.items);
+        for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
             ifprintf(fp, 1, "byte_count += %sWriteTo%s(%s, &data->%s);\n",
                     struct_item->def->name, attr->suffix, attr->varname,
@@ -864,18 +864,18 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
         break;
     case DT_UNION:
         ifprintf(fp, 1, "size_t byte_count = %sWriteTo%s(%s, &data->%s);\n\n",
-                def->u.union_def.discr_def->name,
+                def->union_def.discr_def->name,
                 attr->suffix, attr->varname,
-                def->u.union_def.discr_name);
+                def->union_def.discr_name);
 
         ifprintf(fp, 1, "switch(data->%s) {\n",
-                def->u.union_def.discr_name);
+                def->union_def.discr_name);
 
-        for (union_item = listHead(&def->u.union_def.items);
+        for (union_item = listHead(&def->union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, &data->u.%s);\n",
+                ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, &data->%s);\n",
                         union_item->def->name,
                         attr->suffix, attr->varname,
                         union_item->name);
@@ -918,7 +918,7 @@ static void emit_print_body(FILE *fp, Definition *def)
 
     switch(def->type) {
     case DT_ALIAS:
-        ifprintf(fp, 1, "%sPrint(fp, data, level);\n", def->u.alias_def.alias->name);
+        ifprintf(fp, 1, "%sPrint(fp, data, level);\n", def->alias_def.alias->name);
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n\n");
@@ -927,11 +927,11 @@ static void emit_print_body(FILE *fp, Definition *def)
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
         ifprintf(fp, 2, "fprintf(fp, \"%%s%s: \", indent(level));\n",
-                def->u.array_def.item_name);
+                def->array_def.item_name);
         ifprintf(fp, 2, "%sPrint(fp, %s(data->%s + i), level);\n",
-                def->u.array_def.item_type->name,
-                const_double_pointer_cast(def->u.array_def.item_type),
-                def->u.array_def.item_name);
+                def->array_def.item_type->name,
+                const_double_pointer_cast(def->array_def.item_type),
+                def->array_def.item_name);
         ifprintf(fp, 2, "fprintf(fp, \"\\n\");\n");
 
         ifprintf(fp, 1, "}\n\n");
@@ -941,10 +941,10 @@ static void emit_print_body(FILE *fp, Definition *def)
     case DT_STRUCT:
         ifprintf(fp, 1, "fprintf(fp, \"{\\n\");\n\n");
 
-        if (!listIsEmpty(&def->u.struct_def.items)) {
+        if (!listIsEmpty(&def->struct_def.items)) {
             ifprintf(fp, 1, "level++;\n\n");
 
-            for (struct_item = listHead(&def->u.struct_def.items);
+            for (struct_item = listHead(&def->struct_def.items);
                 struct_item; struct_item = listNext(struct_item)) {
                 ifprintf(fp, 1, "fprintf(fp, \"%%s%s: \", indent(level));\n", struct_item->name);
                 ifprintf(fp, 1, "%sPrint(fp, %s&data->%s, level);\n",
@@ -962,7 +962,7 @@ static void emit_print_body(FILE *fp, Definition *def)
     case DT_ENUM:
         ifprintf(fp, 1, "switch(*data) {\n");
 
-        for (enum_item = listHead(&def->u.enum_def.items);
+        for (enum_item = listHead(&def->enum_def.items);
              enum_item; enum_item = listNext(enum_item)) {
             ifprintf(fp, 1, "case %s:\n", enum_item->name);
             ifprintf(fp, 2, "fprintf(fp, \"%s\");\n", enum_item->name);
@@ -973,19 +973,19 @@ static void emit_print_body(FILE *fp, Definition *def)
         break;
     case DT_UNION:
         ifprintf(fp, 1, "%sPrint(fp, &data->%s, level);\n\n",
-                def->u.union_def.discr_def->name, def->u.union_def.discr_name);
+                def->union_def.discr_def->name, def->union_def.discr_name);
 
         ifprintf(fp, 1, "fprintf(fp, \" \");\n\n");
 
         ifprintf(fp, 1, "switch(data->%s) {\n",
-                def->u.union_def.discr_name);
+                def->union_def.discr_name);
 
-        for (union_item = listHead(&def->u.union_def.items);
+        for (union_item = listHead(&def->union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "%sPrint(fp, &data->u.%s, level);\n",
+                ifprintf(fp, 2, "%sPrint(fp, &data->%s, level);\n",
                         union_item->def->name,
                         union_item->name);
             }
@@ -1018,7 +1018,7 @@ static void emit_create_signature(FILE *fp, Definition *def)
     fprintf(fp,
             "%s *%sCreate(", def->name, def->name);
 
-    for (struct_item = listHead(&def->u.struct_def.items);
+    for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
     {
         Definition *def = effective_definition(struct_item->def);
@@ -1052,7 +1052,7 @@ static void emit_create_body(FILE *fp, Definition *def)
 
     ifprintf(fp, 1, "%s *data = calloc(1, sizeof(%s));\n\n", def->name, def->name);
 
-    for (struct_item = listHead(&def->u.struct_def.items);
+    for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item)) {
         Definition *def = effective_definition(struct_item->def);
 
@@ -1086,7 +1086,7 @@ static void emit_set_signature(FILE *fp, Definition *def)
     fprintf(fp,
             "void %sSet(%s *dst", def->name, def->name);
 
-    for (struct_item = listHead(&def->u.struct_def.items);
+    for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
     {
         Definition *def = effective_definition(struct_item->def);
@@ -1118,7 +1118,7 @@ static void emit_set_body(FILE *fp, Definition *def)
 
     ifprintf(fp, 1, "assert(dst != NULL);\n\n");
 
-    for (struct_item = listHead(&def->u.struct_def.items);
+    for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item)) {
         Definition *def = effective_definition(struct_item->def);
 
@@ -1159,36 +1159,36 @@ static void emit_copy_body(FILE *fp, Definition *def)
 
     switch(def->type) {
     case DT_ALIAS:
-        ifprintf(fp, 1, "%sCopy(dst, src);\n", def->u.alias_def.alias->name);
+        ifprintf(fp, 1, "%sCopy(dst, src);\n", def->alias_def.alias->name);
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n\n");
         ifprintf(fp, 1, "if (dst->%s != NULL) {\n",
-                def->u.array_def.item_name);
+                def->array_def.item_name);
 
         ifprintf(fp, 2, "for (i = 0; i < dst->count; i++) {\n");
         ifprintf(fp, 3, "%sClear(%s(dst->%s + i));\n",
-                def->u.array_def.item_type->name,
-                const_double_pointer_cast(def->u.array_def.item_type),
-                def->u.array_def.item_name);
+                def->array_def.item_type->name,
+                const_double_pointer_cast(def->array_def.item_type),
+                def->array_def.item_name);
         ifprintf(fp, 2, "}\n\n");
 
-        ifprintf(fp, 2, "free(dst->%s);\n", def->u.array_def.item_name);
+        ifprintf(fp, 2, "free(dst->%s);\n", def->array_def.item_name);
         ifprintf(fp, 1, "}\n\n");
 
         ifprintf(fp, 1, "dst->count = src->count;\n\n");
 
         ifprintf(fp, 1, "dst->%s = calloc(dst->count, sizeof(%s));\n\n",
-                def->u.array_def.item_name, def->u.array_def.item_type->name);
+                def->array_def.item_name, def->array_def.item_type->name);
 
         ifprintf(fp, 1, "for (i = 0; i < dst->count; i++) {\n");
         ifprintf(fp, 2, "%sCopy(dst->%s + i, src->%s + i);\n",
-                def->u.array_def.item_type->name,
-                def->u.array_def.item_name, def->u.array_def.item_name);
+                def->array_def.item_type->name,
+                def->array_def.item_name, def->array_def.item_name);
         ifprintf(fp, 1, "}\n");
         break;
     case DT_STRUCT:
-        for (struct_item = listHead(&def->u.struct_def.items);
+        for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
             ifprintf(fp, 1, "%sCopy(&dst->%s, %s&src->%s);\n",
                     struct_item->def->name,
@@ -1202,16 +1202,16 @@ static void emit_copy_body(FILE *fp, Definition *def)
         break;
     case DT_UNION:
         ifprintf(fp, 1, "dst->%s = src->%s;\n\n",
-                def->u.union_def.discr_name, def->u.union_def.discr_name);
+                def->union_def.discr_name, def->union_def.discr_name);
 
         ifprintf(fp, 1, "switch(src->%s) {\n",
-                def->u.union_def.discr_name);
+                def->union_def.discr_name);
 
-        for (union_item = listHead(&def->u.union_def.items);
+        for (union_item = listHead(&def->union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "%sCopy(&dst->u.%s, %s&src->u.%s);\n",
+                ifprintf(fp, 2, "%sCopy(&dst->%s, %s&src->%s);\n",
                         union_item->def->name,
                         union_item->name,
                         const_double_pointer_cast(union_item->def),
@@ -1252,24 +1252,24 @@ static void emit_clear_body(FILE *fp, Definition *def)
 
     switch(def->type) {
     case DT_ALIAS:
-        ifprintf(fp, 1, "%sClear(data);\n", def->u.alias_def.alias->name);
+        ifprintf(fp, 1, "%sClear(data);\n", def->alias_def.alias->name);
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n\n");
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
         ifprintf(fp, 2, "%sClear(%s(data->%s + i));\n",
-                def->u.array_def.item_type->name,
-                const_double_pointer_cast(def->u.array_def.item_type),
-                def->u.array_def.item_name);
+                def->array_def.item_type->name,
+                const_double_pointer_cast(def->array_def.item_type),
+                def->array_def.item_name);
         ifprintf(fp, 1, "}\n\n");
 
-        ifprintf(fp, 1, "free(data->%s);\n\n", def->u.array_def.item_name);
+        ifprintf(fp, 1, "free(data->%s);\n\n", def->array_def.item_name);
         ifprintf(fp, 1, "data->count = 0;\n");
-        ifprintf(fp, 1, "data->%s = NULL;\n", def->u.array_def.item_name);
+        ifprintf(fp, 1, "data->%s = NULL;\n", def->array_def.item_name);
         break;
     case DT_STRUCT:
-        for (struct_item = listHead(&def->u.struct_def.items);
+        for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
             ifprintf(fp, 1, "%sClear(&data->%s);\n", struct_item->def->name, struct_item->name);
         }
@@ -1279,13 +1279,13 @@ static void emit_clear_body(FILE *fp, Definition *def)
         break;
     case DT_UNION:
         ifprintf(fp, 1, "switch(data->%s) {\n",
-                def->u.union_def.discr_name);
+                def->union_def.discr_name);
 
-        for (union_item = listHead(&def->u.union_def.items);
+        for (union_item = listHead(&def->union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "%sClear(&data->u.%s);\n",
+                ifprintf(fp, 2, "%sClear(&data->%s);\n",
                         union_item->def->name,
                         union_item->name);
             }

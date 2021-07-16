@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-09-14
- * Version:   $Id: test_objects.c 127 2017-05-14 17:20:46Z jacco $
+ * Version:   $Id: test_objects.c 157 2021-07-16 09:54:28Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -28,49 +28,49 @@ static void fill_objects(Objects *objects)
     objects->object[0].name = strdup("A line");
     objects->object[0].creator = wcsdup(L"Øve");
     objects->object[0].shape.shape_type = ST_LINE;
-    objects->object[0].shape.u.line.sv.x = 1;
-    objects->object[0].shape.u.line.sv.y = 2;
-    objects->object[0].shape.u.line.sv.z = 3;
-    objects->object[0].shape.u.line.dv.x = 4;
-    objects->object[0].shape.u.line.dv.y = 5;
-    objects->object[0].shape.u.line.dv.z = 6;
+    objects->object[0].shape.line.sv.x = 1;
+    objects->object[0].shape.line.sv.y = 2;
+    objects->object[0].shape.line.sv.z = 3;
+    objects->object[0].shape.line.dv.x = 4;
+    objects->object[0].shape.line.dv.y = 5;
+    objects->object[0].shape.line.dv.z = 6;
 
     objects->object[1].name = strdup("A polygon");
     objects->object[1].creator = wcsdup(L"Björk");
     objects->object[1].shape.shape_type = ST_POLYGON;
-    objects->object[1].shape.u.polygon.count = 3;
-    objects->object[1].shape.u.polygon.vector =
-        calloc(objects->object[1].shape.u.polygon.count, sizeof(Vector));
+    objects->object[1].shape.polygon.count = 3;
+    objects->object[1].shape.polygon.vector =
+        calloc(objects->object[1].shape.polygon.count, sizeof(Vector));
 
-    objects->object[1].shape.u.polygon.vector[0].x =  1;
-    objects->object[1].shape.u.polygon.vector[0].y =  1;
-    objects->object[1].shape.u.polygon.vector[0].z =  0;
+    objects->object[1].shape.polygon.vector[0].x =  1;
+    objects->object[1].shape.polygon.vector[0].y =  1;
+    objects->object[1].shape.polygon.vector[0].z =  0;
 
-    objects->object[1].shape.u.polygon.vector[1].x = -1;
-    objects->object[1].shape.u.polygon.vector[1].y =  1;
-    objects->object[1].shape.u.polygon.vector[1].z =  0;
+    objects->object[1].shape.polygon.vector[1].x = -1;
+    objects->object[1].shape.polygon.vector[1].y =  1;
+    objects->object[1].shape.polygon.vector[1].z =  0;
 
-    objects->object[1].shape.u.polygon.vector[2].x =  0;
-    objects->object[1].shape.u.polygon.vector[2].y =  0;
-    objects->object[1].shape.u.polygon.vector[2].z =  2;
+    objects->object[1].shape.polygon.vector[2].x =  0;
+    objects->object[1].shape.polygon.vector[2].y =  0;
+    objects->object[1].shape.polygon.vector[2].z =  2;
 
     objects->object[2].name = strdup("A plane");
     objects->object[2].creator = wcsdup(L"Björn");
     objects->object[2].shape.shape_type = ST_PLANE;
-    objects->object[2].shape.u.plane.sv.x =  1;
-    objects->object[2].shape.u.plane.sv.y =  2;
-    objects->object[2].shape.u.plane.sv.z =  3;
-    objects->object[2].shape.u.plane.nv.x = -1;
-    objects->object[2].shape.u.plane.nv.y = -2;
-    objects->object[2].shape.u.plane.nv.z = -3;
+    objects->object[2].shape.plane.sv.x =  1;
+    objects->object[2].shape.plane.sv.y =  2;
+    objects->object[2].shape.plane.sv.z =  3;
+    objects->object[2].shape.plane.nv.x = -1;
+    objects->object[2].shape.plane.nv.y = -2;
+    objects->object[2].shape.plane.nv.z = -3;
 
     objects->object[3].name = strdup("A sphere");
     objects->object[3].creator = wcsdup(L"Jürgen");
     objects->object[3].shape.shape_type = ST_SPHERE;
-    objects->object[3].shape.u.sphere.c.x = 1;
-    objects->object[3].shape.u.sphere.c.y = 2;
-    objects->object[3].shape.u.sphere.c.z = 3;
-    objects->object[3].shape.u.sphere.r   = 10;
+    objects->object[3].shape.sphere.c.x = 1;
+    objects->object[3].shape.sphere.c.y = 2;
+    objects->object[3].shape.sphere.c.z = 3;
+    objects->object[3].shape.sphere.r   = 10;
 }
 
 static int check_objects(const Objects *objects)
@@ -81,44 +81,44 @@ static int check_objects(const Objects *objects)
 
     make_sure_that(strcmp(objects->object[0].name, "A line") == 0);
     make_sure_that(objects->object[0].shape.shape_type == ST_LINE);
-    make_sure_that(objects->object[0].shape.u.line.sv.x == 1);
-    make_sure_that(objects->object[0].shape.u.line.sv.y == 2);
-    make_sure_that(objects->object[0].shape.u.line.sv.z == 3);
-    make_sure_that(objects->object[0].shape.u.line.dv.x == 4);
-    make_sure_that(objects->object[0].shape.u.line.dv.y == 5);
-    make_sure_that(objects->object[0].shape.u.line.dv.z == 6);
+    make_sure_that(objects->object[0].shape.line.sv.x == 1);
+    make_sure_that(objects->object[0].shape.line.sv.y == 2);
+    make_sure_that(objects->object[0].shape.line.sv.z == 3);
+    make_sure_that(objects->object[0].shape.line.dv.x == 4);
+    make_sure_that(objects->object[0].shape.line.dv.y == 5);
+    make_sure_that(objects->object[0].shape.line.dv.z == 6);
 
     make_sure_that(strcmp(objects->object[1].name, "A polygon") == 0);
     make_sure_that(objects->object[1].shape.shape_type == ST_POLYGON);
-    make_sure_that(objects->object[1].shape.u.polygon.count == 3);
+    make_sure_that(objects->object[1].shape.polygon.count == 3);
 
-    make_sure_that(objects->object[1].shape.u.polygon.vector[0].x ==  1);
-    make_sure_that(objects->object[1].shape.u.polygon.vector[0].y ==  1);
-    make_sure_that(objects->object[1].shape.u.polygon.vector[0].z ==  0);
+    make_sure_that(objects->object[1].shape.polygon.vector[0].x ==  1);
+    make_sure_that(objects->object[1].shape.polygon.vector[0].y ==  1);
+    make_sure_that(objects->object[1].shape.polygon.vector[0].z ==  0);
 
-    make_sure_that(objects->object[1].shape.u.polygon.vector[1].x == -1);
-    make_sure_that(objects->object[1].shape.u.polygon.vector[1].y ==  1);
-    make_sure_that(objects->object[1].shape.u.polygon.vector[1].z ==  0);
+    make_sure_that(objects->object[1].shape.polygon.vector[1].x == -1);
+    make_sure_that(objects->object[1].shape.polygon.vector[1].y ==  1);
+    make_sure_that(objects->object[1].shape.polygon.vector[1].z ==  0);
 
-    make_sure_that(objects->object[1].shape.u.polygon.vector[2].x ==  0);
-    make_sure_that(objects->object[1].shape.u.polygon.vector[2].y ==  0);
-    make_sure_that(objects->object[1].shape.u.polygon.vector[2].z ==  2);
+    make_sure_that(objects->object[1].shape.polygon.vector[2].x ==  0);
+    make_sure_that(objects->object[1].shape.polygon.vector[2].y ==  0);
+    make_sure_that(objects->object[1].shape.polygon.vector[2].z ==  2);
 
     make_sure_that(strcmp(objects->object[2].name, "A plane") == 0);
     make_sure_that(objects->object[2].shape.shape_type == ST_PLANE);
-    make_sure_that(objects->object[2].shape.u.plane.sv.x ==  1);
-    make_sure_that(objects->object[2].shape.u.plane.sv.y ==  2);
-    make_sure_that(objects->object[2].shape.u.plane.sv.z ==  3);
-    make_sure_that(objects->object[2].shape.u.plane.nv.x == -1);
-    make_sure_that(objects->object[2].shape.u.plane.nv.y == -2);
-    make_sure_that(objects->object[2].shape.u.plane.nv.z == -3);
+    make_sure_that(objects->object[2].shape.plane.sv.x ==  1);
+    make_sure_that(objects->object[2].shape.plane.sv.y ==  2);
+    make_sure_that(objects->object[2].shape.plane.sv.z ==  3);
+    make_sure_that(objects->object[2].shape.plane.nv.x == -1);
+    make_sure_that(objects->object[2].shape.plane.nv.y == -2);
+    make_sure_that(objects->object[2].shape.plane.nv.z == -3);
 
     make_sure_that(strcmp(objects->object[3].name, "A sphere") == 0);
     make_sure_that(objects->object[3].shape.shape_type == ST_SPHERE);
-    make_sure_that(objects->object[3].shape.u.sphere.c.x == 1);
-    make_sure_that(objects->object[3].shape.u.sphere.c.y == 2);
-    make_sure_that(objects->object[3].shape.u.sphere.c.z == 3);
-    make_sure_that(objects->object[3].shape.u.sphere.r   == 10);
+    make_sure_that(objects->object[3].shape.sphere.c.x == 1);
+    make_sure_that(objects->object[3].shape.sphere.c.y == 2);
+    make_sure_that(objects->object[3].shape.sphere.c.z == 3);
+    make_sure_that(objects->object[3].shape.sphere.r   == 10);
 
     return errors;
 }

@@ -5,7 +5,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-24
- * Version:   $Id: tokenizer.h 127 2017-05-14 17:20:46Z jacco $
+ * Version:   $Id: tokenizer.h 157 2021-07-16 09:54:28Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -25,7 +25,7 @@ typedef struct {
         long l;
         double d;
         char *s;
-    } u;
+    };
 } tkToken;
 
 /*

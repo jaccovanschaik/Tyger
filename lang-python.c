@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-12-08
- * Version:   $Id: lang-python.c 152 2019-01-11 11:10:13Z jacco $
+ * Version:   $Id: lang-python.c 157 2021-07-16 09:54:28Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -78,16 +78,16 @@ static void emit_class(FILE *fp, Definition *def)
 
         ifprintf(fp, 0, "class %s(object):\n", def->name);
 
-        if (!listIsEmpty(&def->u.struct_def.items)) {
+        if (!listIsEmpty(&def->struct_def.items)) {
             ifprintf(fp, 1, "def __init__(self");
 
-            for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+            for (item = listHead(&def->struct_def.items); item; item = listNext(item)) {
                 fprintf(fp, ", %s = None", item->name);
             }
 
             fprintf(fp, "):\n");
 
-            for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+            for (item = listHead(&def->struct_def.items); item; item = listNext(item)) {
                 ifprintf(fp, 2, "self.%s = %s\n", item->name, item->name);
             }
 
@@ -97,16 +97,16 @@ static void emit_class(FILE *fp, Definition *def)
         ifprintf(fp, 1, "def __repr__(self):\n");
         ifprintf(fp, 2, "return '%s(", def->name);
 
-        for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+        for (item = listHead(&def->struct_def.items); item; item = listNext(item)) {
             fprintf(fp, "%s = %%r%s", item->name, listNext(item) == NULL ? "" : ", ");
         }
 
         fprintf(fp, ")'");
 
-        if (!listIsEmpty(&def->u.struct_def.items)) {
+        if (!listIsEmpty(&def->struct_def.items)) {
             fprintf(fp, " %% (");
 
-            for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+            for (item = listHead(&def->struct_def.items); item; item = listNext(item)) {
                 fprintf(fp, "self.%s%s", item->name, listNext(item) == NULL ? ")" : ", ");
             }
         }
@@ -118,7 +118,7 @@ static void emit_class(FILE *fp, Definition *def)
 
         ifprintf(fp, 0, "class %s(object):\n", def->name);
 
-        for (item = listHead(&def->u.enum_def.items); item; item = listNext(item)) {
+        for (item = listHead(&def->enum_def.items); item; item = listNext(item)) {
             ifprintf(fp, 1, "%s = %ld\n", item->name, item->value);
         }
 
@@ -130,21 +130,21 @@ static void emit_class(FILE *fp, Definition *def)
         ifprintf(fp, 0, "class %s(object):\n", def->name);
 
         ifprintf(fp, 1, "def __init__(self, %s = None, u = None):\n",
-                def->u.union_def.discr_name);
+                def->union_def.discr_name);
 
         ifprintf(fp, 2, "self.%s = %s\n",
-                def->u.union_def.discr_name, def->u.union_def.discr_name);
+                def->union_def.discr_name, def->union_def.discr_name);
         ifprintf(fp, 2, "self.u = None\n\n");
 
         ifprintf(fp, 2, "if u is None:\n");
         ifprintf(fp, 3, "return\n");
 
-        for (item = listHead(&def->u.union_def.items); item; item = listNext(item)) {
+        for (item = listHead(&def->union_def.items); item; item = listNext(item)) {
             if (is_void_type(item->def)) continue;
 
             ifprintf(fp, 2, "elif self.%s == %s.%s:\n",
-                    def->u.union_def.discr_name,
-                    def->u.union_def.discr_def->name,
+                    def->union_def.discr_name,
+                    def->union_def.discr_def->name,
                     item->value);
             ifprintf(fp, 3, "assert isinstance(u, %s)\n",
                     interface_type(item->def));
@@ -157,15 +157,15 @@ static void emit_class(FILE *fp, Definition *def)
         ifprintf(fp, 1, "def __repr__(self):\n");
         ifprintf(fp, 2, "return '%s(%s = %%r, u = %%r)' %% (self.%s, self.u)\n\n",
                 def->name,
-                def->u.union_def.discr_name,
-                def->u.union_def.discr_name);
+                def->union_def.discr_name,
+                def->union_def.discr_name);
     }
 }
 
 static void emit_packer(FILE *fp, Definition *def)
 {
     if (def->type == DT_ALIAS) {
-        ifprintf(fp, 0, "class %sPacker(%sPacker):\n", def->name, def->u.alias_def.alias->name);
+        ifprintf(fp, 0, "class %sPacker(%sPacker):\n", def->name, def->alias_def.alias->name);
         ifprintf(fp, 1, "pass\n\n");
     }
     else if (def->type == DT_ARRAY) {
@@ -178,7 +178,7 @@ static void emit_packer(FILE *fp, Definition *def)
             ifprintf(fp, 2, "buf = uint32Packer.pack(count)\n\n");
             ifprintf(fp, 2, "for i in range(count):\n");
             ifprintf(fp, 3, "buf += %sPacker.pack(value[i])\n\n",
-                    def->u.array_def.item_type->name);
+                    def->array_def.item_type->name);
             ifprintf(fp, 2, "return buf\n\n");
         }
 
@@ -189,7 +189,7 @@ static void emit_packer(FILE *fp, Definition *def)
             ifprintf(fp, 2, "value = count * [ None ]\n\n");
             ifprintf(fp, 2, "for i in range(count):\n");
             ifprintf(fp, 3, "value[i], offset = %sPacker.unpack(buf, offset)\n\n",
-                    def->u.array_def.item_type->name);
+                    def->array_def.item_type->name);
             ifprintf(fp, 2, "return value, offset\n\n");
         }
 
@@ -200,7 +200,7 @@ static void emit_packer(FILE *fp, Definition *def)
             ifprintf(fp, 2, "value = count * [ None ]\n\n");
             ifprintf(fp, 2, "for i in range(count):\n");
             ifprintf(fp, 3, "value[i] = %sPacker.recv(sock)\n\n",
-                    def->u.array_def.item_type->name);
+                    def->array_def.item_type->name);
             ifprintf(fp, 2, "return value\n\n");
         }
     }
@@ -215,7 +215,7 @@ static void emit_packer(FILE *fp, Definition *def)
 
             ifprintf(fp, 2, "buf = b''\n\n");
 
-            for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+            for (item = listHead(&def->struct_def.items); item; item = listNext(item)) {
                 ifprintf(fp, 2, "buf += %sPacker.pack(value.%s)%s",
                         item->def->name,
                         item->name,
@@ -231,7 +231,7 @@ static void emit_packer(FILE *fp, Definition *def)
 
             ifprintf(fp, 2, "value = %s()\n\n", def->name);
 
-            for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+            for (item = listHead(&def->struct_def.items); item; item = listNext(item)) {
                 ifprintf(fp, 2, "value.%s, offset = %sPacker.unpack(buf, offset)%s",
                         item->name, item->def->name,
                         listNext(item) == NULL ? "\n\n" : "\n");
@@ -246,7 +246,7 @@ static void emit_packer(FILE *fp, Definition *def)
 
             ifprintf(fp, 2, "value = %s()\n\n", def->name);
 
-            for (item = listHead(&def->u.struct_def.items); item; item = listNext(item)) {
+            for (item = listHead(&def->struct_def.items); item; item = listNext(item)) {
                 ifprintf(fp, 2, "value.%s = %sPacker.recv(sock)%s",
                         item->name, item->def->name,
                         listNext(item) == NULL ? "\n\n" : "\n");
@@ -269,13 +269,13 @@ static void emit_packer(FILE *fp, Definition *def)
             ifprintf(fp, 1, "def pack(value):\n");
 
             ifprintf(fp, 2, "buf = uint32Packer.pack(value.%s)\n\n",
-                    def->u.union_def.discr_name);
+                    def->union_def.discr_name);
 
-            for (item = listHead(&def->u.union_def.items); item; item = listNext(item)) {
+            for (item = listHead(&def->union_def.items); item; item = listNext(item)) {
                 ifprintf(fp, 2, "%s value.%s == %s.%s:\n",
-                        item == listHead(&def->u.union_def.items) ? "if" : "elif",
-                        def->u.union_def.discr_name,
-                        def->u.union_def.discr_def->name,
+                        item == listHead(&def->union_def.items) ? "if" : "elif",
+                        def->union_def.discr_name,
+                        def->union_def.discr_def->name,
                         item->value);
 
                 if (is_void_type(item->def)) {
@@ -297,13 +297,13 @@ static void emit_packer(FILE *fp, Definition *def)
 
             ifprintf(fp, 2, "value = %s()\n\n", def->name);
             ifprintf(fp, 2, "value.%s, offset = uint32Packer.unpack(buf, offset)\n\n",
-                    def->u.union_def.discr_name);
+                    def->union_def.discr_name);
 
-            for (item = listHead(&def->u.union_def.items); item; item = listNext(item)) {
+            for (item = listHead(&def->union_def.items); item; item = listNext(item)) {
                 ifprintf(fp, 2, "%s value.%s == %s.%s:\n",
-                        item == listHead(&def->u.union_def.items) ? "if" : "elif",
-                        def->u.union_def.discr_name,
-                        def->u.union_def.discr_def->name,
+                        item == listHead(&def->union_def.items) ? "if" : "elif",
+                        def->union_def.discr_name,
+                        def->union_def.discr_def->name,
                         item->value);
 
                 if (is_void_type(item->def)) {
@@ -326,13 +326,13 @@ static void emit_packer(FILE *fp, Definition *def)
 
             ifprintf(fp, 2, "value = %s()\n\n", def->name);
             ifprintf(fp, 2, "value.%s = uint32Packer.recv(sock)\n\n",
-                    def->u.union_def.discr_name);
+                    def->union_def.discr_name);
 
-            for (item = listHead(&def->u.union_def.items); item; item = listNext(item)) {
+            for (item = listHead(&def->union_def.items); item; item = listNext(item)) {
                 ifprintf(fp, 2, "%s value.%s == %s.%s:\n",
-                        item == listHead(&def->u.union_def.items) ? "if" : "elif",
-                        def->u.union_def.discr_name,
-                        def->u.union_def.discr_def->name,
+                        item == listHead(&def->union_def.items) ? "if" : "elif",
+                        def->union_def.discr_name,
+                        def->union_def.discr_def->name,
                         item->value);
 
                 if (is_void_type(item->def)) {
@@ -406,18 +406,18 @@ int emit_python_src(const char *out_file,
 
         fprintf(fp, "%s = ", def->name);
 
-        switch (def->u.const_def.const_type->type) {
+        switch (def->const_def.const_type->type) {
         case DT_INT:
-            fprintf(fp, "%ld\n\n", def->u.const_def.value.l);
+            fprintf(fp, "%ld\n\n", def->const_def.value.l);
             break;
         case DT_FLOAT:
-            fprintf(fp, "%g\n\n", def->u.const_def.value.d);
+            fprintf(fp, "%g\n\n", def->const_def.value.d);
             break;
         case DT_ASTRING:
-            fprintf(fp, "\"%s\"\n\n", def->u.const_def.value.s);
+            fprintf(fp, "\"%s\"\n\n", def->const_def.value.s);
             break;
         case DT_USTRING:
-            fprintf(fp, "u\"%s\"\n\n", def->u.const_def.value.s);
+            fprintf(fp, "u\"%s\"\n\n", def->const_def.value.s);
             break;
         default:
             break;

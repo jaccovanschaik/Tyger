@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-25
- * Version:   $Id: parser.c 152 2019-01-11 11:10:13Z jacco $
+ * Version:   $Id: parser.c 157 2021-07-16 09:54:28Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -70,7 +70,7 @@ static int expect_long(tkToken **token, long *contents, Buffer *error)
         return 1;
     }
     else {
-        *contents = (*token)->u.l;
+        *contents = (*token)->l;
         *token = listNext(*token);
         return 0;
     }
@@ -83,7 +83,7 @@ static int expect_float(tkToken **token, double *contents, Buffer *error)
         return 1;
     }
     else {
-        *contents = (*token)->u.d;
+        *contents = (*token)->d;
         *token = listNext(*token);
         return 0;
     }
@@ -96,7 +96,7 @@ static int expect_string(tkToken **token, tkType type, char **contents, Buffer *
         return 1;
     }
     else {
-        *contents = (*token)->u.s;
+        *contents = (*token)->s;
         *token = listNext(*token);
         return 0;
     }
@@ -118,13 +118,13 @@ static int process_const(Definition *def, List *defs, tkToken **token, Buffer *e
         return 1;
     }
     else if (type_def->type == DT_INT) {
-        if (expect_long(token, &def->u.const_def.value.l, error) != 0) return 1;
+        if (expect_long(token, &def->const_def.value.l, error) != 0) return 1;
     }
     else if (type_def->type == DT_FLOAT) {
-        if (expect_float(token, &def->u.const_def.value.d, error) != 0) return 1;
+        if (expect_float(token, &def->const_def.value.d, error) != 0) return 1;
     }
     else if (type_def->type == DT_ASTRING || type_def->type == DT_USTRING) {
-        if (expect_string(token, TT_DSTRING, &def->u.const_def.value.s, error) != 0) return 1;
+        if (expect_string(token, TT_DSTRING, &def->const_def.value.s, error) != 0) return 1;
     }
     else {
         bufSetF(error, "%s:%d:%d: invalid const type %s.\n",
@@ -135,7 +135,7 @@ static int process_const(Definition *def, List *defs, tkToken **token, Buffer *e
 
     def->type = DT_CONST;
 
-    def->u.const_def.const_type = type_def;
+    def->const_def.const_type = type_def;
 
     listAppendTail(defs, def);
 
@@ -173,8 +173,8 @@ static int process_array(Definition *def, List *defs, tkToken **token, Buffer *e
 
     def->type = DT_ARRAY;
 
-    def->u.array_def.item_type = item_def;
-    def->u.array_def.item_name = strdup(item_name);
+    def->array_def.item_type = item_def;
+    def->array_def.item_name = strdup(item_name);
 
     listAppendTail(defs, def);
 
@@ -189,7 +189,7 @@ static int process_struct(Definition *def, List *defs, tkToken **token, Buffer *
 
     while ((*token)->type == TT_USTRING) {
         char *elem_name;
-        char *elem_type = (*token)->u.s;
+        char *elem_type = (*token)->s;
         Definition *elem_def = find_def(defs, elem_type);
 
         if (elem_def == NULL) {
@@ -214,7 +214,7 @@ static int process_struct(Definition *def, List *defs, tkToken **token, Buffer *
         item->name = strdup(elem_name);
         item->def = elem_def;
 
-        listAppendTail(&def->u.struct_def.items, item);
+        listAppendTail(&def->struct_def.items, item);
     }
 
     if (expect_token(token, TT_CBRACE, error) != 0) {
@@ -237,7 +237,7 @@ static int process_enum(Definition *def, List *defs, tkToken **token, Buffer *er
     }
 
     while ((*token)->type == TT_USTRING) {
-        char *item_name = (*token)->u.s;
+        char *item_name = (*token)->s;
 
         EnumItem *item = calloc(1, sizeof(*item));
 
@@ -258,7 +258,7 @@ static int process_enum(Definition *def, List *defs, tkToken **token, Buffer *er
             next_value = item->value + 1;
         }
 
-        listAppendTail(&def->u.enum_def.items, item);
+        listAppendTail(&def->enum_def.items, item);
     }
 
     if (expect_token(token, TT_CBRACE, error) != 0) {
@@ -305,12 +305,12 @@ static int process_union(Definition *def, List *defs, tkToken **token, Buffer *e
 
     def->type = DT_UNION;
 
-    def->u.union_def.discr_def = discr_def;
-    def->u.union_def.discr_name = strdup(discr_name);
+    def->union_def.discr_def = discr_def;
+    def->union_def.discr_name = strdup(discr_name);
 
     while ((*token)->type == TT_USTRING) {
         char *item_type, *item_name;
-        char *discr_value = (*token)->u.s;
+        char *discr_value = (*token)->s;
         Definition *item_def;
 
         UnionItem *item = calloc(1, sizeof(*item));
@@ -334,7 +334,7 @@ static int process_union(Definition *def, List *defs, tkToken **token, Buffer *e
             item->def = item_def;
             item->name = NULL;
 
-            listAppendTail(&def->u.union_def.items, item);
+            listAppendTail(&def->union_def.items, item);
 
             continue;
         }
@@ -345,7 +345,7 @@ static int process_union(Definition *def, List *defs, tkToken **token, Buffer *e
         item->def = item_def;
         item->name = strdup(item_name);
 
-        listAppendTail(&def->u.union_def.items, item);
+        listAppendTail(&def->union_def.items, item);
     }
 
     if (expect_token(token, TT_CBRACE, error) != 0) {
@@ -384,7 +384,7 @@ char *parse(const char *filename, List *definitions)
         case ST_INITIAL:
             if (token->type == TT_USTRING) {
                 cur_def = calloc(1, sizeof(*cur_def));
-                cur_def->name = strdup(token->u.s);
+                cur_def->name = strdup(token->s);
                 token = listNext(token);
                 state = ST_NAME;
             }
@@ -405,36 +405,36 @@ char *parse(const char *filename, List *definitions)
             if (token->type != TT_USTRING) {
                 expected(TT_USTRING, token, &error);
             }
-            else if (strcmp(token->u.s, "const") == 0) {
+            else if (strcmp(token->s, "const") == 0) {
                 token = listNext(token);
                 state = ST_CONST;
             }
-            else if (strcmp(token->u.s, "array") == 0) {
+            else if (strcmp(token->s, "array") == 0) {
                 token = listNext(token);
                 state = ST_ARRAY;
             }
-            else if (strcmp(token->u.s, "struct") == 0) {
+            else if (strcmp(token->s, "struct") == 0) {
                 token = listNext(token);
                 state = ST_STRUCT;
             }
-            else if (strcmp(token->u.s, "enum") == 0) {
+            else if (strcmp(token->s, "enum") == 0) {
                 token = listNext(token);
                 state = ST_ENUM;
             }
-            else if (strcmp(token->u.s, "union") == 0) {
+            else if (strcmp(token->s, "union") == 0) {
                 token = listNext(token);
                 state = ST_UNION;
             }
-            else if ((alias_def = find_def(definitions, token->u.s)) != NULL) {
+            else if ((alias_def = find_def(definitions, token->s)) != NULL) {
                 cur_def->type = DT_ALIAS;
-                cur_def->u.alias_def.alias = alias_def;
+                cur_def->alias_def.alias = alias_def;
                 listAppendTail(definitions, cur_def);
                 token = listNext(token);
                 state = ST_INITIAL;
             }
             else {
                 bufSetF(&error, "%s:%d:%d: unknown base type \"%s\".\n",
-                        token->file, token->line, token->column, token->u.s);
+                        token->file, token->line, token->column, token->s);
             }
             break;
         case ST_CONST:

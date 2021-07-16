@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-24
- * Version:   $Id: tokenizer.c 148 2018-09-08 18:08:57Z jacco $
+ * Version:   $Id: tokenizer.c 157 2021-07-16 09:54:28Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -54,7 +54,7 @@ typedef struct {
     union {
         FILE *fp;
         const char *cp;
-    } u;
+    };
 } Input;
 
 /*
@@ -105,7 +105,7 @@ static int add_token(Scratch *scratch, tkType type, List *tokens)
         if (endptr == text + len) {
             token = calloc(1, sizeof(*token));
             token->type = TT_DOUBLE;
-            token->u.d = value;
+            token->d = value;
         }
     }
     else if (type == TT_LONG) {
@@ -113,13 +113,13 @@ static int add_token(Scratch *scratch, tkType type, List *tokens)
         if (endptr == text + len) {
             token = calloc(1, sizeof(*token));
             token->type = TT_LONG;
-            token->u.l = value;
+            token->l = value;
         }
     }
     else if (type == TT_USTRING || type == TT_DSTRING || type == TT_SSTRING) {
         token = calloc(1, sizeof(*token));
         token->type = type;
-        token->u.s = strdup(text);
+        token->s = strdup(text);
     }
     else {
         token = calloc(1, sizeof(*token));
@@ -152,15 +152,15 @@ static void dump_token(tkToken *token)
 
     switch (token->type) {
     case TT_LONG:
-        fprintf(stderr, ", value = %ld\n", token->u.l);
+        fprintf(stderr, ", value = %ld\n", token->l);
         break;
     case TT_DOUBLE:
-        fprintf(stderr, ", value = %f\n", token->u.d);
+        fprintf(stderr, ", value = %f\n", token->d);
         break;
     case TT_USTRING:
     case TT_DSTRING:
     case TT_SSTRING:
-        fprintf(stderr, ", value = \"%s\"\n", token->u.s);
+        fprintf(stderr, ", value = \"%s\"\n", token->s);
         break;
     default:
         fprintf(stderr, "\n");
@@ -192,7 +192,7 @@ void tokClear(List *tokens)
         if (token->type == TT_USTRING ||
             token->type == TT_DSTRING ||
             token->type == TT_SSTRING) {
-            free(token->u.s);
+            free(token->s);
         }
 
         free(token);
@@ -208,14 +208,14 @@ static int tok_get(Input *in)
 
     switch(in->type) {
     case INPUT_FP:
-        c = fgetc(in->u.fp);
+        c = fgetc(in->fp);
         break;
     case INPUT_TEXT:
-        if ((c = *in->u.cp) == '\0') {
+        if ((c = *in->cp) == '\0') {
             c = EOF;
         }
         else {
-            in->u.cp++;
+            in->cp++;
         }
         break;
     }
@@ -230,9 +230,9 @@ static int tok_unget(Input *in, int c)
 {
     switch(in->type) {
     case INPUT_FP:
-        return ungetc(c, in->u.fp);
+        return ungetc(c, in->fp);
     case INPUT_TEXT:
-        in->u.cp--;
+        in->cp--;
         return c;
     default:
         return EOF;
@@ -497,7 +497,7 @@ char *tokStream(FILE *fp, List *tokens)
     Input *in = calloc(1, sizeof(*in));
 
     in->type = INPUT_FP;
-    in->u.fp = fp;
+    in->fp = fp;
 
     r = tokenize(in, "<stream>", tokens);
 
@@ -516,7 +516,7 @@ char *tokString(char *text, List *tokens)
     Input *in = calloc(1, sizeof(*in));
 
     in->type = INPUT_TEXT;
-    in->u.cp = text;
+    in->cp = text;
 
     r = tokenize(in, "<string>", tokens);
 
@@ -612,7 +612,7 @@ static int test_tokens(List *tokens, int count, ...)
         switch (type) {
         case TT_LONG:
             l_exp = va_arg(ap, long);
-            l_act = token->u.l;
+            l_act = token->l;
 
 #if DEBUG
             fprintf(stderr, "Expected: %ld, got: %ld\n", l_exp, l_act);
@@ -622,7 +622,7 @@ static int test_tokens(List *tokens, int count, ...)
             break;
         case TT_DOUBLE:
             d_exp = va_arg(ap, double);
-            d_act = token->u.d;
+            d_act = token->d;
 
 #if DEBUG
             fprintf(stderr, "Expected: %f, got: %f\n", d_exp, d_act);
@@ -634,7 +634,7 @@ static int test_tokens(List *tokens, int count, ...)
         case TT_DSTRING:
         case TT_SSTRING:
             s_exp = va_arg(ap, char *);
-            s_act = token->u.s;
+            s_act = token->s;
 
 #if DEBUG
             fprintf(stderr, "Expected: \"%s\", got: \"%s\"\n", s_exp, s_act);

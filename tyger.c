@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-25
- * Version:   $Id: tyger.c 152 2019-01-11 11:10:13Z jacco $
+ * Version:   $Id: tyger.c 157 2021-07-16 09:54:28Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -67,8 +67,8 @@ static void make_int_types(List *definitions)
             def->type = DT_INT;
             def->name = bufFinish(name_buf);
             def->builtin = 1;
-            def->u.int_def.size = size;
-            def->u.int_def.is_signed = is_signed;
+            def->int_def.size = size;
+            def->int_def.is_signed = is_signed;
 
             listAppendTail(definitions, def);
         }
@@ -90,7 +90,7 @@ static void make_float_types(List *definitions)
         def->type = DT_FLOAT;
         def->name = bufFinish(name_buf);
         def->builtin = 1;
-        def->u.float_def.size = size;
+        def->float_def.size = size;
 
         listAppendTail(definitions, def);
     }
@@ -125,23 +125,23 @@ static void dump_definitions(FILE *fp, List *definitions)
 
         switch(def->type) {
         case DT_INT:
-            fprintf(stderr, "\tsize: %d\n", def->u.int_def.size);
+            fprintf(stderr, "\tsize: %d\n", def->int_def.size);
             fprintf(stderr, "\tis_signed: %s\n",
-                    def->u.int_def.is_signed ? "yes" : "no");
+                    def->int_def.is_signed ? "yes" : "no");
             break;
         case DT_FLOAT:
-            fprintf(stderr, "\tsize: %d\n", def->u.float_def.size);
+            fprintf(stderr, "\tsize: %d\n", def->float_def.size);
             break;
         case DT_ALIAS:
-            fprintf(stderr, "\taka:  %s\n", def->u.alias_def.alias->name);
+            fprintf(stderr, "\taka:  %s\n", def->alias_def.alias->name);
             break;
         case DT_ARRAY:
             fprintf(stderr, "\tcontains: %s\n",
-		    def->u.array_def.item_type->name);
+		    def->array_def.item_type->name);
             break;
         case DT_STRUCT:
             fprintf(stderr, "\tcontents:\n");
-            for (struct_item = listHead(&def->u.struct_def.items);
+            for (struct_item = listHead(&def->struct_def.items);
                  struct_item; struct_item = listNext(struct_item)) {
                 fprintf(stderr, "\t\t%s %s\n",
                         struct_item->def->name, struct_item->name);
@@ -149,7 +149,7 @@ static void dump_definitions(FILE *fp, List *definitions)
             break;
         case DT_ENUM:
             fprintf(stderr, "\tcontents:\n");
-            for (enum_item = listHead(&def->u.enum_def.items);
+            for (enum_item = listHead(&def->enum_def.items);
                  enum_item; enum_item = listNext(enum_item)) {
                 fprintf(stderr, "\t\t%s = %ld\n",
 		        enum_item->name, enum_item->value);
@@ -157,7 +157,7 @@ static void dump_definitions(FILE *fp, List *definitions)
             break;
         case DT_UNION:
             fprintf(stderr, "\tcontents:\n");
-            for (union_item = listHead(&def->u.union_def.items);
+            for (union_item = listHead(&def->union_def.items);
                  union_item; union_item = listNext(union_item)) {
                 fprintf(stderr, "\t\t%s: %s %s\n",
                         union_item->value,
