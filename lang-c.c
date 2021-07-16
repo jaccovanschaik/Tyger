@@ -2,10 +2,12 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-10-24
- * Version:   $Id: lang-c.c 160 2021-07-16 12:42:30Z jacco $
+ * Version:   $Id: lang-c.c 161 2021-07-16 13:13:03Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
+ *
+ * vim:columns=100 textwidth=100
  */
 
 #include <stdio.h>
@@ -390,15 +392,16 @@ static void emit_packsize_body(FILE *fp, Definition *def)
                 indent = 1;
             }
 
-            ifprintf(fp, indent, "size += %sPackSize(%s&data->%s);%s",
+            ifprintf(fp, indent, "size += %sPackSize(%s&data->%s);\n",
                     struct_item->def->name,
                     const_double_pointer_cast(struct_item->def),
-                    struct_item->name,
-                    listNext(struct_item) == NULL ? "\n\n" : "\n");
+                    struct_item->name);
 
             if (def->struct_def.flag_def != NULL) {
                 ifprintf(fp, 1, "}\n");
             }
+
+            if (listNext(struct_item) == NULL) fputc('\n', fp);
         }
 
         ifprintf(fp, 1, "return size;\n");
@@ -490,13 +493,39 @@ static void emit_pack_body(FILE *fp, Definition *def)
     case DT_STRUCT:
         ifprintf(fp, 1, "size_t byte_count = 0;\n\n");
 
+        if (def->struct_def.flag_def != NULL) {
+            ifprintf(fp, 1, "byte_count += %sPack(%s&data->%s, buffer, size, pos);\n\n",
+                    def->struct_def.flag_def->name,
+                    const_double_pointer_cast(def->struct_def.flag_def),
+                    def->array_def.item_name);
+        }
+
         for (struct_item = listHead(&def->struct_def.items);
-             struct_item; struct_item = listNext(struct_item)) {
-            ifprintf(fp, 1, "byte_count += %sPack(%s&data->%s, buffer, size, pos);%s",
+             struct_item; struct_item = listNext(struct_item))
+        {
+            int indent;
+
+            if (def->struct_def.flag_def != NULL) {
+                ifprintf(fp, 1, "if (data->%s & %s_%s) {\n",
+                        def->struct_def.flag_name,
+                        upper(def->name), upper(struct_item->name));
+
+                indent = 2;
+            }
+            else {
+                indent = 1;
+            }
+
+            ifprintf(fp, indent, "byte_count += %sPack(%s&data->%s, buffer, size, pos);\n",
                     struct_item->def->name,
                     const_double_pointer_cast(struct_item->def),
-                    struct_item->name,
-                    listNext(struct_item) == NULL ? "\n\n" : "\n");
+                    struct_item->name);
+
+            if (def->struct_def.flag_def != NULL) {
+                ifprintf(fp, 1, "}\n");
+            }
+
+            if (listNext(struct_item) == NULL) fputc('\n', fp);
         }
 
         ifprintf(fp, 1, "return byte_count;\n");
@@ -592,12 +621,38 @@ static void emit_unpack_body(FILE *fp, Definition *def)
     case DT_STRUCT:
         ifprintf(fp, 1, "size_t offset = 0;\n\n");
 
-        for (struct_item = listHead(&def->struct_def.items);
-             struct_item; struct_item = listNext(struct_item)) {
+        if (def->struct_def.flag_def != NULL) {
             ifprintf(fp, 1, "offset += %sUnpack(buffer + offset, "
-                "size > offset ? size - offset : 0, &data->%s);%s",
-                    struct_item->def->name, struct_item->name,
-                    listNext(struct_item) == NULL ? "\n\n" : "\n");
+                    "size > offset ? size - offset : 0, &data->%s);\n\n",
+                    def->struct_def.flag_def->name,
+                    def->array_def.item_name);
+        }
+
+        for (struct_item = listHead(&def->struct_def.items);
+             struct_item; struct_item = listNext(struct_item))
+        {
+            int indent;
+
+            if (def->struct_def.flag_def != NULL) {
+                ifprintf(fp, 1, "if (data->%s & %s_%s) {\n",
+                        def->struct_def.flag_name,
+                        upper(def->name), upper(struct_item->name));
+
+                indent = 2;
+            }
+            else {
+                indent = 1;
+            }
+
+            ifprintf(fp, indent, "offset += %sUnpack(buffer + offset, "
+                "size > offset ? size - offset : 0, &data->%s);\n",
+                    struct_item->def->name, struct_item->name);
+
+            if (def->struct_def.flag_def != NULL) {
+                ifprintf(fp, 1, "}\n");
+            }
+
+            if (listNext(struct_item) == NULL) fputc('\n', fp);
         }
 
         ifprintf(fp, 1, "return offset;\n");

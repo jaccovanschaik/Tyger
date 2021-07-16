@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-09-14
- * Version:   $Id: test_objects.c 157 2021-07-16 09:54:28Z jacco $
+ * Version:   $Id: test_objects.c 161 2021-07-16 13:13:03Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -22,7 +22,7 @@
 
 static void fill_objects(Objects *objects)
 {
-    objects->count = 4;
+    objects->count = 6;
     objects->object = calloc(objects->count, sizeof(Object));
 
     objects->object[0].name = strdup("A line");
@@ -34,9 +34,9 @@ static void fill_objects(Objects *objects)
     objects->object[0].shape.line.dv.x = 4;
     objects->object[0].shape.line.dv.y = 5;
     objects->object[0].shape.line.dv.z = 6;
+    objects->object[0].fields = OBJECT_NAME | OBJECT_CREATOR | OBJECT_SHAPE;
 
     objects->object[1].name = strdup("A polygon");
-    objects->object[1].creator = wcsdup(L"Björk");
     objects->object[1].shape.shape_type = ST_POLYGON;
     objects->object[1].shape.polygon.count = 3;
     objects->object[1].shape.polygon.vector =
@@ -54,7 +54,8 @@ static void fill_objects(Objects *objects)
     objects->object[1].shape.polygon.vector[2].y =  0;
     objects->object[1].shape.polygon.vector[2].z =  2;
 
-    objects->object[2].name = strdup("A plane");
+    objects->object[1].fields = OBJECT_NAME | OBJECT_SHAPE;
+
     objects->object[2].creator = wcsdup(L"Björn");
     objects->object[2].shape.shape_type = ST_PLANE;
     objects->object[2].shape.plane.sv.x =  1;
@@ -64,6 +65,8 @@ static void fill_objects(Objects *objects)
     objects->object[2].shape.plane.nv.y = -2;
     objects->object[2].shape.plane.nv.z = -3;
 
+    objects->object[2].fields = OBJECT_CREATOR | OBJECT_SHAPE;
+
     objects->object[3].name = strdup("A sphere");
     objects->object[3].creator = wcsdup(L"Jürgen");
     objects->object[3].shape.shape_type = ST_SPHERE;
@@ -71,6 +74,15 @@ static void fill_objects(Objects *objects)
     objects->object[3].shape.sphere.c.y = 2;
     objects->object[3].shape.sphere.c.z = 3;
     objects->object[3].shape.sphere.r   = 10;
+
+    objects->object[3].fields = OBJECT_NAME | OBJECT_CREATOR | OBJECT_SHAPE;
+
+    objects->object[4].name = strdup("A sphere");
+    objects->object[4].creator = wcsdup(L"Jürgen");
+
+    objects->object[4].fields = OBJECT_NAME | OBJECT_CREATOR;
+
+    objects->object[5].fields = 0;
 }
 
 static int check_objects(const Objects *objects)
@@ -80,6 +92,7 @@ static int check_objects(const Objects *objects)
     make_sure_that(objects->count == 4);
 
     make_sure_that(strcmp(objects->object[0].name, "A line") == 0);
+    make_sure_that(wcscmp(objects->object[0].creator, L"Øve") == 0);
     make_sure_that(objects->object[0].shape.shape_type == ST_LINE);
     make_sure_that(objects->object[0].shape.line.sv.x == 1);
     make_sure_that(objects->object[0].shape.line.sv.y == 2);
@@ -158,11 +171,12 @@ int main(int argc, char *argv[])
     hexdump(stdout, buffer, size);
 #endif
 
-    make_sure_that(size == 209);
+    make_sure_that(size == 210);
 
     make_sure_that(memcmp(buffer,
                 "\x00\x00\x00\x04"      /* Number of objects */
                                         /* Object 1: */
+                "\x07"                  /* Fields: name, creator and shape. */
                 "\x00\x00\x00\x06"      /* Object name length */
                 "A line"                /* Object name */
                 "\x00\x00\x00\x04"      /* Object creator length */
