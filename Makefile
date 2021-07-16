@@ -2,7 +2,7 @@
 #
 # Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
 # Created:   2016-08-24
-# Version:   $Id: Makefile 156 2021-02-24 14:07:17Z jacco $
+# Version:   $Id: Makefile 160 2021-07-16 12:42:30Z jacco $
 #
 # This software is distributed under the terms of the MIT license. See
 # http://www.opensource.org/licenses/mit-license.php for details.
@@ -83,14 +83,14 @@ install: test force-install
 
 Objects.c: test/Objects.tgr tyger
 	./tyger --indent='  ' --c-src $@ \
-            --c-pack --c-unpack \
+            --c-packsize --c-pack --c-unpack \
             --c-wrap --c-unwrap \
             --c-copy --c-set \
             --c-create --c-destroy $<
 
 Objects.h: test/Objects.tgr tyger
 	./tyger --indent='  ' --c-hdr $@ \
-            --c-pack --c-unpack \
+            --c-packsize --c-pack --c-unpack \
             --c-wrap --c-unwrap \
             --c-copy --c-set \
             --c-create --c-destroy $<

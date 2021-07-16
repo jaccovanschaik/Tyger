@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-10-24
- * Version:   $Id: lang-c.c 158 2021-07-16 12:19:50Z jacco $
+ * Version:   $Id: lang-c.c 160 2021-07-16 12:42:30Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -368,13 +368,37 @@ static void emit_packsize_body(FILE *fp, Definition *def)
     case DT_STRUCT:
         ifprintf(fp, 1, "size_t size = 0;\n\n");
 
+        if (def->struct_def.flag_def != NULL) {
+            ifprintf(fp, 1, "size += %sPackSize(%s&data->%s);\n\n",
+                    def->struct_def.flag_def->name,
+                    const_double_pointer_cast(def->struct_def.flag_def),
+                    def->array_def.item_name);
+        }
+
         for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
-            ifprintf(fp, 1, "size += %sPackSize(%s&data->%s);%s",
+            int indent;
+
+            if (def->struct_def.flag_def != NULL) {
+                ifprintf(fp, 1, "if (data->%s & %s_%s) {\n",
+                        def->struct_def.flag_name,
+                        upper(def->name), upper(struct_item->name));
+
+                indent = 2;
+            }
+            else {
+                indent = 1;
+            }
+
+            ifprintf(fp, indent, "size += %sPackSize(%s&data->%s);%s",
                     struct_item->def->name,
                     const_double_pointer_cast(struct_item->def),
-                    def->array_def.item_name,
+                    struct_item->name,
                     listNext(struct_item) == NULL ? "\n\n" : "\n");
+
+            if (def->struct_def.flag_def != NULL) {
+                ifprintf(fp, 1, "}\n");
+            }
         }
 
         ifprintf(fp, 1, "return size;\n");
