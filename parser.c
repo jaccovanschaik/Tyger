@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-25
- * Version:   $Id: parser.c 158 2021-07-16 12:19:50Z jacco $
+ * Version:   $Id: parser.c 159 2021-07-16 12:24:50Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -227,16 +227,14 @@ static int process_struct(Definition *def, List *defs, tkToken **token, Buffer *
     int elem_count = 0;
 
     while ((*token)->type == TT_USTRING) {
-        elem_count++;
-
         if (def->struct_def.flag_def != NULL &&
-            elem_count > 8 * def->struct_def.flag_def->int_def.size) {
+            ++elem_count > 8 * def->struct_def.flag_def->int_def.size)
+        {
             bufSetF(error,
-                    "%s:%d:%d: too many struct elements for %s flag field.\n",
+                    "%s:%d:%d: Too many struct elements for %s flag field.",
                     (*token)->file, (*token)->line, (*token)->column,
                     def->struct_def.flag_def->name);
             return 1;
-
         }
 
         char *elem_type = (*token)->s;
