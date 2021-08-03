@@ -355,7 +355,8 @@ static void emit_packer(FILE *fp, Definition *def)
             ifprintf(fp, 1, "@staticmethod\n");
             ifprintf(fp, 1, "def sendMX(mx, fd, msg_type, msg_ver, value):\n");
 
-            ifprintf(fp, 2, "assert isinstance(value, %s)\n\n", def->name);
+            ifprintf(fp, 2, "assert isinstance(value, %s)\n\n",
+                    interface_type(def));
             ifprintf(fp, 2, "payload = %sPacker.pack(value)\n\n", def->name);
             ifprintf(fp, 2, "mx.send(fd, msg_type, msg_ver, payload)\n\n");
         }
@@ -364,7 +365,8 @@ static void emit_packer(FILE *fp, Definition *def)
             ifprintf(fp, 1, "@staticmethod\n");
             ifprintf(fp, 1, "def broadcastMX(mx, msg_type, msg_ver, value):\n");
 
-            ifprintf(fp, 2, "assert isinstance(value, %s)\n\n", def->name);
+            ifprintf(fp, 2, "assert isinstance(value, %s)\n\n",
+                    interface_type(def));
             ifprintf(fp, 2, "payload = %sPacker.pack(value)\n\n", def->name);
             ifprintf(fp, 2, "mx.broadcast(msg_type, msg_ver, payload)\n\n");
         }
