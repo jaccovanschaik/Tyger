@@ -1,8 +1,8 @@
 /* tokenizer.c: Tokenizer for Tyger files.
  *
- * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-24
- * Version:   $Id: tokenizer.c 157 2021-07-16 09:54:28Z jacco $
+ * Version:   $Id: tokenizer.c 162 2022-04-14 18:04:33Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
@@ -464,7 +464,7 @@ static char *tokenize(Input *in, const char *filename, List *tokens)
     free(scratch.file);
     scratch.file = NULL;
 
-    bufReset(&scratch.buffer);
+    bufRewind(&scratch.buffer);
 
     scratch.file = strdup(filename);
     scratch.line = line;

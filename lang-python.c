@@ -2,7 +2,7 @@
  *
  * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-12-08
- * Version:   $Id: lang-python.c 157 2021-07-16 09:54:28Z jacco $
+ * Version:   $Id: lang-python.c 163 2022-04-14 18:06:54Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
