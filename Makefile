@@ -1,6 +1,6 @@
 # Makefile: Makefile for tyger.
 #
-# Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
+# Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
 # Created:   2016-08-24
 # Version:   $Id: Makefile 163 2022-04-14 18:06:54Z jacco $
 #
@@ -61,7 +61,9 @@ deftype.h: deftype.txt
 	./gen_enum -h -p DT -t DefinitionType $< > $@
 
 version.h:
-	-svn update && printf '#define VERSION "%s"\n' `svnversion` > $@
+	echo "#define VERSION" \
+        \"$$(git log -n 1 --format=%cd --date=format:%Y-%m-%d/%H:%M:%S)\" \
+        > version.h
 
 tokenizer-test: tokenizer.c tokentype.o
 	$(CC) $(CFLAGS) -DTEST -o $@ $^ $(JVS_LIB)
@@ -114,12 +116,10 @@ tags:
 	ctags -R . $(JVS_TOP)/include /usr/include
 
 commit:
-	@echo "\033[7mSubversion status:\033[0m"
-	@svn status
 	@echo "\033[7mGit status:\033[0m"
 	@git status
 	@echo -n 'Message: '
-	@read msg && if [ "$$msg" != '' ]; then svn commit -m "$$msg" && git commit -a -m "$$msg" && git push; fi
+	@read msg && if [ "$$msg" != '' ]; then git commit -a -m "$$msg" && git push; fi
 
 tyger.tgz: clean
 	tar cvf - `ls | grep -v tyger.tgz` | gzip > tyger.tgz
