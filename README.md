@@ -8,4 +8,4 @@ language. The generated code can be used to read or write them to
 (binary) files, send and receive them across a network, or pack and
 unpack them into byte buffers.
 
-See [here](https://www.jaccovanschaik.net/Tyger/) for more.
+See [Tyger documentation](https://www.jaccovanschaik.net/Tyger/) for more details.
