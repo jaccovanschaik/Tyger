@@ -241,7 +241,8 @@ Options:
     <p>
       They are serialized as unsigned big-endian integers. The number of bytes used is dependent on
       their maximum value (one byte if the maximum value is 255 or less, two bytes if it is 65535 or
-      less, etc.)
+      less, etc.) The maximum size allowed is four bytes, for a maximum enum value of 4,294,967,295
+      or 2<sup>32</sup> - 1.
     </p>
     <h3>Structures</h3>
     <p>
@@ -358,7 +359,7 @@ Options:
 }</pre>
     <p>
       Again, you can add arbitrary number of entries, as long as the greatest value is
-      2<sup>32</sup> - 1 or less (since enums are serialized as 32-bit unsigned integers).
+      2<sup>32</sup> - 1 or less.
     </p>
     <p>
       As indicated, values are optional. If a value is not specified, it is set to the previous one
