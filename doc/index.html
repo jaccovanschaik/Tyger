@@ -56,8 +56,7 @@
   <body>
     <pre>** Documentation for Tyger.
 **
-** Copyright:   (c) 2017 Jacco van Schaik (jacco@jaccovanschaik.net)
-** Version:     $Id: index.html 154 2020-06-19 06:57:23Z jacco $
+** Copyright: (c) 2017-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
 **
 ** This software is distributed under the terms of the MIT license. See
 ** http://www.opensource.org/licenses/mit-license.php for details.</pre>
@@ -167,6 +166,7 @@ Options:
       Tyger supports the following data types:
     </p>
     <ul>
+      <li>Booleans</li>
       <li>Integers</li>
       <li>Floating point numbers</li>
       <li>Strings</li>
@@ -176,6 +176,17 @@ Options:
       <li>Arrays</li>
       <li>Constants</li>
     </ul>
+    <h3>Booleans</h3>
+    <p>
+      Booleans represent a <em>true</em> or <em>false</em> value.
+    </p>
+    <p>
+      In C and Python, the type used for these is <em>bool</em>.
+    </p>
+    <p>
+      Booleans are serialized as a single byte, where 0 represents <em>false</em> and 1 represents
+      <em>true</em>.
+    </p>
     <h3>Integers</h3>
     <p>
       Integers are simple whole numbers. Their name is either <code>int</code> or <code>uint</code>
@@ -246,7 +257,9 @@ Options:
     <h3>Unions</h3>
     <p>
       These are abstract types that contain one of a number of possible internal fields, as
-      indicated by a "discriminator". A discriminator must be an integer type.
+      indicated by a "discriminator". A discriminator must be an integer type. A field may be
+      <em>void</em>, indicating that there is no additional data required for that discriminator
+      value.
     </p>
     <p>
       In C, these are translated to a <code>typedef struct</code> that contains the discriminator
@@ -297,8 +310,9 @@ Options:
     </p>
     <h3>Deriving types from a built-in type</h3>
     <p>
-      Built-in types are the various <code>int</code>, <code>float</code> and <code>string</code>
-      types. You can created a new type derived from these using the following syntax:
+      Built-in types are the various <code>bool</code>, <code>int</code>, <code>float</code> and
+      <code>string</code> types. You can created a new type derived from these using the following
+      syntax:
     </p>
     <p>
       <pre>&lt;new_type_name&gt; = &lt;builtin_type_name&gt;</pre>
@@ -324,13 +338,14 @@ Options:
     </p>
     <p>
       So if you wanted to define a type called <code>Object</code> that contains an ASCII string
-      <code>ident</code>, a Unicode string <code>creator</code> and a third field named
-      <code>shape</code> with type <code>Shape</code>, you'd do that as follows:
+      <code>ident</code>, a Unicode string <code>creator</code>, a boolean <code>visible</code> and
+      a field named <code>shape</code> with type <code>Shape</code>, you'd do that as follows:
     </p>
     <pre>Object = struct {
     astring ident
     ustring creator
-    Shape shape
+    bool    visible
+    Shape   shape
 }</pre>
     <h3>Defining an enumeration</h3>
     <p>
@@ -354,6 +369,7 @@ Options:
       different types of shapes, we might do it like this:
     </p>
     <pre>ShapeType = enum {
+    ST_NONE    = 0
     ST_LINE    = 1
     ST_POLYGON = 2
     ST_PLANE   = 3
@@ -379,6 +395,7 @@ Options:
       that:
     </p>
     <pre>Shape = union(ShapeType shape_type) {
+    ST_NONE:    void
     ST_LINE:    Line    line
     ST_POLYGON: Polygon polygon
     ST_PLANE:   Plane   plane
