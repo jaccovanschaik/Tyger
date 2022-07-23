@@ -225,6 +225,79 @@ static void size_buffer(char **buffer, size_t *size, size_t requirement)
 }
 
 /*
+ * Pack the least-significant <num_bytes> of <data> into <buffer>, updating
+ * <size> and <pos>.
+ */
+size_t uintPack(const unsigned int *data, size_t num_bytes,
+                char **buffer, size_t *size, size_t *pos)
+{
+    size_buffer(buffer, size, *pos + num_bytes);
+
+    for (int i = num_bytes - 1; i >= 0; i--) {
+        *(*buffer + *pos) = (*data >> (8 * i)) & 0xFF;
+
+        (*pos)++;
+    }
+
+    return num_bytes;
+}
+
+/*
+ * Unpack <num_bytes> from buffer (which has size <size>) fill <data> with
+ * them.
+ */
+size_t uintUnpack(size_t num_bytes, const char *buffer, size_t size,
+        unsigned int *data)
+{
+    *data = 0;
+
+    for (int i = num_bytes - 1; i >= 0; i--) {
+        if (size <= 0) break;
+
+        *data |= (*buffer << (8 * i));
+
+        buffer++;
+        size--;
+    }
+
+    return num_bytes;
+}
+
+/*
+ * Read <num_bytes> bytes from <fd> and put them towards the least-significant
+ * side of <data>.
+ */
+size_t uintReadFromFD(int fd, size_t num_bytes, unsigned int *data)
+{
+    return read_FD_BE(fd, data, num_bytes);
+}
+
+/*
+ * Write the <num_bytes> least-significant bytes from <data> to <fd>
+ */
+size_t uintWriteToFD(int fd, size_t num_bytes, const unsigned int *data)
+{
+    return write_FD_BE(fd, data, num_bytes);
+}
+
+/*
+ * <num_bytes> bytes from <fp> and put them towards the least-significant side
+ * of <data>.
+ */
+size_t uintReadFromFP(FILE *fp, size_t num_bytes, unsigned int *data)
+{
+    return read_FP_BE(fp, data, num_bytes);
+}
+
+/*
+ * the <num_bytes> least-significant bytes from <data> to <fp>
+ */
+size_t uintWriteToFP(FILE *fp, size_t num_bytes, const unsigned int *data)
+{
+    return write_FP_BE(fp, data, num_bytes);
+}
+
+/*
  * Clear the contents of <data>.
  */
 void astringClear(char **data)

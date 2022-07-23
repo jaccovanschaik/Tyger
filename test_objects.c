@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
     hexdump(stdout, buffer, size);
 #endif
 
-    make_sure_that(size == 213);
+    make_sure_that(size == 205);
 
     make_sure_that(memcmp(buffer,
                 "\x00\x00\x00\x04"      /* Number of objects */
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
                 "\x00\x00\x00\x04"      /* Object creator length */
                 "\xC3\x98ve"            /* Object creator */
                 "\x01"                  /* Object is visible */
-                "\x00\x00\x00\x01"      /* Object type (ST_LINE) */
+                "\x00\x01"              /* Object type (ST_LINE) */
                 "\x00\x00\x00\x01"      /* X coordinate of support vector */
                 "\x00\x00\x00\x02"      /* Y coordinate of support vector */
                 "\x00\x00\x00\x03"      /* Z coordinate of support vector */
@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
                 "\x00\x00\x00\x06"      /* Object creator length */
                 "Bj\xC3\xB6rk"          /* Object creator */
                 "\x01"                  /* Object is visible */
-                "\x00\x00\x00\x02"      /* Object type (ST_POLYGON) */
+                "\x00\x02"              /* Object type (ST_POLYGON) */
                 "\x00\x00\x00\x03"      /* Number of vectors */
                 "\x00\x00\x00\x01"      /* X coordinate of first vector */
                 "\x00\x00\x00\x01"      /* Y coordinate of first vector */
@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
                 "\x00\x00\x00\x06"      /* Object creator length */
                 "Bj\xC3\xB6rn"          /* Object creator */
                 "\x00"                  /* Object is invisible */
-                "\x00\x00\x00\x03"      /* Object type (ST_PLANE) */
+                "\x12\x34"              /* Object type (ST_PLANE) */
                 "\x00\x00\x00\x01"      /* X coordinate of support vector */
                 "\x00\x00\x00\x02"      /* Y coordinate of support vector */
                 "\x00\x00\x00\x03"      /* Z coordinate of support vector */
@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
                 "\x00\x00\x00\x07"      /* Object creator length */
                 "J\xC3\xBCrgen"         /* Object creator */
                 "\x00"                  /* Object is invisible */
-                "\x00\x00\x00\x04"      /* Object type (ST_SPHERE) */
+                "\x43\x21"              /* Object type (ST_SPHERE) */
                 "\x00\x00\x00\x01"      /* X coordinate of centre */
                 "\x00\x00\x00\x02"      /* Y coordinate of centre */
                 "\x00\x00\x00\x03"      /* Z coordinate of centre */
@@ -230,7 +230,11 @@ int main(int argc, char *argv[])
 
     size = ObjectsUnpack(buffer, size, &unpacked);
 
-    make_sure_that(size == 213);
+    make_sure_that(size == 205);
+
+#if DEBUG
+    ObjectsPrint(stdout, &unpacked, 0);
+#endif
 
     errors += check_objects(&unpacked);
 

@@ -84,7 +84,7 @@ install: test force-install
 
 Objects.c: test/Objects.tgr tyger
 	./tyger --indent='  ' --c-src $@ \
-            --c-pack --c-unpack \
+            --c-pack --c-unpack --c-packsize \
             --c-wrap --c-unwrap \
             --c-copy --c-set \
             --c-create --c-destroy --c-print $<

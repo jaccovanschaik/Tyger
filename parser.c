@@ -245,7 +245,7 @@ static int process_struct(Definition *def, List *defs, tkToken **token, Buffer *
 
 static int process_enum(Definition *def, List *defs, tkToken **token, Buffer *error)
 {
-    long next_value = 0;
+    long next_value = 0, max_value = 0;
 
     if (expect_token(token, TT_OBRACE, error) != 0) {
         return 1;
@@ -273,6 +273,8 @@ static int process_enum(Definition *def, List *defs, tkToken **token, Buffer *er
             next_value = item->value + 1;
         }
 
+        max_value = MAX(max_value, item->value);
+
         listAppendTail(&def->enum_def.items, item);
     }
 
@@ -281,6 +283,15 @@ static int process_enum(Definition *def, List *defs, tkToken **token, Buffer *er
     }
 
     def->type = DT_ENUM;
+
+    if (max_value >= (1 << 24))
+        def->enum_def.num_bytes = 4;
+    else if (max_value >= (1 << 16))
+        def->enum_def.num_bytes = 3;
+    else if (max_value >= (1 << 8))
+        def->enum_def.num_bytes = 2;
+    else
+        def->enum_def.num_bytes = 1;
 
     listAppendTail(defs, def);
 

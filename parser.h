@@ -67,6 +67,7 @@ typedef struct {
 
 typedef struct {
     List items;
+    size_t num_bytes;
 } EnumDefinition;
 
 typedef struct {

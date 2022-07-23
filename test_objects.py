@@ -11,6 +11,8 @@
   http://www.opensource.org/licenses/mit-license.php for details.
 '''
 
+import hexdump
+
 from Objects import *
 
 s = Vector(1, 2, 3)
@@ -80,11 +82,13 @@ assert o.shape.u.nv.z == -6
 
 buf = ObjectPacker.pack(o)
 
+# print(hexdump.hexdump(buf))
+
 expected = \
   b"\x00\x00\x00\x07A plane" \
 + b"\x00\x00\x00\x06Bj\xc3\xb6rn" \
 + b"\x01" \
-+ b"\x00\x00\x00\x03" \
++ b"\x12\x34" \
 + b"\x00\x00\x00\x0a" \
 + b"\x00\x00\x00\x02" \
 + b"\x00\x00\x00\x03" \
@@ -103,7 +107,7 @@ assert o.shape.u.nv.x == 4
 assert o.shape.u.nv.y == 5
 assert o.shape.u.nv.z == -6
 
-assert offset == 50
+assert offset == 48
 
 l = 3 * [ o ]
 

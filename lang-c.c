@@ -329,14 +329,14 @@ static void emit_packsize_body(FILE *fp, Definition *def)
             ifprintf(fp, 1, "size += %sPackSize(%s&data->%s);%s",
                     struct_item->def->name,
                     const_double_pointer_cast(struct_item->def),
-                    def->array_def.item_name,
+                    struct_item->name,
                     listNext(struct_item) == NULL ? "\n\n" : "\n");
         }
 
         ifprintf(fp, 1, "return size;\n");
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "return sizeof(uint32_t);\n");
+        ifprintf(fp, 1, "return %d;\n", def->enum_def.num_bytes);
         break;
     case DT_UNION:
         ifprintf(fp, 1, "size_t size = %sPackSize(%s&data->%s);\n\n",
@@ -434,7 +434,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "return byte_count;\n");
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "return uint32Pack(data, buffer, size, pos);\n");
+        ifprintf(fp, 1, "return uintPack(data, %d, buffer, size, pos);\n", def->enum_def.num_bytes);
         break;
     case DT_UNION:
         ifprintf(fp, 1, "size_t byte_count = %sPack(%s&data->%s, buffer, size, pos);\n\n",
@@ -535,7 +535,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "return offset;\n");
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "return uint32Unpack(buffer, size, data);\n");
+        ifprintf(fp, 1, "return uintUnpack(%d, buffer, size, data);\n", def->enum_def.num_bytes);
         break;
     case DT_UNION:
         ifprintf(fp, 1, "size_t offset = %sUnpack(buffer, size, &data->%s);\n\n",
@@ -770,8 +770,8 @@ static void emit_read_body(FILE *fp, Definition *def, FileAttributes *attr)
 
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "return uint32ReadFrom%s(%s, data);\n",
-                attr->suffix, attr->varname);
+        ifprintf(fp, 1, "return uintReadFrom%s(%s, %d, data);\n",
+                attr->suffix, attr->varname, def->enum_def.num_bytes);
 
         break;
     case DT_UNION:
@@ -865,8 +865,8 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
         ifprintf(fp, 1, "return byte_count;\n");
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "return uint32WriteTo%s(%s, data);\n",
-                attr->suffix, attr->varname);
+        ifprintf(fp, 1, "return uintWriteTo%s(%s, %d, data);\n",
+                attr->suffix, attr->varname, def->enum_def.num_bytes);
 
         break;
     case DT_UNION:

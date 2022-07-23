@@ -30,6 +30,42 @@ void setIndent(const char *str);
 const char *indent(int level);
 
 /*
+ * Pack the least-significant <num_bytes> of <data> into <buffer>, updating
+ * <size> and <pos>.
+ */
+size_t uintPack(const unsigned int *data, size_t num_bytes,
+                char **buffer, size_t *size, size_t *pos);
+
+/*
+ * Unpack <num_bytes> from buffer (which has size <size>) fill <data> with
+ * them.
+ */
+size_t uintUnpack(size_t num_bytes, const char *buffer, size_t size,
+        unsigned int *data);
+
+/*
+ * Read <num_bytes> bytes from <fd> and put them towards the least-significant
+ * side of <data>.
+ */
+size_t uintReadFromFD(int fd, size_t num_bytes, unsigned int *data);
+
+/*
+ * Write the <num_bytes> least-significant bytes from <data> to <fd>
+ */
+size_t uintWriteToFD(int fd, size_t num_bytes, const unsigned int *data);
+
+/*
+ * <num_bytes> bytes from <fp> and put them towards the least-significant side
+ * of <data>.
+ */
+size_t uintReadFromFP(FILE *fp, size_t num_bytes, unsigned int *data);
+
+/*
+ * the <num_bytes> least-significant bytes from <data> to <fp>
+ */
+size_t uintWriteToFP(FILE *fp, size_t num_bytes, const unsigned int *data);
+
+/*
  * Clear the contents of <data>.
  */
 void astringClear(char **data);

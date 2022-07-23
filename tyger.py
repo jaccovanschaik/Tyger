@@ -49,6 +49,32 @@ class basePacker(object):
 
     return value
 
+class uintPacker(object):
+  @classmethod
+  def pack(cls, num_bytes, value):
+    data = bytes()
+
+    for i in range(num_bytes - 1, -1, -1):
+      data += uint8Packer.pack((value >> (8 * i)) & 0xFF)
+
+    return data
+
+  @classmethod
+  def unpack(cls, num_bytes, buf, offset = 0):
+    value = 0
+
+    for i in range(num_bytes - 1, -1, -1):
+      b, offset = uint8Packer.unpack(buf, offset)
+      value |= (b << (8 * i))
+
+    return value, offset
+
+  @classmethod
+  def recv(cls, num_bytes, sock):
+    data = recv_all(sock, num_bytes)
+
+    return uintPacker.unpack(num_bytes, data, 0)
+
 class boolPacker(basePacker):
   _format = '>?'
 

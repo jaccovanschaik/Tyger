@@ -257,8 +257,25 @@ static void emit_packer(FILE *fp, Definition *def)
         }
     }
     else if (def->type == DT_ENUM) {
-        ifprintf(fp, 0, "class %sPacker(uint32Packer):\n", def->name);
-        ifprintf(fp, 1, "pass\n\n");
+        ifprintf(fp, 0, "class %sPacker(object):\n", def->name);
+
+        if (do_pack) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def pack(value):\n");
+            ifprintf(fp, 2, "return uintPacker.pack(%d, value)\n\n", def->enum_def.num_bytes);
+        }
+
+        if (do_unpack) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def unpack(buf, offset = 0):\n");
+            ifprintf(fp, 2, "return uintPacker.unpack(%d, buf, offset)\n\n", def->enum_def.num_bytes);
+        }
+
+        if (do_recv) {
+            ifprintf(fp, 1, "@staticmethod\n");
+            ifprintf(fp, 1, "def recv(sock):\n");
+            ifprintf(fp, 2, "return uintPacker.recv(%d, sock)\n\n", def->enum_def.num_bytes);
+        }
     }
     else if (def->type == DT_UNION) {
         UnionItem *item;
@@ -269,8 +286,8 @@ static void emit_packer(FILE *fp, Definition *def)
             ifprintf(fp, 1, "@staticmethod\n");
             ifprintf(fp, 1, "def pack(value):\n");
 
-            ifprintf(fp, 2, "buf = uint32Packer.pack(value.%s)\n\n",
-                    def->union_def.discr_name);
+            ifprintf(fp, 2, "buf = %sPacker.pack(value.%s)\n\n",
+                    def->union_def.discr_def->name, def->union_def.discr_name);
 
             for (item = listHead(&def->union_def.items); item; item = listNext(item)) {
                 ifprintf(fp, 2, "%s value.%s == %s.%s:\n",
@@ -297,8 +314,8 @@ static void emit_packer(FILE *fp, Definition *def)
             ifprintf(fp, 1, "def unpack(buf, offset = 0):\n");
 
             ifprintf(fp, 2, "value = %s()\n\n", def->name);
-            ifprintf(fp, 2, "value.%s, offset = uint32Packer.unpack(buf, offset)\n\n",
-                    def->union_def.discr_name);
+            ifprintf(fp, 2, "value.%s, offset = %sPacker.unpack(buf, offset)\n\n",
+                    def->union_def.discr_name, def->union_def.discr_def->name);
 
             for (item = listHead(&def->union_def.items); item; item = listNext(item)) {
                 ifprintf(fp, 2, "%s value.%s == %s.%s:\n",
