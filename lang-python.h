@@ -3,9 +3,8 @@
 
 /* lang-python.h: Generate Python code.
  *
- * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-12-08
- * Version:   $Id: lang-python.h 99 2016-12-23 10:34:39Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.

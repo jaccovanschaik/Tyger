@@ -1,8 +1,7 @@
 /* libtyger.c: Run-time portion for the Tyger type generator.
  *
- * Copyright: (c) 2016 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-31
- * Version:   $Id: libtyger.c 155 2021-02-24 14:02:57Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.

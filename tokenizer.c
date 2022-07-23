@@ -2,7 +2,6 @@
  *
  * Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-24
- * Version:   $Id: tokenizer.c 162 2022-04-14 18:04:33Z jacco $
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
