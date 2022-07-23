@@ -21,9 +21,10 @@ typedef struct {
     int column;
     tkType type;
     union {
-        long l;
+        long   l;
         double d;
-        char *s;
+        bool   b;
+        char  *s;
     };
 } tkToken;
 

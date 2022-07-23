@@ -74,6 +74,19 @@ static void make_int_types(List *definitions)
     }
 }
 
+static void make_bool_type(List *definitions)
+{
+    Definition *def;
+
+    def = calloc(1, sizeof(*def));
+
+    def->type = DT_BOOL;
+    def->name = strdup("bool");
+    def->builtin = 1;
+
+    listAppendTail(definitions, def);
+}
+
 static void make_float_types(List *definitions)
 {
     Definition *def;
@@ -277,6 +290,7 @@ int main(int argc, char *argv[])
     make_astring_type(&definitions);
     make_ustring_type(&definitions);
     make_int_types(&definitions);
+    make_bool_type(&definitions);
     make_float_types(&definitions);
     make_void_type(&definitions);
 

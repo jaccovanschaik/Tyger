@@ -49,6 +49,9 @@ class basePacker(object):
 
     return value
 
+class boolPacker(basePacker):
+  _format = '>?'
+
 class int8Packer(basePacker):
   _format = '>b'
 

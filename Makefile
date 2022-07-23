@@ -87,14 +87,14 @@ Objects.c: test/Objects.tgr tyger
             --c-pack --c-unpack \
             --c-wrap --c-unwrap \
             --c-copy --c-set \
-            --c-create --c-destroy $<
+            --c-create --c-destroy --c-print $<
 
 Objects.h: test/Objects.tgr tyger
 	./tyger --indent='  ' --c-hdr $@ \
             --c-pack --c-unpack \
             --c-wrap --c-unwrap \
             --c-copy --c-set \
-            --c-create --c-destroy $<
+            --c-create --c-destroy --c-print $<
 
 Objects.o: Objects.c Objects.h
 	$(CC) $(CFLAGS) -I. -c -o $@ $<

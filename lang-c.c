@@ -151,6 +151,9 @@ static const char *equivalent_c_type(const Definition *def)
     else if (def->type == DT_USTRING) {
         return "wchar_t *";
     }
+    else if (def->type == DT_BOOL) {
+        return "bool ";
+    }
     else {
         return NULL;
     }
@@ -203,6 +206,9 @@ static void emit_const_definition(FILE *fp, Definition *def)
         break;
     case DT_USTRING:
         fprintf(fp, "L\"%s\";\n\n", def->const_def.value.s);
+        break;
+    case DT_BOOL:
+        fprintf(fp, "%s;\n\n", def->const_def.value.l ? "true" : "false");
         break;
     default:
         break;
@@ -584,7 +590,8 @@ static void emit_wrap_signature(FILE *fp, Definition *def)
     {
         Definition *def = effective_definition(struct_item->def);
 
-        int indirect = !(def->type == DT_INT || def->type == DT_FLOAT || def->type == DT_ENUM ||
+        int indirect = !(def->type == DT_INT || def->type == DT_FLOAT ||
+                         def->type == DT_BOOL || def->type == DT_ENUM ||
                          def->type == DT_ASTRING || def->type == DT_USTRING);
 
         int string = def->type == DT_ASTRING || def->type == DT_USTRING;
@@ -621,8 +628,9 @@ static void emit_wrap_body(FILE *fp, Definition *def)
          struct_item; struct_item = listNext(struct_item)) {
         Definition *def = effective_definition(struct_item->def);
 
-        int direct = def->type == DT_INT || def->type == DT_FLOAT || def->type == DT_ENUM
-                  || def->type == DT_ASTRING || def->type == DT_USTRING;
+        int direct = def->type == DT_INT || def->type == DT_FLOAT ||
+                     def->type == DT_ENUM || def->type == DT_BOOL ||
+                     def->type == DT_ASTRING || def->type == DT_USTRING;
 
         ifprintf(fp, 1, "byte_count += %sPack(%s%s%s, buffer, size, pos);\n",
                 struct_item->def->name,
@@ -1022,7 +1030,8 @@ static void emit_create_signature(FILE *fp, Definition *def)
     {
         Definition *def = effective_definition(struct_item->def);
 
-        int indirect = !(def->type == DT_INT || def->type == DT_FLOAT || def->type == DT_ENUM ||
+        int indirect = !(def->type == DT_INT || def->type == DT_FLOAT ||
+                         def->type == DT_ENUM || def->type == DT_BOOL ||
                          def->type == DT_ASTRING || def->type == DT_USTRING);
 
         int string = def->type == DT_ASTRING || def->type == DT_USTRING;
@@ -1055,8 +1064,9 @@ static void emit_create_body(FILE *fp, Definition *def)
          struct_item; struct_item = listNext(struct_item)) {
         Definition *def = effective_definition(struct_item->def);
 
-        int direct = def->type == DT_INT || def->type == DT_FLOAT || def->type == DT_ENUM
-                  || def->type == DT_ASTRING || def->type == DT_USTRING;
+        int direct = def->type == DT_INT || def->type == DT_FLOAT ||
+                     def->type == DT_ENUM || def->type == DT_BOOL ||
+                     def->type == DT_ASTRING || def->type == DT_USTRING;
 
         ifprintf(fp, 1, "%sCopy(&data->%s, %s%s);\n",
                 struct_item->def->name,
@@ -1090,7 +1100,8 @@ static void emit_set_signature(FILE *fp, Definition *def)
     {
         Definition *def = effective_definition(struct_item->def);
 
-        int indirect = !(def->type == DT_INT || def->type == DT_FLOAT || def->type == DT_ENUM ||
+        int indirect = !(def->type == DT_INT || def->type == DT_FLOAT ||
+                         def->type == DT_ENUM || def->type == DT_BOOL ||
                          def->type == DT_ASTRING || def->type == DT_USTRING);
 
         int string = def->type == DT_ASTRING || def->type == DT_USTRING;
@@ -1121,8 +1132,9 @@ static void emit_set_body(FILE *fp, Definition *def)
          struct_item; struct_item = listNext(struct_item)) {
         Definition *def = effective_definition(struct_item->def);
 
-        int direct = def->type == DT_INT || def->type == DT_FLOAT || def->type == DT_ENUM
-                  || def->type == DT_ASTRING || def->type == DT_USTRING;
+        int direct = def->type == DT_INT || def->type == DT_FLOAT ||
+                     def->type == DT_ENUM || def->type == DT_BOOL ||
+                     def->type == DT_ASTRING || def->type == DT_USTRING;
 
         ifprintf(fp, 1, "%sCopy(&dst->%s, %s%s);\n",
                 struct_item->def->name,
@@ -1427,6 +1439,7 @@ int emit_c_hdr(const char *out_file, const char *in_file, const char *prog_name,
 
     fprintf(fp, "#include <stdlib.h>\t/* size_t */\n");
     fprintf(fp, "#include <stdint.h>\t/* int types */\n");
+    fprintf(fp, "#include <stdbool.h>\t/* bool */\n");
     fprintf(fp, "#include <wchar.h>\t/* wchar_t */\n\n");
 
     if (do_mx_send || do_mx_bcast) {

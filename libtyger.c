@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <assert.h>
 #include <string.h>
 #include <wchar.h>
@@ -1008,6 +1009,141 @@ void float64Print(FILE *fp, const double *data, int indent)
  * Copy <src> to <dst>.
  */
 void float64Copy(double *dst, const double *src)
+{
+    assert(dst != NULL);
+    assert(src != NULL);
+
+    *dst = *src;
+}
+
+static uint8_t bool_encode(bool b)
+{
+    return b ? 1 : 0;
+}
+
+static bool bool_decode(uint8_t e)
+{
+    return (e == 0) ? false : true;
+}
+
+/*
+ * Clear the contents of <data>.
+ */
+void boolClear(bool *data)
+{
+    *data = false;
+}
+
+/*
+ * Destroy <data>.
+ */
+void boolDestroy(bool *data)
+{
+    boolClear(data);
+
+    free(data);
+}
+
+/*
+ * Return the number of bytes required to pack the bool pointed to by <data>.
+ */
+size_t boolPackSize(const bool *data)
+{
+    return 1;
+}
+
+/*
+ * Unpack a bool from <buffer> (which has size <size>) and put it at the
+ * address pointed to by <data>.
+ */
+size_t boolUnpack(const char *buffer, size_t size, bool *data)
+{
+    size_t req = boolPackSize(data);
+
+    if (size >= req) {
+        *data = bool_decode(buffer[0]);
+    }
+
+    return req;
+}
+
+/*
+ * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
+ * if necessary.
+ */
+size_t boolPack(const bool *data, char **buffer, size_t *size, size_t *pos)
+{
+    size_t req = boolPackSize(data);
+
+    size_buffer(buffer, size, *pos + req);
+
+    (*buffer)[*pos] = bool_encode(*data);
+
+    (*pos) += req;
+
+    return req;
+}
+
+/*
+ * Read a bool from <fd> into <data).
+ */
+size_t boolReadFromFD(int fd, bool *data)
+{
+    uint8_t encoded;
+
+    size_t r = read_FD(fd, &encoded, sizeof(encoded));
+
+    *data = bool_decode(encoded);
+
+    return r;
+}
+
+/*
+ * Write a bool to <fd> from <data).
+ */
+size_t boolWriteToFD(int fd, const bool *data)
+{
+    uint8_t encoded = bool_encode(*data);
+
+    return write_FD(fd, &encoded, sizeof(encoded));
+}
+
+/*
+ * Read a bool from <fp> into <data).
+ */
+size_t boolReadFromFP(FILE *fp, bool *data)
+{
+    uint8_t encoded;
+
+    size_t r = read_FP(fp, &encoded, sizeof(encoded));
+
+    *data = bool_decode(encoded);
+
+    return r;
+}
+
+/*
+ * Write a bool to <fp> from <data).
+ */
+size_t boolWriteToFP(FILE *fp, const bool *data)
+{
+    uint8_t encoded = bool_encode(*data);
+
+    return write_FP(fp, &encoded, sizeof(encoded));
+}
+
+/*
+ * Print an ASCII representation of <data> to <fp>.
+ */
+void boolPrint(FILE *fp, const bool *data, int indent)
+{
+    fprintf(fp, "%s", *data ? "true" : "false");
+}
+
+/*
+ * Copy <src> to <dst>.
+ */
+void boolCopy(bool *dst, const bool *src)
 {
     assert(dst != NULL);
     assert(src != NULL);

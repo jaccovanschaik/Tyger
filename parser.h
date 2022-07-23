@@ -10,18 +10,21 @@
  * http://www.opensource.org/licenses/mit-license.php for details.
  */
 
+#include "deftype.h"
+
 #include <libjvs/list.h>
 
-#include "deftype.h"
+#include <stdbool.h>
 
 typedef struct Definition Definition;
 
 typedef struct {
     Definition *const_type;
     union {
-        long     l;
-        double   d;
-        char    *s;
+        long   l;
+        bool   b;
+        double d;
+        char  *s;
     } value;
 } ConstDefinition;
 

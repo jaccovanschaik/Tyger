@@ -26,6 +26,7 @@ static void fill_objects(Objects *objects)
 
     objects->object[0].name = strdup("A line");
     objects->object[0].creator = wcsdup(L"Øve");
+    objects->object[0].visible = true;
     objects->object[0].shape.shape_type = ST_LINE;
     objects->object[0].shape.line.sv.x = 1;
     objects->object[0].shape.line.sv.y = 2;
@@ -36,6 +37,7 @@ static void fill_objects(Objects *objects)
 
     objects->object[1].name = strdup("A polygon");
     objects->object[1].creator = wcsdup(L"Björk");
+    objects->object[1].visible = true;
     objects->object[1].shape.shape_type = ST_POLYGON;
     objects->object[1].shape.polygon.count = 3;
     objects->object[1].shape.polygon.vector =
@@ -55,6 +57,7 @@ static void fill_objects(Objects *objects)
 
     objects->object[2].name = strdup("A plane");
     objects->object[2].creator = wcsdup(L"Björn");
+    objects->object[2].visible = false;
     objects->object[2].shape.shape_type = ST_PLANE;
     objects->object[2].shape.plane.sv.x =  1;
     objects->object[2].shape.plane.sv.y =  2;
@@ -65,6 +68,7 @@ static void fill_objects(Objects *objects)
 
     objects->object[3].name = strdup("A sphere");
     objects->object[3].creator = wcsdup(L"Jürgen");
+    objects->object[3].visible = false;
     objects->object[3].shape.shape_type = ST_SPHERE;
     objects->object[3].shape.sphere.c.x = 1;
     objects->object[3].shape.sphere.c.y = 2;
@@ -79,6 +83,8 @@ static int check_objects(const Objects *objects)
     make_sure_that(objects->count == 4);
 
     make_sure_that(strcmp(objects->object[0].name, "A line") == 0);
+    make_sure_that(wcscmp(objects->object[0].creator, L"Øve") == 0);
+    make_sure_that(objects->object[0].visible == true);
     make_sure_that(objects->object[0].shape.shape_type == ST_LINE);
     make_sure_that(objects->object[0].shape.line.sv.x == 1);
     make_sure_that(objects->object[0].shape.line.sv.y == 2);
@@ -88,22 +94,23 @@ static int check_objects(const Objects *objects)
     make_sure_that(objects->object[0].shape.line.dv.z == 6);
 
     make_sure_that(strcmp(objects->object[1].name, "A polygon") == 0);
+    make_sure_that(wcscmp(objects->object[1].creator, L"Björk") == 0);
+    make_sure_that(objects->object[1].visible == true);
     make_sure_that(objects->object[1].shape.shape_type == ST_POLYGON);
     make_sure_that(objects->object[1].shape.polygon.count == 3);
-
     make_sure_that(objects->object[1].shape.polygon.vector[0].x ==  1);
     make_sure_that(objects->object[1].shape.polygon.vector[0].y ==  1);
     make_sure_that(objects->object[1].shape.polygon.vector[0].z ==  0);
-
     make_sure_that(objects->object[1].shape.polygon.vector[1].x == -1);
     make_sure_that(objects->object[1].shape.polygon.vector[1].y ==  1);
     make_sure_that(objects->object[1].shape.polygon.vector[1].z ==  0);
-
     make_sure_that(objects->object[1].shape.polygon.vector[2].x ==  0);
     make_sure_that(objects->object[1].shape.polygon.vector[2].y ==  0);
     make_sure_that(objects->object[1].shape.polygon.vector[2].z ==  2);
 
     make_sure_that(strcmp(objects->object[2].name, "A plane") == 0);
+    make_sure_that(wcscmp(objects->object[2].creator, L"Björn") == 0);
+    make_sure_that(objects->object[2].visible == false);
     make_sure_that(objects->object[2].shape.shape_type == ST_PLANE);
     make_sure_that(objects->object[2].shape.plane.sv.x ==  1);
     make_sure_that(objects->object[2].shape.plane.sv.y ==  2);
@@ -113,6 +120,8 @@ static int check_objects(const Objects *objects)
     make_sure_that(objects->object[2].shape.plane.nv.z == -3);
 
     make_sure_that(strcmp(objects->object[3].name, "A sphere") == 0);
+    make_sure_that(wcscmp(objects->object[3].creator, L"Jürgen") == 0);
+    make_sure_that(objects->object[3].visible == false);
     make_sure_that(objects->object[3].shape.shape_type == ST_SPHERE);
     make_sure_that(objects->object[3].shape.sphere.c.x == 1);
     make_sure_that(objects->object[3].shape.sphere.c.y == 2);
@@ -157,7 +166,7 @@ int main(int argc, char *argv[])
     hexdump(stdout, buffer, size);
 #endif
 
-    make_sure_that(size == 209);
+    make_sure_that(size == 213);
 
     make_sure_that(memcmp(buffer,
                 "\x00\x00\x00\x04"      /* Number of objects */
@@ -166,6 +175,7 @@ int main(int argc, char *argv[])
                 "A line"                /* Object name */
                 "\x00\x00\x00\x04"      /* Object creator length */
                 "\xC3\x98ve"            /* Object creator */
+                "\x01"                  /* Object is visible */
                 "\x00\x00\x00\x01"      /* Object type (ST_LINE) */
                 "\x00\x00\x00\x01"      /* X coordinate of support vector */
                 "\x00\x00\x00\x02"      /* Y coordinate of support vector */
@@ -178,6 +188,7 @@ int main(int argc, char *argv[])
                 "A polygon"             /* Object name */
                 "\x00\x00\x00\x06"      /* Object creator length */
                 "Bj\xC3\xB6rk"          /* Object creator */
+                "\x01"                  /* Object is visible */
                 "\x00\x00\x00\x02"      /* Object type (ST_POLYGON) */
                 "\x00\x00\x00\x03"      /* Number of vectors */
                 "\x00\x00\x00\x01"      /* X coordinate of first vector */
@@ -194,6 +205,7 @@ int main(int argc, char *argv[])
                 "A plane"               /* Object name */
                 "\x00\x00\x00\x06"      /* Object creator length */
                 "Bj\xC3\xB6rn"          /* Object creator */
+                "\x00"                  /* Object is invisible */
                 "\x00\x00\x00\x03"      /* Object type (ST_PLANE) */
                 "\x00\x00\x00\x01"      /* X coordinate of support vector */
                 "\x00\x00\x00\x02"      /* Y coordinate of support vector */
@@ -206,6 +218,7 @@ int main(int argc, char *argv[])
                 "A sphere"              /* Object name */
                 "\x00\x00\x00\x07"      /* Object creator length */
                 "J\xC3\xBCrgen"         /* Object creator */
+                "\x00"                  /* Object is invisible */
                 "\x00\x00\x00\x04"      /* Object type (ST_SPHERE) */
                 "\x00\x00\x00\x01"      /* X coordinate of centre */
                 "\x00\x00\x00\x02"      /* Y coordinate of centre */
@@ -217,7 +230,7 @@ int main(int argc, char *argv[])
 
     size = ObjectsUnpack(buffer, size, &unpacked);
 
-    make_sure_that(size == 209);
+    make_sure_that(size == 213);
 
     errors += check_objects(&unpacked);
 

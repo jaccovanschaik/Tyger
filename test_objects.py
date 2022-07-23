@@ -69,10 +69,11 @@ assert s.u.nv.x == 4
 assert s.u.nv.y == 5
 assert s.u.nv.z == -6
 
-o = Object('A plane', u'Björn', s)
+o = Object('A plane', u'Björn', True, s)
 
 assert o.name == 'A plane'
 assert o.creator == U'Björn'
+assert o.visible == True
 assert o.shape.u.nv.x == 4
 assert o.shape.u.nv.y == 5
 assert o.shape.u.nv.z == -6
@@ -82,6 +83,7 @@ buf = ObjectPacker.pack(o)
 expected = \
   b"\x00\x00\x00\x07A plane" \
 + b"\x00\x00\x00\x06Bj\xc3\xb6rn" \
++ b"\x01" \
 + b"\x00\x00\x00\x03" \
 + b"\x00\x00\x00\x0a" \
 + b"\x00\x00\x00\x02" \
@@ -96,11 +98,12 @@ o, offset = ObjectPacker.unpack(buf)
 
 assert o.name == 'A plane'
 assert o.creator == U'Björn'
+assert o.visible == True
 assert o.shape.u.nv.x == 4
 assert o.shape.u.nv.y == 5
 assert o.shape.u.nv.z == -6
 
-assert offset == 49
+assert offset == 50
 
 l = 3 * [ o ]
 
@@ -115,6 +118,7 @@ assert len(l) == 3
 for o in l:
   assert o.name == 'A plane'
   assert o.creator == U'Björn'
+  assert o.visible == True
   assert o.shape.u.nv.x == 4
   assert o.shape.u.nv.y == 5
   assert o.shape.u.nv.z == -6

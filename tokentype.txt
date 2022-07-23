@@ -1,6 +1,7 @@
 # Token types in Tyger description files.
 
 long
+bool
 double
 ustring
 dstring

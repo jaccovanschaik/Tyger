@@ -51,6 +51,8 @@ static const char *interface_type(Definition *def)
     case DT_INT:
     case DT_ENUM:
         return "int";
+    case DT_BOOL:
+        return "bool";
     case DT_FLOAT:
         return "float";
     case DT_ASTRING:
@@ -410,6 +412,9 @@ int emit_python_src(const char *out_file,
         switch (def->const_def.const_type->type) {
         case DT_INT:
             fprintf(fp, "%ld\n\n", def->const_def.value.l);
+            break;
+        case DT_BOOL:
+            fprintf(fp, "%s\n\n", def->const_def.value.l ? "True" : "False");
             break;
         case DT_FLOAT:
             fprintf(fp, "%g\n\n", def->const_def.value.d);

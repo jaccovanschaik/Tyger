@@ -3,6 +3,7 @@
 Object = struct {
     astring name
     ustring creator
+    bool    visible
     Shape shape
 }
 

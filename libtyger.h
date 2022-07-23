@@ -17,6 +17,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 /*
  * Set the indentation string.
@@ -101,14 +102,17 @@ void ustringDestroy(wchar_t **data);
 size_t ustringPackSize(const wchar_t *const *data);
 
 /*
- * Unpack a ustring from <buffer> (which has size <size>) and put it at
- * the address pointed to by <data>.
+ * Unpack a UTF-8 encoded ustring from <buffer> (which has size <size>), write
+ * it to a newly allocated wide-character string whose starting address is
+ * written to <data>, and return the number of bytes consumed from <buffer>.
+ * If <buffer> doesn't contain enough bytes to successfully extract a string
+ * from it return the mininum number of bytes we would need.
  */
 size_t ustringUnpack(const char *buffer, size_t size, wchar_t **data);
 
 /*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
+ * Add <data> to position <pos> in <buffer>, which currently has size <size>,
+ * enlarging it if necessary. Return the number of bytes added to <buffer>.
  */
 size_t ustringPack(const wchar_t *const *data, char **buffer, size_t *size, size_t *pos);
 
@@ -255,6 +259,63 @@ void float64Print(FILE *fp, const double *data, int indent);
  * Copy <src> to <dst>.
  */
 void float64Copy(double *dst, const double *src);
+
+/*
+ * Clear the contents of <data>.
+ */
+void boolClear(bool *data);
+
+/*
+ * Destroy <data>.
+ */
+void boolDestroy(bool *data);
+
+/*
+ * Return the number of bytes required to pack the bool pointed to by <data>.
+ */
+size_t boolPackSize(const bool *data);
+
+/*
+ * Unpack a bool from <buffer> (which has size <size>) and put it at the
+ * address pointed to by <data>.
+ */
+size_t boolUnpack(const char *buffer, size_t size, bool *data);
+
+/*
+ * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
+ * if necessary.
+ */
+size_t boolPack(const bool *data, char **buffer, size_t *size, size_t *pos);
+
+/*
+ * Read a bool from <fd> into <data).
+ */
+size_t boolReadFromFD(int fd, bool *data);
+
+/*
+ * Write a bool to <fd> from <data).
+ */
+size_t boolWriteToFD(int fd, const bool *data);
+
+/*
+ * Read a bool from <fp> into <data).
+ */
+size_t boolReadFromFP(FILE *fp, bool *data);
+
+/*
+ * Write a bool to <fp> from <data).
+ */
+size_t boolWriteToFP(FILE *fp, const bool *data);
+
+/*
+ * Print an ASCII representation of <data> to <fp>.
+ */
+void boolPrint(FILE *fp, const bool *data, int indent);
+
+/*
+ * Copy <src> to <dst>.
+ */
+void boolCopy(bool *dst, const bool *src);
 
 /*
  * Clear the contents of <data>.

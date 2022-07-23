@@ -75,6 +75,19 @@ static int expect_long(tkToken **token, long *contents, Buffer *error)
     }
 }
 
+static int expect_bool(tkToken **token, bool *contents, Buffer *error)
+{
+    if ((*token)->type != TT_BOOL) {
+        expected(TT_BOOL, *token, error);
+        return 1;
+    }
+    else {
+        *contents = (*token)->b;
+        *token = listNext(*token);
+        return 0;
+    }
+}
+
 static int expect_float(tkToken **token, double *contents, Buffer *error)
 {
     if ((*token)->type != TT_DOUBLE) {
@@ -118,6 +131,9 @@ static int process_const(Definition *def, List *defs, tkToken **token, Buffer *e
     }
     else if (type_def->type == DT_INT) {
         if (expect_long(token, &def->const_def.value.l, error) != 0) return 1;
+    }
+    else if (type_def->type == DT_BOOL) {
+        if (expect_bool(token, &def->const_def.value.b, error) != 0) return 1;
     }
     else if (type_def->type == DT_FLOAT) {
         if (expect_float(token, &def->const_def.value.d, error) != 0) return 1;
