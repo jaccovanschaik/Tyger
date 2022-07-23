@@ -239,7 +239,9 @@ Options:
       that contains class variables with the given names and the given value.
     </p>
     <p>
-      They are serialized as 4-byte unsigned big-endian integers.
+      They are serialized as unsigned big-endian integers. The number of bytes used is dependent on
+      their maximum value (one byte if the maximum value is 255 or less, two bytes if it is 65535 or
+      less, etc.)
     </p>
     <h3>Structures</h3>
     <p>
