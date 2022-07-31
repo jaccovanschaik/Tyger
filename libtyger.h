@@ -195,7 +195,7 @@ void float32Destroy(float *data);
 /*
  * Return the number of bytes required to pack the float pointed to by <data>.
  */
-size_t float32PackSize(const float *data);
+size_t float32PackSize(void);
 
 /*
  * Unpack a float from <buffer> (which has size <size>) and put it at the
@@ -252,7 +252,7 @@ void float64Destroy(double *data);
 /*
  * Return the number of bytes required to pack the double pointed to by <data>.
  */
-size_t float64PackSize(const double *data);
+size_t float64PackSize(void);
 
 /*
  * Unpack a double from <buffer> (which has size <size>) and put it at the
@@ -309,7 +309,7 @@ void boolDestroy(bool *data);
 /*
  * Return the number of bytes required to pack the bool pointed to by <data>.
  */
-size_t boolPackSize(const bool *data);
+size_t boolPackSize(void);
 
 /*
  * Unpack a bool from <buffer> (which has size <size>) and put it at the
@@ -366,7 +366,7 @@ void uint8Destroy(uint8_t *data);
 /*
  * Return the number of bytes required to pack the uint8_t pointed to by <data>.
  */
-size_t uint8PackSize(const uint8_t *data);
+size_t uint8PackSize(void);
 
 /*
  * Unpack a uint8_t from <buffer> (which has size <size>) and put it at the
@@ -423,7 +423,7 @@ void int8Destroy(int8_t *data);
 /*
  * Return the number of bytes required to pack the int8_t pointed to by <data>.
  */
-size_t int8PackSize(const int8_t *data);
+size_t int8PackSize(void);
 
 /*
  * Unpack an int8_t from <buffer> (which has size <size>) and put it at the
@@ -480,7 +480,7 @@ void uint16Destroy(uint16_t *data);
 /*
  * Return the number of bytes required to pack the uint16_t pointed to by <data>.
  */
-size_t uint16PackSize(const uint16_t *data);
+size_t uint16PackSize(void);
 
 /*
  * Unpack a uint16_t from <buffer> (which has size <size>) and put it at the
@@ -537,7 +537,7 @@ void int16Destroy(int16_t *data);
 /*
  * Return the number of bytes required to pack the int16_t pointed to by <data>.
  */
-size_t int16PackSize(const int16_t *data);
+size_t int16PackSize(void);
 
 /*
  * Unpack an int16_t from <buffer> (which has size <size>) and put it at the
@@ -594,7 +594,7 @@ void uint32Destroy(uint32_t *data);
 /*
  * Return the number of bytes required to pack the uint32_t pointed to by <data>.
  */
-size_t uint32PackSize(const uint32_t *data);
+size_t uint32PackSize(void);
 
 /*
  * Unpack a uint32_t from <buffer> (which has size <size>) and put it at the
@@ -651,7 +651,7 @@ void int32Destroy(int32_t *data);
 /*
  * Return the number of bytes required to pack the int32_t pointed to by <data>.
  */
-size_t int32PackSize(const int32_t *data);
+size_t int32PackSize(void);
 
 /*
  * Unpack an int32_t from <buffer> (which has size <size>) and put it at the
@@ -708,7 +708,7 @@ void uint64Destroy(uint64_t *data);
 /*
  * Return the number of bytes required to pack the uint64_t pointed to by <data>.
  */
-size_t uint64PackSize(const uint64_t *data);
+size_t uint64PackSize(void);
 
 /*
  * Unpack a uint64_t from <buffer> (which has size <size>) and put it at the
@@ -765,7 +765,7 @@ void int64Destroy(int64_t *data);
 /*
  * Return the number of bytes required to pack the int64_t pointed to by <data>.
  */
-size_t int64PackSize(const int64_t *data);
+size_t int64PackSize(void);
 
 /*
  * Unpack an int64_t from <buffer> (which has size <size>) and put it at the

@@ -836,9 +836,9 @@ void float32Destroy(float *data)
 /*
  * Return the number of bytes required to pack the float pointed to by <data>.
  */
-size_t float32PackSize(const float *data)
+size_t float32PackSize(void)
 {
-    return sizeof(*data);
+    return sizeof(float);
 }
 
 /*
@@ -847,7 +847,7 @@ size_t float32PackSize(const float *data)
  */
 size_t float32Unpack(const char *buffer, size_t size, float *data)
 {
-    size_t req = float32PackSize(data);
+    size_t req = float32PackSize();
 
     union {
         float f;
@@ -969,9 +969,9 @@ void float64Destroy(double *data)
 /*
  * Return the number of bytes required to pack the double pointed to by <data>.
  */
-size_t float64PackSize(const double *data)
+size_t float64PackSize(void)
 {
-    return sizeof(*data);
+    return sizeof(double);
 }
 
 /*
@@ -980,7 +980,7 @@ size_t float64PackSize(const double *data)
  */
 size_t float64Unpack(const char *buffer, size_t size, double *data)
 {
-    size_t req = float64PackSize(data);
+    size_t req = float64PackSize();
 
     union {
         double f;
@@ -1120,7 +1120,7 @@ void boolDestroy(bool *data)
 /*
  * Return the number of bytes required to pack the bool pointed to by <data>.
  */
-size_t boolPackSize(const bool *data)
+size_t boolPackSize(void)
 {
     return 1;
 }
@@ -1131,7 +1131,7 @@ size_t boolPackSize(const bool *data)
  */
 size_t boolUnpack(const char *buffer, size_t size, bool *data)
 {
-    size_t req = boolPackSize(data);
+    size_t req = boolPackSize();
 
     if (size >= req) {
         *data = bool_decode(buffer[0]);
@@ -1146,7 +1146,7 @@ size_t boolUnpack(const char *buffer, size_t size, bool *data)
  */
 size_t boolPack(const bool *data, char **buffer, size_t *size, size_t *pos)
 {
-    size_t req = boolPackSize(data);
+    size_t req = boolPackSize();
 
     size_buffer(buffer, size, *pos + req);
 
@@ -1245,9 +1245,9 @@ void uint8Destroy(uint8_t *data)
 /*
  * Return the number of bytes required to pack the uint8_t pointed to by <data>.
  */
-size_t uint8PackSize(const uint8_t *data)
+size_t uint8PackSize(void)
 {
-    return sizeof(*data);
+    return sizeof(uint8_t);
 }
 
 /*
@@ -1256,7 +1256,7 @@ size_t uint8PackSize(const uint8_t *data)
  */
 size_t uint8Unpack(const char *buffer, size_t size, uint8_t *data)
 {
-    size_t req = uint8PackSize(data);
+    size_t req = uint8PackSize();
 
     if (size >= req) {
         *data = buffer[0];
@@ -1350,9 +1350,9 @@ void int8Destroy(int8_t *data)
 /*
  * Return the number of bytes required to pack the int8_t pointed to by <data>.
  */
-size_t int8PackSize(const int8_t *data)
+size_t int8PackSize(void)
 {
-    return sizeof(*data);
+    return sizeof(int8_t);
 }
 
 /*
@@ -1361,7 +1361,7 @@ size_t int8PackSize(const int8_t *data)
  */
 size_t int8Unpack(const char *buffer, size_t size, int8_t *data)
 {
-    size_t req = int8PackSize(data);
+    size_t req = int8PackSize();
 
     if (size >= req) {
         *data = buffer[0];
@@ -1455,9 +1455,9 @@ void uint16Destroy(uint16_t *data)
 /*
  * Return the number of bytes required to pack the uint16_t pointed to by <data>.
  */
-size_t uint16PackSize(const uint16_t *data)
+size_t uint16PackSize(void)
 {
-    return sizeof(*data);
+    return sizeof(uint16_t);
 }
 
 /*
@@ -1466,7 +1466,7 @@ size_t uint16PackSize(const uint16_t *data)
  */
 size_t uint16Unpack(const char *buffer, size_t size, uint16_t *data)
 {
-    size_t req = uint16PackSize(data);
+    size_t req = uint16PackSize();
 
     if (size >= req) {
         *data = (buffer[0] << 8)
@@ -1562,9 +1562,9 @@ void int16Destroy(int16_t *data)
 /*
  * Return the number of bytes required to pack the int16_t pointed to by <data>.
  */
-size_t int16PackSize(const int16_t *data)
+size_t int16PackSize(void)
 {
-    return sizeof(*data);
+    return sizeof(int16_t);
 }
 
 /*
@@ -1573,7 +1573,7 @@ size_t int16PackSize(const int16_t *data)
  */
 size_t int16Unpack(const char *buffer, size_t size, int16_t *data)
 {
-    size_t req = int16PackSize(data);
+    size_t req = int16PackSize();
 
     if (size >= req) {
         *data = (buffer[0] << 8)
@@ -1669,9 +1669,9 @@ void uint32Destroy(uint32_t *data)
 /*
  * Return the number of bytes required to pack the uint32_t pointed to by <data>.
  */
-size_t uint32PackSize(const uint32_t *data)
+size_t uint32PackSize(void)
 {
-    return sizeof(*data);
+    return sizeof(uint32_t);
 }
 
 /*
@@ -1680,7 +1680,7 @@ size_t uint32PackSize(const uint32_t *data)
  */
 size_t uint32Unpack(const char *buffer, size_t size, uint32_t *data)
 {
-    size_t req = uint32PackSize(data);
+    size_t req = uint32PackSize();
 
     if (size >= req) {
         *data = (buffer[0] << 24)
@@ -1780,9 +1780,9 @@ void int32Destroy(int32_t *data)
 /*
  * Return the number of bytes required to pack the int32_t pointed to by <data>.
  */
-size_t int32PackSize(const int32_t *data)
+size_t int32PackSize(void)
 {
-    return sizeof(*data);
+    return sizeof(int32_t);
 }
 
 /*
@@ -1791,7 +1791,7 @@ size_t int32PackSize(const int32_t *data)
  */
 size_t int32Unpack(const char *buffer, size_t size, int32_t *data)
 {
-    size_t req = int32PackSize(data);
+    size_t req = int32PackSize();
 
     if (size >= req) {
         *data = (buffer[0] << 24)
@@ -1891,9 +1891,9 @@ void uint64Destroy(uint64_t *data)
 /*
  * Return the number of bytes required to pack the uint64_t pointed to by <data>.
  */
-size_t uint64PackSize(const uint64_t *data)
+size_t uint64PackSize(void)
 {
-    return sizeof(*data);
+    return sizeof(uint64_t);
 }
 
 /*
@@ -1902,7 +1902,7 @@ size_t uint64PackSize(const uint64_t *data)
  */
 size_t uint64Unpack(const char *buffer, size_t size, uint64_t *data)
 {
-    size_t req = uint64PackSize(data);
+    size_t req = uint64PackSize();
 
     if (size >= req) {
         *data = ((uint64_t) buffer[0] << 56)
@@ -2010,9 +2010,9 @@ void int64Destroy(int64_t *data)
 /*
  * Return the number of bytes required to pack the int64_t pointed to by <data>.
  */
-size_t int64PackSize(const int64_t *data)
+size_t int64PackSize(void)
 {
-    return sizeof(*data);
+    return sizeof(int64_t);
 }
 
 /*
@@ -2021,7 +2021,7 @@ size_t int64PackSize(const int64_t *data)
  */
 size_t int64Unpack(const char *buffer, size_t size, int64_t *data)
 {
-    size_t req = int64PackSize(data);
+    size_t req = int64PackSize();
 
     if (size >= req) {
         *data = ((uint64_t) buffer[0] << 56)
@@ -2168,7 +2168,7 @@ int main(int argc, char *argv[])
 
     float32Pack(&float32_data, &buffer, &size, &pos);
     float32Unpack(buffer, pos, &float32_data);
-    assert(float32PackSize(&float32_data) == 4);
+    assert(float32PackSize() == 4);
     assert(memcmp(buffer, "\x3F\x80\x00\x00", 4) == 0);
     assert(float32_data == 1.0);
 
@@ -2177,7 +2177,7 @@ int main(int argc, char *argv[])
     float64_data = 2.0;
     float64Pack(&float64_data, &buffer, &size, &pos);
     float64Unpack(buffer, pos, &float64_data);
-    assert(float64PackSize(&float64_data) == 8);
+    assert(float64PackSize() == 8);
     assert(memcmp(buffer, "\x40\x00\x00\x00\x00\x00\x00\x00", 8) == 0);
     assert(float64_data == 2.0);
 

@@ -169,6 +169,67 @@ static Definition *effective_definition(Definition *def)
     }
 }
 
+#if 0
+static bool is_pass_by_value(Definition *def)
+{
+    switch(def->type) {
+    case DT_INT:
+    case DT_BOOL:
+    case DT_FLOAT:
+    case DT_ASTRING:
+    case DT_USTRING:
+    case DT_ENUM:
+        return true;
+    case DT_ARRAY:
+    case DT_STRUCT:
+    case DT_UNION:
+        return false;
+    case DT_ALIAS:
+        return is_pass_by_value(def->alias_def.alias);
+    default:
+        return false;
+    }
+}
+#endif
+
+/*
+ * Does the type definition in <def> have a constant pack size? That is, can
+ * we call the ...PackSize function without passing in an instance of the type
+ * because we can work out the pack size without looking at its contents?
+ */
+static bool has_constant_pack_size(Definition *def)
+{
+    switch(def->type) {
+    case DT_INT:
+    case DT_BOOL:
+    case DT_FLOAT:
+    case DT_ENUM:
+        return true;
+    case DT_STRUCT:
+        for (StructItem *struct_item = listHead(&def->struct_def.items);
+             struct_item; struct_item = listNext(struct_item)) {
+            if (!has_constant_pack_size(struct_item->def)) return false;
+        }
+
+        return true;
+    case DT_UNION:
+        for (UnionItem *union_item = listHead(&def->union_def.items);
+             union_item; union_item = listNext(union_item)) {
+            if (!has_constant_pack_size(union_item->def)) return false;
+        }
+
+        return true;
+    case DT_ASTRING:
+    case DT_USTRING:
+    case DT_ARRAY:
+        return false;
+    case DT_ALIAS:
+        return has_constant_pack_size(def->alias_def.alias);
+    default:
+        return false;
+    }
+}
+
 static const char *const_double_pointer_cast(Definition *def)
 {
     if (def->type == DT_ASTRING) {
@@ -289,12 +350,22 @@ static void emit_typedef(FILE *fp, Definition *def)
 
 static void emit_packsize_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
-    fprintf(fp, "\n/*\n");
-    fprintf(fp, " * Return the number of bytes required to pack <data>.\n");
-    fprintf(fp, " */\n");
-    fprintf(fp, "size_t %sPackSize(const %s *data)", def->name, def->name);
+    if (has_constant_pack_size(def)) {
+        fprintf(fp, "\n/*\n");
+        fprintf(fp, " * Return the number of bytes required to pack a %s.\n",
+                def->name);
+        fprintf(fp, " */\n");
+        fprintf(fp, "size_t %sPackSize(void)", def->name);
+    }
+    else {
+        fprintf(fp, "\n/*\n");
+        fprintf(fp, " * Return the number of bytes required to pack %s "
+                    "<data>.\n", def->name);
+        fprintf(fp, " */\n");
+        fprintf(fp, "size_t %sPackSize(const %s *data)", def->name, def->name);
+    }
 }
 
 static void emit_packsize_body(FILE *fp, Definition *def)
@@ -302,23 +373,38 @@ static void emit_packsize_body(FILE *fp, Definition *def)
     StructItem *struct_item;
     UnionItem *union_item;
 
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n{\n");
 
     switch(def->type) {
     case DT_ALIAS:
-        ifprintf(fp, 1, "return %sPackSize(data);\n", def->alias_def.alias->name);
+        if (has_constant_pack_size(def)) {
+            ifprintf(fp, 1, "return %sPackSize();\n",
+                    def->alias_def.alias->name);
+        }
+        else {
+            ifprintf(fp, 1, "return %sPackSize(data);\n",
+                    def->alias_def.alias->name);
+        }
         break;
     case DT_ARRAY:
-        ifprintf(fp, 1, "int i;\n");
-        ifprintf(fp, 1, "size_t size = uint32PackSize(&data->count);\n\n");
+        ifprintf(fp, 1, "size_t size = uint32PackSize();\n\n");
 
-        ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
-        ifprintf(fp, 2, "size += %sPackSize(data->%s + i);\n",
-                def->array_def.item_type->name,
-                def->array_def.item_name);
-        ifprintf(fp, 1, "}\n\n");
+        if (has_constant_pack_size(def->array_def.item_type)) {
+            ifprintf(fp, 1, "size += data->count * %sPackSize();\n\n",
+                    def->array_def.item_type->name);
+        }
+        else {
+            ifprintf(fp, 1, "for (int i = 0; i < data->count; i++) {\n");
+
+            ifprintf(fp, 2, "size += %sPackSize(data->%s + i);\n",
+                    def->array_def.item_type->name,
+                    def->array_def.item_name);
+
+            ifprintf(fp, 1, "}\n\n");
+        }
+
         ifprintf(fp, 1, "return size;\n");
         break;
     case DT_STRUCT:
@@ -326,11 +412,18 @@ static void emit_packsize_body(FILE *fp, Definition *def)
 
         for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
-            ifprintf(fp, 1, "size += %sPackSize(%s&data->%s);%s",
-                    struct_item->def->name,
-                    const_double_pointer_cast(struct_item->def),
-                    struct_item->name,
-                    listNext(struct_item) == NULL ? "\n\n" : "\n");
+            if (has_constant_pack_size(struct_item->def)) {
+                ifprintf(fp, 1, "size += %sPackSize();%s",
+                        struct_item->def->name,
+                        listNext(struct_item) == NULL ? "\n\n" : "\n");
+            }
+            else {
+                ifprintf(fp, 1, "size += %sPackSize(%s&data->%s);%s",
+                        struct_item->def->name,
+                        const_double_pointer_cast(struct_item->def),
+                        struct_item->name,
+                        listNext(struct_item) == NULL ? "\n\n" : "\n");
+            }
         }
 
         ifprintf(fp, 1, "return size;\n");
@@ -339,10 +432,8 @@ static void emit_packsize_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "return %d;\n", def->enum_def.num_bytes);
         break;
     case DT_UNION:
-        ifprintf(fp, 1, "size_t size = %sPackSize(%s&data->%s);\n\n",
-                def->union_def.discr_def->name,
-                const_double_pointer_cast(def->union_def.discr_def),
-                def->union_def.discr_name);
+        ifprintf(fp, 1, "size_t size = %sPackSize();\n\n",
+                def->union_def.discr_def->name);
         ifprintf(fp, 1, "switch(data->%s) {\n",
                 def->union_def.discr_name);
 
@@ -352,10 +443,18 @@ static void emit_packsize_body(FILE *fp, Definition *def)
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "size += %sPackSize(%s&data->%s);\n",
-                        union_item->def->name,
-                        const_double_pointer_cast(union_item->def),
-                        union_item->name);
+                if (has_constant_pack_size(union_item->def)) {
+                    ifprintf(fp, 2, "size += %sPackSize();%s",
+                            union_item->def->name,
+                            listNext(union_item) == NULL ? "\n\n" : "\n");
+                }
+                else {
+                    ifprintf(fp, 2, "size += %sPackSize(%s&data->%s);%s",
+                            union_item->def->name,
+                            const_double_pointer_cast(union_item->def),
+                            union_item->name,
+                            listNext(union_item) == NULL ? "\n\n" : "\n");
+                }
             }
 
             ifprintf(fp, 2, "break;\n");
@@ -365,8 +464,9 @@ static void emit_packsize_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "return size;\n");
         break;
     default:
-        fprintf(stderr, "%s: Unexpected definition type %d (%s).\n",
-                __func__, def->type, deftype_enum_to_string(def->type));
+        fprintf(stderr, "%s: Unexpected definition type %d (%s) for %s.\n",
+                __func__, def->type, deftype_enum_to_string(def->type),
+                def->name);
         abort();
     }
 
@@ -375,7 +475,7 @@ static void emit_packsize_body(FILE *fp, Definition *def)
 
 static void emit_pack_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp,
             "\n/*\n"
@@ -397,7 +497,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
     StructItem *struct_item;
     UnionItem *union_item;
 
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n{\n");
 
@@ -472,7 +572,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
 
 static void emit_unpack_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp,
             "\n/*\n"
@@ -487,7 +587,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
     StructItem *struct_item;
     UnionItem *union_item;
 
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n{\n");
 
@@ -705,7 +805,7 @@ static void emit_unwrap_body(FILE *fp, Definition *def)
 
 static void emit_read_signature(FILE *fp, Definition *def, FileAttributes *attr)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n/*\n");
     fprintf(fp, " * Read a binary representation of <data> from <%s>.\n", attr->varname);
@@ -719,7 +819,7 @@ static void emit_read_body(FILE *fp, Definition *def, FileAttributes *attr)
     StructItem *struct_item;
     UnionItem *union_item;
 
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n{\n");
 
@@ -812,7 +912,7 @@ static void emit_read_body(FILE *fp, Definition *def, FileAttributes *attr)
 
 static void emit_write_signature(FILE *fp, Definition *def, FileAttributes *attr)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n/*\n");
     fprintf(fp, " * Write a binary representation of <data> to <%s>.\n", attr->varname);
@@ -826,7 +926,7 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
     StructItem *struct_item;
     UnionItem *union_item;
 
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n{\n");
 
@@ -905,7 +1005,7 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
 
 static void emit_print_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n/*\n");
     fprintf(fp, " * Print an ASCII representation of <data> to <fp>.\n");
@@ -919,7 +1019,7 @@ static void emit_print_body(FILE *fp, Definition *def)
     UnionItem *union_item;
     EnumItem *enum_item;
 
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n{\n");
 
@@ -1148,7 +1248,7 @@ static void emit_set_body(FILE *fp, Definition *def)
 
 static void emit_copy_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n/*\n");
     fprintf(fp, " * Copy the %s <src> to <dst>.\n", def->name);
@@ -1161,7 +1261,7 @@ static void emit_copy_body(FILE *fp, Definition *def)
     StructItem *struct_item;
     UnionItem *union_item;
 
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n{\n");
 
@@ -1244,7 +1344,7 @@ static void emit_copy_body(FILE *fp, Definition *def)
 
 static void emit_clear_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n/*\n");
     fprintf(fp, " * Clear an already used %s.\n", def->name);
@@ -1257,7 +1357,7 @@ static void emit_clear_body(FILE *fp, Definition *def)
     StructItem *struct_item;
     UnionItem *union_item;
 
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n{\n");
 
@@ -1316,7 +1416,7 @@ static void emit_clear_body(FILE *fp, Definition *def)
 
 static void emit_destroy_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n/*\n");
     fprintf(fp, " * Destroy an already used %s.\n", def->name);
@@ -1326,7 +1426,7 @@ static void emit_destroy_signature(FILE *fp, Definition *def)
 
 static void emit_destroy_body(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n{\n");
     ifprintf(fp, 1, "%sClear(data);\n\n", def->name);
@@ -1336,19 +1436,22 @@ static void emit_destroy_body(FILE *fp, Definition *def)
 
 static void emit_mx_send_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n/*\n");
-    fprintf(fp, " * Send the %s in <data> out over <mx> file descriptor <fd>,\n", def->name);
-    fprintf(fp, " * using message type <type> and message version <version>.\n");
+    fprintf(fp,
+            " * Send the %s in <data> out over <mx> file descriptor <fd>,\n",
+            def->name);
+    fprintf(fp,
+            " * using message type <type> and message version <version>.\n");
     fprintf(fp, " */\n");
-    fprintf(fp, "void %sSendMX(MX *mx, int fd, uint32_t type, uint32_t version, %s *data)",
-            def->name, def->name);
+    fprintf(fp, "void %sSendMX(MX *mx, int fd, uint32_t type, "
+                "uint32_t version, %s *data)", def->name, def->name);
 }
 
 static void emit_mx_send_body(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n{\n");
     ifprintf(fp, 1, "char *buf = NULL;\n");
@@ -1361,20 +1464,20 @@ static void emit_mx_send_body(FILE *fp, Definition *def)
 
 static void emit_mx_bcast_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n/*\n");
     fprintf(fp, " * Broadcast the %s in <data> to all subscribers to message\n",
             def->name);
     fprintf(fp, " * type <type>, using <version> as the message version.\n");
     fprintf(fp, " */\n");
-    fprintf(fp, "void %sBroadcastMX(MX *mx, uint32_t type, uint32_t version, %s *data)",
-            def->name, def->name);
+    fprintf(fp, "void %sBroadcastMX(MX *mx, uint32_t type, "
+                "uint32_t version, %s *data)", def->name, def->name);
 }
 
 static void emit_mx_bcast_body(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST) return;
+    if (def->type == DT_CONST || def->builtin) return;
 
     fprintf(fp, "\n{\n");
     ifprintf(fp, 1, "char *buf = NULL;\n");
@@ -1411,7 +1514,8 @@ Switch *c_switches(int *switch_count_ptr)
 /*
  * Emit C header file.
  */
-int emit_c_hdr(const char *out_file, const char *in_file, const char *prog_name, List *definitions)
+int emit_c_hdr(const char *out_file, const char *in_file,
+               const char *prog_name, List *definitions)
 {
     FILE *fp;
 
@@ -1434,7 +1538,8 @@ int emit_c_hdr(const char *out_file, const char *in_file, const char *prog_name,
     fprintf(fp, "/*\n");
     fprintf(fp, " * GENERATED CODE. DO NOT EDIT.\n");
     fprintf(fp, " *\n");
-    fprintf(fp, " * Generated by %s from \"%s\" on %s", prog_name, in_file, time_str);
+    fprintf(fp, " * Generated by %s from \"%s\" on %s",
+            prog_name, in_file, time_str);
     fprintf(fp, " */\n\n");
 
     fprintf(fp, "#include <stdlib.h>\t/* size_t */\n");
@@ -1541,7 +1646,8 @@ int emit_c_hdr(const char *out_file, const char *in_file, const char *prog_name,
 /*
  * Emit C source file.
  */
-int emit_c_src(const char *out_file, const char *in_file, const char *prog_name, List *definitions)
+int emit_c_src(const char *out_file, const char *in_file,
+               const char *prog_name, List *definitions)
 {
     FILE *fp;
 

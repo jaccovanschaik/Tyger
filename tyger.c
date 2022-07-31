@@ -31,7 +31,7 @@ static void make_astring_type(List *definitions)
 
     def->type = DT_ASTRING;
     def->name = strdup("astring");
-    def->builtin = 1;
+    def->builtin = true;
 
     listAppendTail(definitions, def);
 }
@@ -44,7 +44,7 @@ static void make_ustring_type(List *definitions)
 
     def->type = DT_USTRING;
     def->name = strdup("ustring");
-    def->builtin = 1;
+    def->builtin = true;
 
     listAppendTail(definitions, def);
 }
@@ -65,7 +65,7 @@ static void make_int_types(List *definitions)
 
             def->type = DT_INT;
             def->name = bufFinish(name_buf);
-            def->builtin = 1;
+            def->builtin = true;
             def->int_def.size = size;
             def->int_def.is_signed = is_signed;
 
@@ -82,7 +82,7 @@ static void make_bool_type(List *definitions)
 
     def->type = DT_BOOL;
     def->name = strdup("bool");
-    def->builtin = 1;
+    def->builtin = true;
 
     listAppendTail(definitions, def);
 }
@@ -101,7 +101,7 @@ static void make_float_types(List *definitions)
 
         def->type = DT_FLOAT;
         def->name = bufFinish(name_buf);
-        def->builtin = 1;
+        def->builtin = true;
         def->float_def.size = size;
 
         listAppendTail(definitions, def);
@@ -116,7 +116,7 @@ static void make_void_type(List *definitions)
 
     def->type = DT_VOID;
     def->name = strdup("void");
-    def->builtin = 1;
+    def->builtin = true;
 
     listAppendTail(definitions, def);
 }
@@ -311,28 +311,21 @@ int main(int argc, char *argv[])
         const char *out_file = optArg(options, "c-hdr", NULL);
 
         if (emit_c_hdr(out_file, argv[file_arg], prog_name, &definitions) != 0)
-	{
             return 1;
-        }
     }
 
     if (optIsSet(options, "c-src")) {
         const char *out_file = optArg(options, "c-src", NULL);
 
 	if (emit_c_src(out_file, argv[file_arg], prog_name, &definitions) != 0)
-	{
             return 1;
-        }
     }
 
     if (optIsSet(options, "python")) {
         const char *out_file = optArg(options, "python", NULL);
 
         if (emit_python_src(out_file, argv[file_arg],
-	                    prog_name, &definitions) != 0)
-	{
-            return 1;
-        }
+	                    prog_name, &definitions) != 0) return 1;
     }
 
     return 0;
