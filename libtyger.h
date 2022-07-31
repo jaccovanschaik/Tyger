@@ -193,7 +193,7 @@ void float32Clear(float *data);
 void float32Destroy(float *data);
 
 /*
- * Return the number of bytes required to pack the float pointed to by <data>.
+ * Return the number of bytes required to pack a float32.
  */
 size_t float32PackSize(void);
 
@@ -250,7 +250,7 @@ void float64Clear(double *data);
 void float64Destroy(double *data);
 
 /*
- * Return the number of bytes required to pack the double pointed to by <data>.
+ * Return the number of bytes required to pack a float64.
  */
 size_t float64PackSize(void);
 
@@ -307,7 +307,7 @@ void boolClear(bool *data);
 void boolDestroy(bool *data);
 
 /*
- * Return the number of bytes required to pack the bool pointed to by <data>.
+ * Return the number of bytes required to pack a bool.
  */
 size_t boolPackSize(void);
 
@@ -364,7 +364,7 @@ void uint8Clear(uint8_t *data);
 void uint8Destroy(uint8_t *data);
 
 /*
- * Return the number of bytes required to pack the uint8_t pointed to by <data>.
+ * Return the number of bytes required to pack a uint8_t.
  */
 size_t uint8PackSize(void);
 
@@ -421,7 +421,7 @@ void int8Clear(int8_t *data);
 void int8Destroy(int8_t *data);
 
 /*
- * Return the number of bytes required to pack the int8_t pointed to by <data>.
+ * Return the number of bytes required to pack an int8_t.
  */
 size_t int8PackSize(void);
 
@@ -478,7 +478,7 @@ void uint16Clear(uint16_t *data);
 void uint16Destroy(uint16_t *data);
 
 /*
- * Return the number of bytes required to pack the uint16_t pointed to by <data>.
+ * Return the number of bytes required to pack a uint16_t.
  */
 size_t uint16PackSize(void);
 
@@ -535,7 +535,7 @@ void int16Clear(int16_t *data);
 void int16Destroy(int16_t *data);
 
 /*
- * Return the number of bytes required to pack the int16_t pointed to by <data>.
+ * Return the number of bytes required to pack an int16_t.
  */
 size_t int16PackSize(void);
 
@@ -592,7 +592,7 @@ void uint32Clear(uint32_t *data);
 void uint32Destroy(uint32_t *data);
 
 /*
- * Return the number of bytes required to pack the uint32_t pointed to by <data>.
+ * Return the number of bytes required to pack a uint32_t.
  */
 size_t uint32PackSize(void);
 
@@ -649,7 +649,7 @@ void int32Clear(int32_t *data);
 void int32Destroy(int32_t *data);
 
 /*
- * Return the number of bytes required to pack the int32_t pointed to by <data>.
+ * Return the number of bytes required to pack an int32_t.
  */
 size_t int32PackSize(void);
 
@@ -706,7 +706,7 @@ void uint64Clear(uint64_t *data);
 void uint64Destroy(uint64_t *data);
 
 /*
- * Return the number of bytes required to pack the uint64_t pointed to by <data>.
+ * Return the number of bytes required to pack a uint64_t.
  */
 size_t uint64PackSize(void);
 
@@ -763,7 +763,7 @@ void int64Clear(int64_t *data);
 void int64Destroy(int64_t *data);
 
 /*
- * Return the number of bytes required to pack the int64_t pointed to by <data>.
+ * Return the number of bytes required to pack an int64_t.
  */
 size_t int64PackSize(void);
 
