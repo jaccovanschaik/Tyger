@@ -78,8 +78,8 @@ typedef struct {
 } FileAttributes;
 
 static FileAttributes file_attr[] = {
-    { "FD", "int ", "fd" },
-    { "FP", "FILE *", "fp" },
+    [FILE_ID_FD] = { "FD", "int ", "fd" },
+    [FILE_ID_FP] = { "FP", "FILE *", "fp" },
 };
 
 static const char *include_guard_name(const char *filename)
@@ -222,31 +222,31 @@ static bool has_constant_pack_size(Definition *def)
 
 static void emit_const_declaration(FILE *fp, Definition *def)
 {
-    fprintf(fp, "\nextern const %s%s;\n",
+    fprintf(fp, "extern const %s%s;\n",
             equivalent_c_type(def->const_def.const_type),
             def->name);
 }
 
 static void emit_const_definition(FILE *fp, Definition *def)
 {
-    fprintf(fp, "\nconst %s%s = ",
+    fprintf(fp, "const %s%s = ",
             equivalent_c_type(def->const_def.const_type), def->name);
 
     switch (def->const_def.const_type->type) {
     case DT_INT:
-        fprintf(fp, "%ld;\n\n", def->const_def.value.l);
+        fprintf(fp, "%ld;\n", def->const_def.value.l);
         break;
     case DT_FLOAT:
-        fprintf(fp, "%g;\n\n", def->const_def.value.d);
+        fprintf(fp, "%g;\n", def->const_def.value.d);
         break;
     case DT_ASTRING:
-        fprintf(fp, "\"%s\";\n\n", def->const_def.value.s);
+        fprintf(fp, "\"%s\";\n", def->const_def.value.s);
         break;
     case DT_USTRING:
-        fprintf(fp, "L\"%s\";\n\n", def->const_def.value.s);
+        fprintf(fp, "L\"%s\";\n", def->const_def.value.s);
         break;
     case DT_BOOL:
-        fprintf(fp, "%s;\n\n", def->const_def.value.l ? "true" : "false");
+        fprintf(fp, "%s;\n", def->const_def.value.l ? "true" : "false");
         break;
     default:
         break;
@@ -335,6 +335,13 @@ static void emit_packsize_signature(FILE *fp, Definition *def)
                 def->name);
         fprintf(fp, " */\n");
         fprintf(fp, "size_t %sPackSize(void)", def->name);
+    }
+    else if (is_pass_by_value(def)) {
+        fprintf(fp, "\n/*\n");
+        fprintf(fp, " * Return the number of bytes required to pack %s "
+                    "<data>.\n", def->name);
+        fprintf(fp, " */\n");
+        fprintf(fp, "size_t %sPackSize(%s data)", def->name, def->name);
     }
     else {
         fprintf(fp, "\n/*\n");
@@ -926,8 +933,14 @@ static void emit_write_signature(FILE *fp, Definition *def, FileAttributes *attr
     fprintf(fp, "\n/*\n");
     fprintf(fp, " * Write a binary representation of <data> to <%s>.\n", attr->varname);
     fprintf(fp, " */\n");
-    fprintf(fp, "size_t %sWriteTo%s(%s%s, const %s *data)",
-            def->name, attr->suffix, attr->vartype, attr->varname, def->name);
+    if (is_pass_by_value(def)) {
+        fprintf(fp, "size_t %sWriteTo%s(%s%s, %s data)",
+                def->name, attr->suffix, attr->vartype, attr->varname, def->name);
+    }
+    else {
+        fprintf(fp, "size_t %sWriteTo%s(%s%s, const %s *data)",
+                def->name, attr->suffix, attr->vartype, attr->varname, def->name);
+    }
 }
 
 static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
@@ -947,14 +960,22 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n");
         ifprintf(fp, 1,
-                "size_t byte_count = uint32WriteTo%s(%s, &data->count);\n\n",
+                "size_t byte_count = uint32WriteTo%s(%s, data->count);\n\n",
                 attr->suffix, attr->varname);
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
-        ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, data->%s + i);\n",
-                def->array_def.item_type->name,
-                attr->suffix, attr->varname,
-                def->array_def.item_name);
+        if (is_pass_by_value(def->array_def.item_type)) {
+            ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, data->%s[i]);\n",
+                    def->array_def.item_type->name,
+                    attr->suffix, attr->varname,
+                    def->array_def.item_name);
+        }
+        else {
+            ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, data->%s + i);\n",
+                    def->array_def.item_type->name,
+                    attr->suffix, attr->varname,
+                    def->array_def.item_name);
+        }
         ifprintf(fp, 1, "}\n\n");
 
         ifprintf(fp, 1, "return byte_count;\n");
@@ -964,9 +985,16 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
 
         for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
-            ifprintf(fp, 1, "byte_count += %sWriteTo%s(%s, &data->%s);\n",
-                    struct_item->def->name, attr->suffix, attr->varname,
-                    struct_item->name);
+            if (is_pass_by_value(struct_item->def)) {
+                ifprintf(fp, 1, "byte_count += %sWriteTo%s(%s, data->%s);\n",
+                        struct_item->def->name, attr->suffix, attr->varname,
+                        struct_item->name);
+            }
+            else {
+                ifprintf(fp, 1, "byte_count += %sWriteTo%s(%s, &data->%s);\n",
+                        struct_item->def->name, attr->suffix, attr->varname,
+                        struct_item->name);
+            }
         }
 
         fputc('\n', fp);
@@ -979,7 +1007,7 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
 
         break;
     case DT_UNION:
-        ifprintf(fp, 1, "size_t byte_count = %sWriteTo%s(%s, &data->%s);\n\n",
+        ifprintf(fp, 1, "size_t byte_count = %sWriteTo%s(%s, data->%s);\n\n",
                 def->union_def.discr_def->name,
                 attr->suffix, attr->varname,
                 def->union_def.discr_name);
@@ -991,10 +1019,18 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, &data->%s);\n",
-                        union_item->def->name,
-                        attr->suffix, attr->varname,
-                        union_item->name);
+                if (is_pass_by_value(union_item->def)) {
+                    ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, data->%s);\n",
+                            union_item->def->name,
+                            attr->suffix, attr->varname,
+                            union_item->name);
+                }
+                else {
+                    ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, &data->%s);\n",
+                            union_item->def->name,
+                            attr->suffix, attr->varname,
+                            union_item->name);
+                }
             }
             ifprintf(fp, 2, "break;\n");
         }
@@ -1192,16 +1228,17 @@ static void emit_create_body(FILE *fp, Definition *def)
 
     ifprintf(fp, 1, "%s *data = calloc(1, sizeof(%s));\n\n", def->name, def->name);
 
+    ifprintf(fp, 1, "%sSet(data", def->name);
+
     for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
     {
-        ifprintf(fp, 1, "%sCopy(&data->%s, %s);\n",
-                struct_item->def->name,
-                struct_item->name,
-                struct_item->name);
+        fprintf(fp, ", %s", struct_item->name);
+#if 0
+#endif
     }
 
-    fprintf(fp, "\n");
+    fprintf(fp, ");\n\n");
 
     ifprintf(fp, 1, "return data;\n");
 
@@ -1252,10 +1289,15 @@ static void emit_set_body(FILE *fp, Definition *def)
     for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
     {
-        ifprintf(fp, 1, "%sCopy(&dst->%s, %s);\n",
-                struct_item->def->name,
-                struct_item->name,
-                struct_item->name);
+        if (is_pass_by_value(struct_item->def) && !is_string_type(struct_item->def)) {
+            ifprintf(fp, 1, "dst->%s = %s;\n", struct_item->name, struct_item->name);
+        }
+        else {
+            ifprintf(fp, 1, "%sCopy(&dst->%s, %s);\n",
+                    struct_item->def->name,
+                    struct_item->name,
+                    struct_item->name);
+        }
     }
 
     fprintf(fp, "}\n");
@@ -1324,9 +1366,13 @@ static void emit_copy_body(FILE *fp, Definition *def)
                 equivalent_c_type(def->array_def.item_type));
 
         ifprintf(fp, 1, "for (i = 0; i < dst->count; i++) {\n");
-        if (is_pass_by_value(def->array_def.item_type)) {
+        if (is_string_type(def->array_def.item_type)) {
             ifprintf(fp, 2, "%sCopy(dst->%s + i, src->%s[i]);\n",
                     def->array_def.item_type->name,
+                    def->array_def.item_name, def->array_def.item_name);
+        }
+        else if (is_pass_by_value(def->array_def.item_type)) {
+            ifprintf(fp, 2, "dst->%s[i] = src->%s[i];\n",
                     def->array_def.item_name, def->array_def.item_name);
         }
         else {
@@ -1339,9 +1385,14 @@ static void emit_copy_body(FILE *fp, Definition *def)
     case DT_STRUCT:
         for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
-            if (is_pass_by_value(struct_item->def)) {
+            if (is_string_type(struct_item->def)) {
                 ifprintf(fp, 1, "%sCopy(&dst->%s, src->%s);\n",
                         struct_item->def->name,
+                        struct_item->name,
+                        struct_item->name);
+            }
+            else if (is_pass_by_value(struct_item->def)) {
+                ifprintf(fp, 1, "dst->%s = src->%s;\n",
                         struct_item->name,
                         struct_item->name);
             }
@@ -1367,9 +1418,14 @@ static void emit_copy_body(FILE *fp, Definition *def)
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
             if (!is_void_type(union_item->def)) {
-                if (is_pass_by_value(union_item->def)) {
+                if (is_string_type(union_item->def)) {
                     ifprintf(fp, 2, "%sCopy(&dst->%s, src->%s);\n",
                             union_item->def->name,
+                            union_item->name,
+                            union_item->name);
+                }
+                else if (is_pass_by_value(union_item->def)) {
+                    ifprintf(fp, 2, "dst->%s = src->%s;\n",
                             union_item->name,
                             union_item->name);
                 }
@@ -1496,8 +1552,14 @@ static void emit_mx_send_signature(FILE *fp, Definition *def)
     fprintf(fp,
             " * using message type <type> and message version <version>.\n");
     fprintf(fp, " */\n");
-    fprintf(fp, "void %sSendMX(MX *mx, int fd, uint32_t type, "
-                "uint32_t version, %s *data)", def->name, def->name);
+    if (is_pass_by_value(def)) {
+        fprintf(fp, "void %sSendMX(MX *mx, int fd, uint32_t type, "
+                    "uint32_t version, %s data)", def->name, def->name);
+    }
+    else {
+        fprintf(fp, "void %sSendMX(MX *mx, int fd, uint32_t type, "
+                    "uint32_t version, %s *data)", def->name, def->name);
+    }
 }
 
 static void emit_mx_send_body(FILE *fp, Definition *def)
@@ -1522,8 +1584,14 @@ static void emit_mx_bcast_signature(FILE *fp, Definition *def)
             def->name);
     fprintf(fp, " * type <type>, using <version> as the message version.\n");
     fprintf(fp, " */\n");
-    fprintf(fp, "void %sBroadcastMX(MX *mx, uint32_t type, "
-                "uint32_t version, %s *data)", def->name, def->name);
+    if (is_pass_by_value(def)) {
+        fprintf(fp, "void %sBroadcastMX(MX *mx, uint32_t type, "
+                    "uint32_t version, %s data)", def->name, def->name);
+    }
+    else {
+        fprintf(fp, "void %sBroadcastMX(MX *mx, uint32_t type, "
+                    "uint32_t version, %s *data)", def->name, def->name);
+    }
 }
 
 static void emit_mx_bcast_body(FILE *fp, Definition *def)
@@ -1543,7 +1611,7 @@ static void set_dependencies(void)
 {
     if (do_wrap)    do_pack = TRUE;
     if (do_unwrap)  do_unpack = TRUE;
-    if (do_create)  do_copy = TRUE;
+    if (do_create)  { do_copy = TRUE; do_set  = TRUE; }
     if (do_set)     do_copy = TRUE;
     if (do_copy)    do_clear = TRUE;
     if (do_destroy) do_clear = TRUE;
@@ -1598,11 +1666,11 @@ int emit_c_hdr(const char *out_file, const char *in_file,
     fprintf(fp, "#include <stdbool.h>\t/* bool */\n");
     fprintf(fp, "#include <wchar.h>\t/* wchar_t */\n\n");
 
-    fprintf(fp, "\n#include <libtyger.h>\t/* Tyger functions. */\n\n");
-
     if (do_mx_send || do_mx_bcast) {
-        fprintf(fp, "#include <libmx.h>\t/* MX functions. */\n");
+        fprintf(fp, "\n#include <libmx.h>\t/* MX functions. */\n");
     }
+
+    fprintf(fp, "\n#include <libtyger.h>\t/* Tyger functions. */\n\n");
 
     for (def = listHead(definitions); def; def = listNext(def)) {
         if (def->type == DT_CONST) {
@@ -1738,12 +1806,12 @@ int emit_c_src(const char *out_file, const char *in_file,
     fprintf(fp, "#include <stdlib.h>\t/* size_t */\n");
 
     if (do_mx_send || do_mx_bcast) {
-        fprintf(fp, "\n#include <libmx.h>\t/* MX functions. */");
+        fprintf(fp, "\n#include <libmx.h>\t/* MX functions. */\n");
     }
 
-    fprintf(fp, "\n#include <libtyger.h>\t/* Tyger functions. */\n\n");
+    fprintf(fp, "\n#include <libtyger.h>\t/* Tyger functions. */\n");
 
-    fprintf(fp, "#include \"%s\"\n", associated_header_file(out_file));
+    fprintf(fp, "\n#include \"%s\"\n\n", associated_header_file(out_file));
 
     for (def = listHead(definitions); def; def = listNext(def)) {
         if (def->type == DT_CONST) {

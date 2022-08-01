@@ -92,14 +92,19 @@ static int expect_bool(tkToken **token, bool *contents, Buffer *error)
 
 static int expect_float(tkToken **token, double *contents, Buffer *error)
 {
-    if ((*token)->type != TT_DOUBLE) {
-        expected(TT_DOUBLE, *token, error);
-        return 1;
+    if ((*token)->type == TT_LONG) {
+        *contents = (*token)->l;
+        *token = listNext(*token);
+        return 0;
     }
-    else {
+    else if ((*token)->type == TT_DOUBLE) {
         *contents = (*token)->d;
         *token = listNext(*token);
         return 0;
+    }
+    else {
+        expected(TT_DOUBLE, *token, error);
+        return 1;
     }
 }
 

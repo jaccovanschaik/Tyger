@@ -40,12 +40,64 @@ libtyger.so: libtyger.o
 test_objects: test_objects.o Objects.o libtyger.a
 	$(CC) $(CFLAGS) -o $@ $^ $(JVS_LIB)
 
-test: tokenizer-test libtyger-test test_objects Objects.py
+test: tokenizer-test libtyger-test test_objects Objects.py Test.o Test.py
 	./tokenizer-test
 	./libtyger-test
 	./test_objects
 	python2 ./test_objects.py
 	python3 ./test_objects.py
+
+Test.o: Test.c Test.h
+	$(CC) -c $(CFLAGS) -o $@ $< $(JVS_LIB)
+
+Test.c: test/Test.tgr tyger
+	./tyger -c Test.c \
+            --c-packsize \
+            --c-pack \
+            --c-unpack \
+            --c-wrap \
+            --c-unwrap \
+            --c-read-fd \
+            --c-write-fd \
+            --c-read-fp \
+            --c-write-fp \
+            --c-print-fp \
+            --c-create \
+            --c-set \
+            --c-copy \
+            --c-clear \
+            --c-destroy \
+            --c-mx-send \
+            --c-mx-bcast $<
+
+Test.h: test/Test.tgr tyger
+	./tyger -h Test.h \
+            --c-packsize \
+            --c-pack \
+            --c-unpack \
+            --c-wrap \
+            --c-unwrap \
+            --c-read-fd \
+            --c-write-fd \
+            --c-read-fp \
+            --c-write-fp \
+            --c-print-fp \
+            --c-create \
+            --c-set \
+            --c-copy \
+            --c-clear \
+            --c-destroy \
+            --c-mx-send \
+            --c-mx-bcast $<
+
+Test.py: test/Test.tgr tyger
+	./tyger -p Test.py \
+            --py-pack \
+            --py-unpack \
+            --py-recv \
+            --py-mx-send \
+            --py-mx-bcast \
+            test/Test.tgr $<
 
 tokentype.c: tokentype.txt
 	./gen_enum -c -p TT -t tkType $< > $@
