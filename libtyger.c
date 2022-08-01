@@ -366,9 +366,9 @@ void astringDestroy(char **data)
 /*
  * Return the number of bytes required to pack the astring pointed to by <data>.
  */
-size_t astringPackSize(const char *const *data)
+size_t astringPackSize(const char *data)
 {
-    return (*data == NULL) ? 4 : 4 + strlen(*data);
+    return (data == NULL) ? 4 : 4 + strlen(data);
 }
 
 /*
@@ -662,15 +662,12 @@ static const wchar_t *utf8_to_wchar(char *in, size_t count, size_t *size)
 /*
  * Return the number of bytes required to pack the ustring pointed to by <data>.
  */
-size_t ustringPackSize(const wchar_t *const *data)
+size_t ustringPackSize(const wchar_t *data)
 {
-    uint32_t out_size;
+    uint32_t out_size = 0;
 
-    if (*data == NULL) {
-        out_size = 0;
-    }
-    else {
-        wchar_to_utf8(*data, wcslen(*data), &out_size);
+    if (data != NULL) {
+        wchar_to_utf8(data, wcslen(data), &out_size);
     }
 
     return sizeof(uint32_t) + out_size;
@@ -2188,7 +2185,7 @@ int main(int argc, char *argv[])
 
     astring_data = strdup("Hoi");
 
-    assert(astringPackSize((const char **) &astring_data) == 7);
+    assert(astringPackSize(astring_data) == 7);
     astringPack(astring_data, &buffer, &size, &pos);
     assert(pos == 7);
     assert(size >= 7);
@@ -2200,7 +2197,7 @@ int main(int argc, char *argv[])
 
     ustring_data = wcsdup(L"αß¢");
 
-    assert(ustringPackSize((const wchar_t **) &ustring_data) == 10);
+    assert(ustringPackSize(ustring_data) == 10);
     ustringPack(ustring_data, &buffer, &size, &pos);
     assert(pos == 10);
     assert(size >= 10);

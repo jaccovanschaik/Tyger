@@ -63,7 +63,7 @@ size_t uintWriteToFD(int fd, size_t num_bytes, unsigned int data);
 size_t uintReadFromFP(FILE *fp, size_t num_bytes, unsigned int *data);
 
 /*
- * the <num_bytes> least-significant bytes from <data> to <fp>
+ * Write the <num_bytes> least-significant bytes from <data> to <fp>
  */
 size_t uintWriteToFP(FILE *fp, size_t num_bytes, unsigned int data);
 
@@ -80,7 +80,7 @@ void astringDestroy(char **data);
 /*
  * Return the number of bytes required to pack the astring pointed to by <data>.
  */
-size_t astringPackSize(const char *const *data);
+size_t astringPackSize(const char *data);
 
 /*
  * Unpack an astring from <buffer> (which has size <size>) and put it at the
@@ -137,7 +137,7 @@ void ustringDestroy(wchar_t **data);
 /*
  * Return the number of bytes required to pack the ustring pointed to by <data>.
  */
-size_t ustringPackSize(const wchar_t *const *data);
+size_t ustringPackSize(const wchar_t *data);
 
 /*
  * Unpack a UTF-8 encoded ustring from <buffer> (which has size <size>), write

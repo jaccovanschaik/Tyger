@@ -417,6 +417,12 @@ static void emit_packsize_body(FILE *fp, Definition *def)
                         struct_item->def->name,
                         listNext(struct_item) == NULL ? "\n\n" : "\n");
             }
+            else if (is_pass_by_value(struct_item->def)) {
+                ifprintf(fp, 1, "size += %sPackSize(data->%s);%s",
+                        struct_item->def->name,
+                        struct_item->name,
+                        listNext(struct_item) == NULL ? "\n\n" : "\n");
+            }
             else {
                 ifprintf(fp, 1, "size += %sPackSize(%s&data->%s);%s",
                         struct_item->def->name,
