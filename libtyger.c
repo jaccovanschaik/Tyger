@@ -499,7 +499,7 @@ void astringPrint(FILE *fp, const char *data, int indent)
 /*
  * Copy string <src> to <dst>.
  */
-void astringCopy(char **dst, const char *const *src)
+void astringCopy(char **dst, const char *src)
 {
     assert(dst != NULL);
     assert(src != NULL);
@@ -509,9 +509,7 @@ void astringCopy(char **dst, const char *const *src)
         *dst = NULL;
     }
 
-    if (*src != NULL) {
-        *dst = strdup(*src);
-    }
+    *dst = strdup(src);
 }
 
 /*
@@ -843,7 +841,7 @@ void ustringPrint(FILE *fp, const wchar_t *data, int indent)
 /*
  * Copy string <src> to <dst>.
  */
-void ustringCopy(wchar_t **dst, const wchar_t *const *src)
+void ustringCopy(wchar_t **dst, const wchar_t *src)
 {
     assert(dst != NULL);
     assert(src != NULL);
@@ -853,9 +851,7 @@ void ustringCopy(wchar_t **dst, const wchar_t *const *src)
         *dst = NULL;
     }
 
-    if (*src != NULL) {
-        *dst = wcsdup(*src);
-    }
+    *dst = wcsdup(src);
 }
 
 /*
@@ -978,17 +974,6 @@ size_t float32WriteToFP(FILE *fp, float data)
 void float32Print(FILE *fp, float data, int indent)
 {
     fprintf(fp, "%g", data);
-}
-
-/*
- * Copy <src> to <dst>.
- */
-void float32Copy(float *dst, const float *src)
-{
-    assert(dst != NULL);
-    assert(src != NULL);
-
-    *dst = *src;
 }
 
 /*
@@ -1121,17 +1106,6 @@ void float64Print(FILE *fp, double data, int indent)
     fprintf(fp, "%g", data);
 }
 
-/*
- * Copy <src> to <dst>.
- */
-void float64Copy(double *dst, const double *src)
-{
-    assert(dst != NULL);
-    assert(src != NULL);
-
-    *dst = *src;
-}
-
 static uint8_t bool_encode(bool b)
 {
     return b ? 1 : 0;
@@ -1259,12 +1233,11 @@ void boolPrint(FILE *fp, bool data, int indent)
 /*
  * Copy <src> to <dst>.
  */
-void boolCopy(bool *dst, const bool *src)
+void boolCopy(bool *dst, bool src)
 {
     assert(dst != NULL);
-    assert(src != NULL);
 
-    *dst = *src;
+    *dst = src;
 }
 
 /*
@@ -1362,17 +1335,6 @@ void uint8Print(FILE *fp, uint8_t data, int indent)
 }
 
 /*
- * Copy <src> to <dst>.
- */
-void uint8Copy(uint8_t *dst, const uint8_t *src)
-{
-    assert(dst != NULL);
-    assert(src != NULL);
-
-    *dst = *src;
-}
-
-/*
  * Clear the contents of <data>.
  */
 void int8Clear(int8_t *data)
@@ -1464,17 +1426,6 @@ size_t int8WriteToFP(FILE *fp, int8_t data)
 void int8Print(FILE *fp, int8_t data, int indent)
 {
     fprintf(fp, "%" PRId8, data);
-}
-
-/*
- * Copy <src> to <dst>.
- */
-void int8Copy(int8_t *dst, const int8_t *src)
-{
-    assert(dst != NULL);
-    assert(src != NULL);
-
-    *dst = *src;
 }
 
 /*
@@ -1574,17 +1525,6 @@ void uint16Print(FILE *fp, uint16_t data, int indent)
 }
 
 /*
- * Copy <src> to <dst>.
- */
-void uint16Copy(uint16_t *dst, const uint16_t *src)
-{
-    assert(dst != NULL);
-    assert(src != NULL);
-
-    *dst = *src;
-}
-
-/*
  * Clear the contents of <data>.
  */
 void int16Clear(int16_t *data)
@@ -1678,17 +1618,6 @@ size_t int16WriteToFP(FILE *fp, int16_t data)
 void int16Print(FILE *fp, int16_t data, int indent)
 {
     fprintf(fp, "%" PRId16, data);
-}
-
-/*
- * Copy <src> to <dst>.
- */
-void int16Copy(int16_t *dst, const int16_t *src)
-{
-    assert(dst != NULL);
-    assert(src != NULL);
-
-    *dst = *src;
 }
 
 /*
@@ -1792,17 +1721,6 @@ void uint32Print(FILE *fp, uint32_t data, int indent)
 }
 
 /*
- * Copy <src> to <dst>.
- */
-void uint32Copy(uint32_t *dst, const uint32_t *src)
-{
-    assert(dst != NULL);
-    assert(src != NULL);
-
-    *dst = *src;
-}
-
-/*
  * Clear the contents of <data>.
  */
 void int32Clear(int32_t *data)
@@ -1900,17 +1818,6 @@ size_t int32WriteToFP(FILE *fp, int32_t data)
 void int32Print(FILE *fp, int32_t data, int indent)
 {
     fprintf(fp, "%" PRId32, data);
-}
-
-/*
- * Copy <src> to <dst>.
- */
-void int32Copy(int32_t *dst, const int32_t *src)
-{
-    assert(dst != NULL);
-    assert(src != NULL);
-
-    *dst = *src;
 }
 
 /*
@@ -2022,17 +1929,6 @@ void uint64Print(FILE *fp, uint64_t data, int indent)
 }
 
 /*
- * Copy <src> to <dst>.
- */
-void uint64Copy(uint64_t *dst, const uint64_t *src)
-{
-    assert(dst != NULL);
-    assert(src != NULL);
-
-    *dst = *src;
-}
-
-/*
  * Clear the contents of <data>.
  */
 void int64Clear(int64_t *data)
@@ -2138,17 +2034,6 @@ size_t int64WriteToFP(FILE *fp, int64_t data)
 void int64Print(FILE *fp, int64_t data, int indent)
 {
     fprintf(fp, "%" PRId64, data);
-}
-
-/*
- * Copy <src> to <dst>.
- */
-void int64Copy(int64_t *dst, const int64_t *src)
-{
-    assert(dst != NULL);
-    assert(src != NULL);
-
-    *dst = *src;
 }
 
 #ifdef TEST

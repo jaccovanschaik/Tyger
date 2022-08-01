@@ -122,7 +122,7 @@ void astringPrint(FILE *fp, const char *data, int indent);
 /*
  * Copy string <src> to <dst>.
  */
-void astringCopy(char **dst, const char *const *src);
+void astringCopy(char **dst, const char *src);
 
 /*
  * Clear the contents of <data>.
@@ -182,7 +182,7 @@ void ustringPrint(FILE *fp, const wchar_t *data, int indent);
 /*
  * Copy string <src> to <dst>.
  */
-void ustringCopy(wchar_t **dst, const wchar_t *const *src);
+void ustringCopy(wchar_t **dst, const wchar_t *src);
 
 /*
  * Clear the contents of <data>.
@@ -237,11 +237,6 @@ size_t float32WriteToFP(FILE *fp, float data);
 void float32Print(FILE *fp, float data, int indent);
 
 /*
- * Copy <src> to <dst>.
- */
-void float32Copy(float *dst, const float *src);
-
-/*
  * Clear the contents of <data>.
  */
 void float64Clear(double *data);
@@ -292,11 +287,6 @@ size_t float64WriteToFP(FILE *fp, double data);
  * Print an ASCII representation of <data> to <fp>.
  */
 void float64Print(FILE *fp, double data, int indent);
-
-/*
- * Copy <src> to <dst>.
- */
-void float64Copy(double *dst, const double *src);
 
 /*
  * Clear the contents of <data>.
@@ -353,7 +343,7 @@ void boolPrint(FILE *fp, bool data, int indent);
 /*
  * Copy <src> to <dst>.
  */
-void boolCopy(bool *dst, const bool *src);
+void boolCopy(bool *dst, bool src);
 
 /*
  * Clear the contents of <data>.
@@ -408,11 +398,6 @@ size_t uint8WriteToFP(FILE *fp, uint8_t data);
 void uint8Print(FILE *fp, uint8_t data, int indent);
 
 /*
- * Copy <src> to <dst>.
- */
-void uint8Copy(uint8_t *dst, const uint8_t *src);
-
-/*
  * Clear the contents of <data>.
  */
 void int8Clear(int8_t *data);
@@ -463,11 +448,6 @@ size_t int8WriteToFP(FILE *fp, int8_t data);
  * Print an ASCII representation of <data> to <fp>.
  */
 void int8Print(FILE *fp, int8_t data, int indent);
-
-/*
- * Copy <src> to <dst>.
- */
-void int8Copy(int8_t *dst, const int8_t *src);
 
 /*
  * Clear the contents of <data>.
@@ -522,11 +502,6 @@ size_t uint16WriteToFP(FILE *fp, uint16_t data);
 void uint16Print(FILE *fp, uint16_t data, int indent);
 
 /*
- * Copy <src> to <dst>.
- */
-void uint16Copy(uint16_t *dst, const uint16_t *src);
-
-/*
  * Clear the contents of <data>.
  */
 void int16Clear(int16_t *data);
@@ -577,11 +552,6 @@ size_t int16WriteToFP(FILE *fp, int16_t data);
  * Print an ASCII representation of <data> to <fp>.
  */
 void int16Print(FILE *fp, int16_t data, int indent);
-
-/*
- * Copy <src> to <dst>.
- */
-void int16Copy(int16_t *dst, const int16_t *src);
 
 /*
  * Clear the contents of <data>.
@@ -636,11 +606,6 @@ size_t uint32WriteToFP(FILE *fp, uint32_t data);
 void uint32Print(FILE *fp, uint32_t data, int indent);
 
 /*
- * Copy <src> to <dst>.
- */
-void uint32Copy(uint32_t *dst, const uint32_t *src);
-
-/*
  * Clear the contents of <data>.
  */
 void int32Clear(int32_t *data);
@@ -691,11 +656,6 @@ size_t int32WriteToFP(FILE *fp, int32_t data);
  * Print an ASCII representation of <data> to <fp>.
  */
 void int32Print(FILE *fp, int32_t data, int indent);
-
-/*
- * Copy <src> to <dst>.
- */
-void int32Copy(int32_t *dst, const int32_t *src);
 
 /*
  * Clear the contents of <data>.
@@ -750,11 +710,6 @@ size_t uint64WriteToFP(FILE *fp, uint64_t data);
 void uint64Print(FILE *fp, uint64_t data, int indent);
 
 /*
- * Copy <src> to <dst>.
- */
-void uint64Copy(uint64_t *dst, const uint64_t *src);
-
-/*
  * Clear the contents of <data>.
  */
 void int64Clear(int64_t *data);
@@ -805,11 +760,6 @@ size_t int64WriteToFP(FILE *fp, int64_t data);
  * Print an ASCII representation of <data> to <fp>.
  */
 void int64Print(FILE *fp, int64_t data, int indent);
-
-/*
- * Copy <src> to <dst>.
- */
-void int64Copy(int64_t *dst, const int64_t *src);
 
 #ifdef __cplusplus
 }

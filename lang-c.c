@@ -230,19 +230,6 @@ static bool has_constant_pack_size(Definition *def)
     }
 }
 
-static const char *const_double_pointer_cast(Definition *def)
-{
-    if (def->type == DT_ASTRING) {
-        return "(const char **) ";
-    }
-    else if (def->type == DT_USTRING) {
-        return "(const wchar_t **) ";
-    }
-    else {
-        return "";
-    }
-}
-
 static void emit_const_declaration(FILE *fp, Definition *def)
 {
     fprintf(fp, "\nextern const %s%s;\n",
@@ -398,9 +385,16 @@ static void emit_packsize_body(FILE *fp, Definition *def)
         else {
             ifprintf(fp, 1, "for (int i = 0; i < data->count; i++) {\n");
 
-            ifprintf(fp, 2, "size += %sPackSize(data->%s + i);\n",
-                    def->array_def.item_type->name,
-                    def->array_def.item_name);
+            if (is_pass_by_value(def->array_def.item_type)) {
+                ifprintf(fp, 2, "size += %sPackSize(data->%s[i]);\n",
+                        def->array_def.item_type->name,
+                        def->array_def.item_name);
+            }
+            else {
+                ifprintf(fp, 2, "size += %sPackSize(data->%s + i);\n",
+                        def->array_def.item_type->name,
+                        def->array_def.item_name);
+            }
 
             ifprintf(fp, 1, "}\n\n");
         }
@@ -424,9 +418,8 @@ static void emit_packsize_body(FILE *fp, Definition *def)
                         listNext(struct_item) == NULL ? "\n\n" : "\n");
             }
             else {
-                ifprintf(fp, 1, "size += %sPackSize(%s&data->%s);%s",
+                ifprintf(fp, 1, "size += %sPackSize(&data->%s);%s",
                         struct_item->def->name,
-                        const_double_pointer_cast(struct_item->def),
                         struct_item->name,
                         listNext(struct_item) == NULL ? "\n\n" : "\n");
             }
@@ -461,9 +454,8 @@ static void emit_packsize_body(FILE *fp, Definition *def)
                             listNext(union_item) == NULL ? "\n\n" : "\n");
                 }
                 else {
-                    ifprintf(fp, 2, "size += %sPackSize(%s&data->%s);%s",
+                    ifprintf(fp, 2, "size += %sPackSize(&data->%s);%s",
                             union_item->def->name,
-                            const_double_pointer_cast(union_item->def),
                             union_item->name,
                             listNext(union_item) == NULL ? "\n\n" : "\n");
                 }
@@ -532,10 +524,18 @@ static void emit_pack_body(FILE *fp, Definition *def)
                 "size_t byte_count = uint32Pack(data->count, buffer, size, pos);\n\n");
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
-        ifprintf(fp, 2, "byte_count += %sPack(%sdata->%s + i, buffer, size, pos);\n",
-                def->array_def.item_type->name,
-                const_double_pointer_cast(def->array_def.item_type),
-                def->array_def.item_name);
+
+        if (is_pass_by_value(def->array_def.item_type)) {
+            ifprintf(fp, 2, "byte_count += %sPack(data->%s[i], buffer, size, pos);\n",
+                    def->array_def.item_type->name,
+                    def->array_def.item_name);
+        }
+        else {
+            ifprintf(fp, 2, "byte_count += %sPack(data->%s + i, buffer, size, pos);\n",
+                    def->array_def.item_type->name,
+                    def->array_def.item_name);
+        }
+
         ifprintf(fp, 1, "}\n\n");
         ifprintf(fp, 1, "return byte_count;\n");
         break;
@@ -551,9 +551,8 @@ static void emit_pack_body(FILE *fp, Definition *def)
                         listNext(struct_item) == NULL ? "\n\n" : "\n");
             }
             else {
-                ifprintf(fp, 1, "byte_count += %sPack(%s&data->%s, buffer, size, pos);%s",
+                ifprintf(fp, 1, "byte_count += %sPack(&data->%s, buffer, size, pos);%s",
                         struct_item->def->name,
-                        const_double_pointer_cast(struct_item->def),
                         struct_item->name,
                         listNext(struct_item) == NULL ? "\n\n" : "\n");
             }
@@ -582,9 +581,8 @@ static void emit_pack_body(FILE *fp, Definition *def)
                             union_item->name);
                 }
                 else {
-                    ifprintf(fp, 2, "byte_count += %sPack(%s&data->%s, buffer, size, pos);\n",
+                    ifprintf(fp, 2, "byte_count += %sPack(&data->%s, buffer, size, pos);\n",
                             union_item->def->name,
-                            const_double_pointer_cast(union_item->def),
                             union_item->name);
                 }
             }
@@ -1067,10 +1065,18 @@ static void emit_print_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
         ifprintf(fp, 2, "fprintf(fp, \"%%s%s: \", indent(level));\n",
                 def->array_def.item_name);
-        ifprintf(fp, 2, "%sPrint(fp, %s(data->%s + i), level);\n",
-                def->array_def.item_type->name,
-                const_double_pointer_cast(def->array_def.item_type),
-                def->array_def.item_name);
+
+        if (is_pass_by_value(def->array_def.item_type)) {
+            ifprintf(fp, 2, "%sPrint(fp, data->%s[i], level);\n",
+                    def->array_def.item_type->name,
+                    def->array_def.item_name);
+        }
+        else {
+            ifprintf(fp, 2, "%sPrint(fp, data->%s + i, level);\n",
+                    def->array_def.item_type->name,
+                    def->array_def.item_name);
+        }
+
         ifprintf(fp, 2, "fprintf(fp, \"\\n\");\n");
 
         ifprintf(fp, 1, "}\n\n");
@@ -1093,9 +1099,8 @@ static void emit_print_body(FILE *fp, Definition *def)
                             struct_item->name);
                 }
                 else {
-                    ifprintf(fp, 1, "%sPrint(fp, %s&data->%s, level);\n",
+                    ifprintf(fp, 1, "%sPrint(fp, &data->%s, level);\n",
                             struct_item->def->name,
-                            const_double_pointer_cast(struct_item->def),
                             struct_item->name);
                 }
                 ifprintf(fp, 1, "fprintf(fp, \"\\n\");\n\n");
@@ -1208,17 +1213,11 @@ static void emit_create_body(FILE *fp, Definition *def)
     ifprintf(fp, 1, "%s *data = calloc(1, sizeof(%s));\n\n", def->name, def->name);
 
     for (struct_item = listHead(&def->struct_def.items);
-         struct_item; struct_item = listNext(struct_item)) {
-        Definition *def = effective_definition(struct_item->def);
-
-        int direct = def->type == DT_INT || def->type == DT_FLOAT ||
-                     def->type == DT_ENUM || def->type == DT_BOOL ||
-                     def->type == DT_ASTRING || def->type == DT_USTRING;
-
-        ifprintf(fp, 1, "%sCopy(&data->%s, %s%s);\n",
+         struct_item; struct_item = listNext(struct_item))
+    {
+        ifprintf(fp, 1, "%sCopy(&data->%s, %s);\n",
                 struct_item->def->name,
                 struct_item->name,
-                direct ? "&" : "",
                 struct_item->name);
     }
 
@@ -1276,17 +1275,11 @@ static void emit_set_body(FILE *fp, Definition *def)
     ifprintf(fp, 1, "assert(dst != NULL);\n\n");
 
     for (struct_item = listHead(&def->struct_def.items);
-         struct_item; struct_item = listNext(struct_item)) {
-        Definition *def = effective_definition(struct_item->def);
-
-        int direct = def->type == DT_INT || def->type == DT_FLOAT ||
-                     def->type == DT_ENUM || def->type == DT_BOOL ||
-                     def->type == DT_ASTRING || def->type == DT_USTRING;
-
-        ifprintf(fp, 1, "%sCopy(&dst->%s, %s%s);\n",
+         struct_item; struct_item = listNext(struct_item))
+    {
+        ifprintf(fp, 1, "%sCopy(&dst->%s, %s);\n",
                 struct_item->def->name,
                 struct_item->name,
-                direct ? "&" : "",
                 struct_item->name);
     }
 
@@ -1300,7 +1293,13 @@ static void emit_copy_signature(FILE *fp, Definition *def)
     fprintf(fp, "\n/*\n");
     fprintf(fp, " * Copy the %s <src> to <dst>.\n", def->name);
     fprintf(fp, " */\n");
-    fprintf(fp, "void %sCopy(%s *dst, const %s *src)", def->name, def->name, def->name);
+
+    if (is_pass_by_value(def)) {
+        fprintf(fp, "void %sCopy(%s *dst, %s src)", def->name, def->name, def->name);
+    }
+    else {
+        fprintf(fp, "void %sCopy(%s *dst, const %s *src)", def->name, def->name, def->name);
+    }
 }
 
 static void emit_copy_body(FILE *fp, Definition *def)
@@ -1313,11 +1312,21 @@ static void emit_copy_body(FILE *fp, Definition *def)
     fprintf(fp, "\n{\n");
 
     ifprintf(fp, 1, "assert(dst != NULL);\n");
-    ifprintf(fp, 1, "assert(src != NULL);\n\n");
+
+    if (!is_pass_by_value(def)) {
+        ifprintf(fp, 1, "assert(src != NULL);\n");
+    }
+
+    fputc('\n', fp);
 
     switch(def->type) {
     case DT_ALIAS:
-        ifprintf(fp, 1, "%sCopy(dst, src);\n", def->alias_def.alias->name);
+        if (is_pass_by_value(def)) {
+            ifprintf(fp, 1, "*dst = src;\n");
+        }
+        else {
+            ifprintf(fp, 1, "%sCopy(dst, src);\n", def->alias_def.alias->name);
+        }
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n\n");
@@ -1325,9 +1334,8 @@ static void emit_copy_body(FILE *fp, Definition *def)
                 def->array_def.item_name);
 
         ifprintf(fp, 2, "for (i = 0; i < dst->count; i++) {\n");
-        ifprintf(fp, 3, "%sClear(%s(dst->%s + i));\n",
+        ifprintf(fp, 3, "%sClear(dst->%s + i);\n",
                 def->array_def.item_type->name,
-                const_double_pointer_cast(def->array_def.item_type),
                 def->array_def.item_name);
         ifprintf(fp, 2, "}\n\n");
 
@@ -1337,26 +1345,41 @@ static void emit_copy_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "dst->count = src->count;\n\n");
 
         ifprintf(fp, 1, "dst->%s = calloc(dst->count, sizeof(%s));\n\n",
-                def->array_def.item_name, def->array_def.item_type->name);
+                def->array_def.item_name,
+                equivalent_c_type(def->array_def.item_type));
 
         ifprintf(fp, 1, "for (i = 0; i < dst->count; i++) {\n");
-        ifprintf(fp, 2, "%sCopy(dst->%s + i, src->%s + i);\n",
-                def->array_def.item_type->name,
-                def->array_def.item_name, def->array_def.item_name);
+        if (is_pass_by_value(def->array_def.item_type)) {
+            ifprintf(fp, 2, "%sCopy(dst->%s + i, src->%s[i]);\n",
+                    def->array_def.item_type->name,
+                    def->array_def.item_name, def->array_def.item_name);
+        }
+        else {
+            ifprintf(fp, 2, "%sCopy(dst->%s + i, src->%s + i);\n",
+                    def->array_def.item_type->name,
+                    def->array_def.item_name, def->array_def.item_name);
+        }
         ifprintf(fp, 1, "}\n");
         break;
     case DT_STRUCT:
         for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
-            ifprintf(fp, 1, "%sCopy(&dst->%s, %s&src->%s);\n",
-                    struct_item->def->name,
-                    struct_item->name,
-                    const_double_pointer_cast(struct_item->def),
-                    struct_item->name);
+            if (is_pass_by_value(struct_item->def)) {
+                ifprintf(fp, 1, "%sCopy(&dst->%s, src->%s);\n",
+                        struct_item->def->name,
+                        struct_item->name,
+                        struct_item->name);
+            }
+            else {
+                ifprintf(fp, 1, "%sCopy(&dst->%s, &src->%s);\n",
+                        struct_item->def->name,
+                        struct_item->name,
+                        struct_item->name);
+            }
         }
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "*dst = *src;\n");
+        ifprintf(fp, 1, "*dst = src;\n");
         break;
     case DT_UNION:
         ifprintf(fp, 1, "dst->%s = src->%s;\n\n",
@@ -1369,11 +1392,18 @@ static void emit_copy_body(FILE *fp, Definition *def)
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "%sCopy(&dst->%s, %s&src->%s);\n",
-                        union_item->def->name,
-                        union_item->name,
-                        const_double_pointer_cast(union_item->def),
-                        union_item->name);
+                if (is_pass_by_value(union_item->def)) {
+                    ifprintf(fp, 2, "%sCopy(&dst->%s, src->%s);\n",
+                            union_item->def->name,
+                            union_item->name,
+                            union_item->name);
+                }
+                else {
+                    ifprintf(fp, 2, "%sCopy(&dst->%s, &src->%s);\n",
+                            union_item->def->name,
+                            union_item->name,
+                            union_item->name);
+                }
             }
             ifprintf(fp, 2, "break;\n");
         }
@@ -1416,9 +1446,8 @@ static void emit_clear_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "int i;\n\n");
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
-        ifprintf(fp, 2, "%sClear(%s(data->%s + i));\n",
+        ifprintf(fp, 2, "%sClear(data->%s + i);\n",
                 def->array_def.item_type->name,
-                const_double_pointer_cast(def->array_def.item_type),
                 def->array_def.item_name);
         ifprintf(fp, 1, "}\n\n");
 

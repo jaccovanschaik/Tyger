@@ -112,7 +112,7 @@ clean:
             version.h tokentype.c tokentype.h deftype.c deftype.h
 
 tags:
-	ctags -R --c-kinds=+p . $(JVS_TOP)/include /usr/include
+	ctags -R --c-kinds=+p /usr/include $(JVS_TOP)/include .
 
 commit:
 	@echo "\033[7mGit status:\033[0m"

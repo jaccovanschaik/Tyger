@@ -8,3 +8,5 @@ Object = struct {
 }
 
 Objects = array(Object object)
+
+ListOfNames = array(ustring name)
