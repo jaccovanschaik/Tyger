@@ -66,3 +66,11 @@ int is_void_type(Definition *def)
         return FALSE;
     }
 }
+
+/*
+ * Find out whether <def> defines a string type.
+ */
+int is_string_type(Definition *def)
+{
+    return def->type == DT_USTRING || def->type == DT_ASTRING;
+}

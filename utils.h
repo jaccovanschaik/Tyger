@@ -27,4 +27,9 @@ int is_integer_type(Definition *def);
  */
 int is_void_type(Definition *def);
 
+/*
+ * Find out whether <def> defines a string type.
+ */
+int is_string_type(Definition *def);
+
 #endif
