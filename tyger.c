@@ -5,6 +5,8 @@
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
+ *
+ * vim: textwidth=100 columns=100
  */
 
 #include <stdlib.h>

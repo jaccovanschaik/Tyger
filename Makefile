@@ -83,14 +83,14 @@ force-install: tyger libtyger.a libtyger.so
 install: test force-install
 
 Objects.c: test/Objects.tgr tyger
-	./tyger --indent='  ' --c-src $@ \
+	./tyger --indent='    ' --c-src $@ \
             --c-pack --c-unpack --c-packsize \
             --c-wrap --c-unwrap \
             --c-copy --c-set \
             --c-create --c-destroy --c-print $<
 
 Objects.h: test/Objects.tgr tyger
-	./tyger --indent='  ' --c-hdr $@ \
+	./tyger --indent='    ' --c-hdr $@ \
             --c-pack --c-unpack \
             --c-wrap --c-unwrap \
             --c-copy --c-set \
@@ -100,7 +100,7 @@ Objects.o: Objects.c Objects.h
 	$(CC) $(CFLAGS) -I. -c -o $@ $<
 	
 Objects.py: test/Objects.tgr tyger
-	./tyger --indent='  ' --python $@ \
+	./tyger --indent='    ' --python $@ \
             --py-pack --py-unpack --py-recv \
             --py-mx-send --py-mx-bcast $<
 

@@ -5,6 +5,8 @@
  *
  * This software is distributed under the terms of the MIT license. See
  * http://www.opensource.org/licenses/mit-license.php for details.
+ *
+ * vim: textwidth=100 columns=100
  */
 
 #include <stdlib.h>
@@ -139,74 +141,98 @@ static size_t write_FP(FILE *fp, const void *data, size_t size)
     return size * fwrite(data, size, 1, fp);
 }
 
-static void *memdup(const void *src, unsigned int size)
+/*
+ * Copy <size> bytes from <to> to <from>, reversing them if we are on a
+ * little-endian architecture. It's OK if <from> and <to> overlap or point to
+ * the same data.
+ */
+static void reverse_if_little_endian(const char *from, char *to, size_t size)
 {
-    void *dup = malloc(size);
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    char temp[size];
+    int f, t;
 
-    memcpy(dup, src, size);
+    for (f = 0, t = size - 1; f < size; f++, t--) {
+        temp[t] = from[f];
+    }
 
-    return dup;
+    memcpy(to, temp, size);
+#else
+    if (from != to) {
+        memmove(to, from, size);
+    }
+#endif
 }
 
-static void reverse(char *data, size_t size)
+/*
+ * Take the least-significant <size> bytes from <data> and write them to <buf>
+ * (which is assumed to have <size> bytes or more of room), in a big-endian
+ * (most-significant byte first) layout.
+ */
+static void h_to_be(unsigned int data, char *buf, size_t size)
 {
-    int i;
-
-    for (i = 0; i < size / 2; i++) {
-        SWAP(data[i], data[size - 1 - i]);
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    for (int i = 0; i < size; i++) {
+        int right_shift = 8 * (sizeof(data) - i - 1);
+        buf[i] = (data >> right_shift) & 0xFF;
     }
+#else
+    memcpy(buf, ((char *) &data) + sizeof(data) - size, size);
+#endif
+}
+
+/*
+ * Take the <size> bytes from <buf>, which is assumed to contain <size> bytes
+ * in a big-endian layout, and write them as a host-native integer to <data>.
+ */
+static void be_to_h(const char *buf, size_t size, unsigned int *data)
+{
+    *data = 0;
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    for (int i = 0; i < size; i++) {
+        *data <<= 8;
+        *data |= buf[i];
+    }
+#else
+    memcpy(((char *) &data) + sizeof(data) - size, buf, size);
+#endif
 }
 
 static size_t read_FD_BE(int fd, void *data, size_t size)
 {
     size_t count = read_FD(fd, data, size);
 
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    reverse(data, size);
-#endif
+    reverse_if_little_endian(data, data, size);
 
     return count;
 }
 
 static size_t write_FD_BE(int fd, const void *data, size_t size)
 {
-    char *dup = memdup(data, size);
+    char temp[size];
 
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    reverse(dup, size);
-#endif
+    reverse_if_little_endian(data, temp, size);
 
-    size_t count = write_FD(fd, dup, size);
-
-    free(dup);
-
-    return count;
+    return write_FD(fd, temp, size);
 }
 
 static size_t read_FP_BE(FILE *fp, void *data, size_t size)
 {
     size_t count = read_FP(fp, data, size);
 
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    reverse(data, size);
-#endif
+    reverse_if_little_endian(data, data, size);
 
     return count;
 }
 
 static size_t write_FP_BE(FILE *fp, const void *data, size_t size)
 {
-    char *dup = memdup(data, size);
+    char temp[size];
 
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    reverse(dup, size);
-#endif
+    reverse_if_little_endian(data, temp, size);
 
-    size_t count = write_FP(fp, dup, size);
-
-    free(dup);
-
-    return count;
+    return write_FP(fp, temp, size);
 }
 
 /*
@@ -228,13 +254,13 @@ static void size_buffer(char **buffer, size_t *size, size_t requirement)
  * Pack the least-significant <num_bytes> of <data> into <buffer>, updating
  * <size> and <pos>.
  */
-size_t uintPack(const unsigned int *data, size_t num_bytes,
+size_t uintPack(unsigned int data, size_t num_bytes,
                 char **buffer, size_t *size, size_t *pos)
 {
     size_buffer(buffer, size, *pos + num_bytes);
 
     for (int i = num_bytes - 1; i >= 0; i--) {
-        *(*buffer + *pos) = (*data >> (8 * i)) & 0xFF;
+        *(*buffer + *pos) = (data >> (8 * i)) & 0xFF;
 
         (*pos)++;
     }
@@ -269,15 +295,25 @@ size_t uintUnpack(size_t num_bytes, const char *buffer, size_t size,
  */
 size_t uintReadFromFD(int fd, size_t num_bytes, unsigned int *data)
 {
-    return read_FD_BE(fd, data, num_bytes);
+    char temp[num_bytes];
+
+    int r = read_FD(fd, temp, num_bytes);
+
+    be_to_h(temp, num_bytes, data);
+
+    return r;
 }
 
 /*
  * Write the <num_bytes> least-significant bytes from <data> to <fd>
  */
-size_t uintWriteToFD(int fd, size_t num_bytes, const unsigned int *data)
+size_t uintWriteToFD(int fd, size_t num_bytes, unsigned int data)
 {
-    return write_FD_BE(fd, data, num_bytes);
+    char temp[num_bytes];
+
+    h_to_be(data, temp, num_bytes);
+
+    return write_FD(fd, temp, num_bytes);
 }
 
 /*
@@ -286,15 +322,25 @@ size_t uintWriteToFD(int fd, size_t num_bytes, const unsigned int *data)
  */
 size_t uintReadFromFP(FILE *fp, size_t num_bytes, unsigned int *data)
 {
-    return read_FP_BE(fp, data, num_bytes);
+    char temp[num_bytes];
+
+    int r = read_FP(fp, temp, num_bytes);
+
+    be_to_h(temp, num_bytes, data);
+
+    return r;
 }
 
 /*
- * the <num_bytes> least-significant bytes from <data> to <fp>
+ * Write the <num_bytes> least-significant bytes from <data> to <fp>
  */
-size_t uintWriteToFP(FILE *fp, size_t num_bytes, const unsigned int *data)
+size_t uintWriteToFP(FILE *fp, size_t num_bytes, unsigned int data)
 {
-    return write_FP_BE(fp, data, num_bytes);
+    char temp[num_bytes];
+
+    h_to_be(data, temp, num_bytes);
+
+    return write_FP(fp, temp, num_bytes);
 }
 
 /*
@@ -358,16 +404,16 @@ size_t astringUnpack(const char *buffer, size_t size, char **data)
  * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t astringPack(const char *const *data, char **buffer, size_t *size, size_t *pos)
+size_t astringPack(const char *data, char **buffer, size_t *size, size_t *pos)
 {
     size_t byte_count = 0;
-    uint32_t str_len = strlen(*data);
+    uint32_t str_len = strlen(data);
 
-    byte_count += uint32Pack(&str_len, buffer, size, pos);
+    byte_count += uint32Pack(str_len, buffer, size, pos);
 
     size_buffer(buffer, size, *pos + str_len);
 
-    memcpy(*buffer + *pos, *data, str_len);
+    memcpy(*buffer + *pos, data, str_len);
 
     *pos += str_len;
 
@@ -396,14 +442,14 @@ size_t astringReadFromFD(int fd, char **data)
 /*
  * Write an astring to <fd> from <data).
  */
-size_t astringWriteToFD(int fd, const char *const *data)
+size_t astringWriteToFD(int fd, const char *data)
 {
     size_t count = 0;
-    uint32_t length = (*data == NULL) ? 0 : strlen(*data);
+    uint32_t length = (data == NULL) ? 0 : strlen(data);
 
-    count += uint32WriteToFD(fd, &length);
+    count += uint32WriteToFD(fd, length);
 
-    count += write_FD(fd, *data, length);
+    count += write_FD(fd, data, length);
 
     return count;
 }
@@ -430,14 +476,14 @@ size_t astringReadFromFP(FILE *fp, char **data)
 /*
  * Write an astring to <fp> from <data).
  */
-size_t astringWriteToFP(FILE *fp, const char *const *data)
+size_t astringWriteToFP(FILE *fp, const char *data)
 {
     size_t count = 0;
-    uint32_t length = (*data == NULL) ? 0 : strlen(*data);
+    uint32_t length = (data == NULL) ? 0 : strlen(data);
 
-    count += uint32WriteToFP(fp, &length);
+    count += uint32WriteToFP(fp, length);
 
-    count += write_FP(fp, *data, length);
+    count += write_FP(fp, data, length);
 
     return count;
 }
@@ -445,9 +491,9 @@ size_t astringWriteToFP(FILE *fp, const char *const *data)
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void astringPrint(FILE *fp, const char *const *data, int indent)
+void astringPrint(FILE *fp, const char *data, int indent)
 {
-    fprintf(fp, "\"%s\"", *data);
+    fprintf(fp, "\"%s\"", data);
 }
 
 /*
@@ -670,7 +716,7 @@ size_t ustringUnpack(const char *buffer, size_t size, wchar_t **data)
  * Add <data> to position <pos> in <buffer>, which currently has size <size>,
  * enlarging it if necessary. Return the number of bytes added to <buffer>.
  */
-size_t ustringPack(const wchar_t *const *data, char **buffer, size_t *size, size_t *pos)
+size_t ustringPack(const wchar_t *data, char **buffer, size_t *size, size_t *pos)
 {
     uint32_t utf8_size;
     const char *utf8_text;
@@ -679,10 +725,10 @@ size_t ustringPack(const wchar_t *const *data, char **buffer, size_t *size, size
         utf8_size = 0;
     }
     else {
-        utf8_text = wchar_to_utf8(*data, wcslen(*data), &utf8_size);
+        utf8_text = wchar_to_utf8(data, wcslen(data), &utf8_size);
     }
 
-    uint32Pack(&utf8_size, buffer, size, pos);
+    uint32Pack(utf8_size, buffer, size, pos);
 
     size_buffer(buffer, size, *pos + utf8_size);
 
@@ -721,20 +767,20 @@ size_t ustringReadFromFD(int fd, wchar_t **data)
 /*
  * Write a ustring to <fd> from <data).
  */
-size_t ustringWriteToFD(int fd, const wchar_t *const *data)
+size_t ustringWriteToFD(int fd, const wchar_t *data)
 {
     uint32_t count = 0;
     uint32_t utf8_size;
     const char *utf8_text;
 
-    if (*data == NULL) {
+    if (data == NULL) {
         utf8_size = 0;
     }
     else {
-        utf8_text = wchar_to_utf8(*data, wcslen(*data), &utf8_size);
+        utf8_text = wchar_to_utf8(data, wcslen(data), &utf8_size);
     }
 
-    count += uint32WriteToFD(fd, &utf8_size);
+    count += uint32WriteToFD(fd, utf8_size);
 
     count += write_FD(fd, utf8_text, utf8_size);
 
@@ -769,20 +815,20 @@ size_t ustringReadFromFP(FILE *fp, wchar_t **data)
 /*
  * Write a ustring to <fp> from <data).
  */
-size_t ustringWriteToFP(FILE *fp, const wchar_t **data)
+size_t ustringWriteToFP(FILE *fp, const wchar_t *data)
 {
     uint32_t count = 0;
     uint32_t utf8_size;
     const char *utf8_text;
 
-    if (*data == NULL) {
+    if (data == NULL) {
         utf8_size = 0;
     }
     else {
-        utf8_text = wchar_to_utf8(*data, wcslen(*data), &utf8_size);
+        utf8_text = wchar_to_utf8(data, wcslen(data), &utf8_size);
     }
 
-    count += uint32WriteToFP(fp, &utf8_size);
+    count += uint32WriteToFP(fp, utf8_size);
 
     count += write_FP(fp, utf8_text, utf8_size);
 
@@ -792,9 +838,9 @@ size_t ustringWriteToFP(FILE *fp, const wchar_t **data)
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void ustringPrint(FILE *fp, const wchar_t *const *data, int indent)
+void ustringPrint(FILE *fp, const wchar_t *data, int indent)
 {
-    fprintf(fp, "\"%ls\"", *data);
+    fprintf(fp, "\"%ls\"", data);
 }
 
 /*
@@ -874,14 +920,14 @@ size_t float32Unpack(const char *buffer, size_t size, float *data)
  * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t float32Pack(const float *data, char **buffer, size_t *size, size_t *pos)
+size_t float32Pack(const float data, char **buffer, size_t *size, size_t *pos)
 {
     union {
         float f;
         char c[4];
     } u;
 
-    u.f = *data;
+    u.f = data;
 
     size_buffer(buffer, size, *pos + sizeof(float));
 
@@ -908,9 +954,9 @@ size_t float32ReadFromFD(int fd, float *data)
 /*
  * Write a float to <fd> from <data).
  */
-size_t float32WriteToFD(int fd, const float *data)
+size_t float32WriteToFD(int fd, float data)
 {
-    return write_FD_BE(fd, data, sizeof(float));
+    return write_FD_BE(fd, &data, sizeof(float));
 }
 
 /*
@@ -924,17 +970,17 @@ size_t float32ReadFromFP(FILE *fp, float *data)
 /*
  * Write a float to <fp> from <data).
  */
-size_t float32WriteToFP(FILE *fp, const float *data)
+size_t float32WriteToFP(FILE *fp, float data)
 {
-    return write_FP_BE(fp, data, sizeof(float));
+    return write_FP_BE(fp, &data, sizeof(float));
 }
 
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void float32Print(FILE *fp, const float *data, int indent)
+void float32Print(FILE *fp, float data, int indent)
 {
-    fprintf(fp, "%g", *data);
+    fprintf(fp, "%g", data);
 }
 
 /*
@@ -1011,14 +1057,14 @@ size_t float64Unpack(const char *buffer, size_t size, double *data)
  * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t float64Pack(const double *data, char **buffer, size_t *size, size_t *pos)
+size_t float64Pack(const double data, char **buffer, size_t *size, size_t *pos)
 {
     union {
         double f;
         char c[8];
     } u;
 
-    u.f = *data;
+    u.f = data;
 
     size_buffer(buffer, size, *pos + sizeof(double));
 
@@ -1049,9 +1095,9 @@ size_t float64ReadFromFD(int fd, double *data)
 /*
  * Write a double to <fd> from <data).
  */
-size_t float64WriteToFD(int fd, const double *data)
+size_t float64WriteToFD(int fd, double data)
 {
-    return write_FD_BE(fd, data, sizeof(double));
+    return write_FD_BE(fd, &data, sizeof(double));
 }
 
 /*
@@ -1065,17 +1111,17 @@ size_t float64ReadFromFP(FILE *fp, double *data)
 /*
  * Write a double to <fp> from <data).
  */
-size_t float64WriteToFP(FILE *fp, const double *data)
+size_t float64WriteToFP(FILE *fp, double data)
 {
-    return write_FP_BE(fp, data, sizeof(double));
+    return write_FP_BE(fp, &data, sizeof(double));
 }
 
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void float64Print(FILE *fp, const double *data, int indent)
+void float64Print(FILE *fp, double data, int indent)
 {
-    fprintf(fp, "%g", *data);
+    fprintf(fp, "%g", data);
 }
 
 /*
@@ -1144,13 +1190,13 @@ size_t boolUnpack(const char *buffer, size_t size, bool *data)
  * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t boolPack(const bool *data, char **buffer, size_t *size, size_t *pos)
+size_t boolPack(const bool data, char **buffer, size_t *size, size_t *pos)
 {
     size_t req = boolPackSize();
 
     size_buffer(buffer, size, *pos + req);
 
-    (*buffer)[*pos] = bool_encode(*data);
+    (*buffer)[*pos] = bool_encode(data);
 
     (*pos) += req;
 
@@ -1174,9 +1220,9 @@ size_t boolReadFromFD(int fd, bool *data)
 /*
  * Write a bool to <fd> from <data).
  */
-size_t boolWriteToFD(int fd, const bool *data)
+size_t boolWriteToFD(int fd, bool data)
 {
-    uint8_t encoded = bool_encode(*data);
+    uint8_t encoded = bool_encode(data);
 
     return write_FD(fd, &encoded, sizeof(encoded));
 }
@@ -1198,9 +1244,9 @@ size_t boolReadFromFP(FILE *fp, bool *data)
 /*
  * Write a bool to <fp> from <data).
  */
-size_t boolWriteToFP(FILE *fp, const bool *data)
+size_t boolWriteToFP(FILE *fp, bool data)
 {
-    uint8_t encoded = bool_encode(*data);
+    uint8_t encoded = bool_encode(data);
 
     return write_FP(fp, &encoded, sizeof(encoded));
 }
@@ -1208,9 +1254,9 @@ size_t boolWriteToFP(FILE *fp, const bool *data)
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void boolPrint(FILE *fp, const bool *data, int indent)
+void boolPrint(FILE *fp, bool data, int indent)
 {
-    fprintf(fp, "%s", *data ? "true" : "false");
+    fprintf(fp, "%s", data ? "true" : "false");
 }
 
 /*
@@ -1269,11 +1315,11 @@ size_t uint8Unpack(const char *buffer, size_t size, uint8_t *data)
  * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t uint8Pack(const uint8_t *data, char **buffer, size_t *size, size_t *pos)
+size_t uint8Pack(const uint8_t data, char **buffer, size_t *size, size_t *pos)
 {
     size_buffer(buffer, size, *pos + sizeof(uint8_t));
 
-    (*buffer)[(*pos)++] = *data;
+    (*buffer)[(*pos)++] = data;
 
     return sizeof(uint8_t);
 }
@@ -1289,9 +1335,9 @@ size_t uint8ReadFromFD(int fd, uint8_t *data)
 /*
  * Write a uint8_t to <fd> from <data).
  */
-size_t uint8WriteToFD(int fd, const uint8_t *data)
+size_t uint8WriteToFD(int fd, uint8_t data)
 {
-    return write_FD(fd, data, sizeof(uint8_t));
+    return write_FD(fd, &data, sizeof(uint8_t));
 }
 
 /*
@@ -1305,17 +1351,17 @@ size_t uint8ReadFromFP(FILE *fp, uint8_t *data)
 /*
  * Write a uint8_t to <fp> from <data).
  */
-size_t uint8WriteToFP(FILE *fp, const uint8_t *data)
+size_t uint8WriteToFP(FILE *fp, uint8_t data)
 {
-    return write_FP(fp, data, sizeof(uint8_t));
+    return write_FP(fp, &data, sizeof(uint8_t));
 }
 
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void uint8Print(FILE *fp, const uint8_t *data, int indent)
+void uint8Print(FILE *fp, uint8_t data, int indent)
 {
-    fprintf(fp, "%" PRIu8, *data);
+    fprintf(fp, "%" PRIu8, data);
 }
 
 /*
@@ -1374,11 +1420,11 @@ size_t int8Unpack(const char *buffer, size_t size, int8_t *data)
  * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t int8Pack(const int8_t *data, char **buffer, size_t *size, size_t *pos)
+size_t int8Pack(const int8_t data, char **buffer, size_t *size, size_t *pos)
 {
     size_buffer(buffer, size, *pos + sizeof(int8_t));
 
-    (*buffer)[(*pos)++] = *data;
+    (*buffer)[(*pos)++] = data;
 
     return sizeof(uint8_t);
 }
@@ -1394,9 +1440,9 @@ size_t int8ReadFromFD(int fd, int8_t *data)
 /*
  * Write an int8_t to <fd> from <data).
  */
-size_t int8WriteToFD(int fd, const int8_t *data)
+size_t int8WriteToFD(int fd, int8_t data)
 {
-    return write_FD(fd, data, sizeof(int8_t));
+    return write_FD(fd, &data, sizeof(int8_t));
 }
 
 /*
@@ -1410,17 +1456,17 @@ size_t int8ReadFromFP(FILE *fp, int8_t *data)
 /*
  * Write an int8_t to <fp> from <data).
  */
-size_t int8WriteToFP(FILE *fp, const int8_t *data)
+size_t int8WriteToFP(FILE *fp, int8_t data)
 {
-    return write_FP(fp, data, sizeof(int8_t));
+    return write_FP(fp, &data, sizeof(int8_t));
 }
 
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void int8Print(FILE *fp, const int8_t *data, int indent)
+void int8Print(FILE *fp, int8_t data, int indent)
 {
-    fprintf(fp, "%" PRId8, *data);
+    fprintf(fp, "%" PRId8, data);
 }
 
 /*
@@ -1480,12 +1526,12 @@ size_t uint16Unpack(const char *buffer, size_t size, uint16_t *data)
  * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t uint16Pack(const uint16_t *data, char **buffer, size_t *size, size_t *pos)
+size_t uint16Pack(const uint16_t data, char **buffer, size_t *size, size_t *pos)
 {
     size_buffer(buffer, size, *pos + sizeof(uint16_t));
 
-    (*buffer)[(*pos)++] = (*data & 0xFF00) >> 8;
-    (*buffer)[(*pos)++] = (*data & 0x00FF);
+    (*buffer)[(*pos)++] = (data & 0xFF00) >> 8;
+    (*buffer)[(*pos)++] = (data & 0x00FF);
 
     return sizeof(uint16_t);
 }
@@ -1501,9 +1547,9 @@ size_t uint16ReadFromFD(int fd, uint16_t *data)
 /*
  * Write a uint16_t to <fd> from <data).
  */
-size_t uint16WriteToFD(int fd, const uint16_t *data)
+size_t uint16WriteToFD(int fd, uint16_t data)
 {
-    return write_FD_BE(fd, data, sizeof(uint16_t));
+    return write_FD_BE(fd, &data, sizeof(uint16_t));
 }
 
 /*
@@ -1517,17 +1563,17 @@ size_t uint16ReadFromFP(FILE *fp, uint16_t *data)
 /*
  * Write a uint16_t to <fp> from <data).
  */
-size_t uint16WriteToFP(FILE *fp, const uint16_t *data)
+size_t uint16WriteToFP(FILE *fp, uint16_t data)
 {
-    return write_FP_BE(fp, data, sizeof(uint16_t));
+    return write_FP_BE(fp, &data, sizeof(uint16_t));
 }
 
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void uint16Print(FILE *fp, const uint16_t *data, int indent)
+void uint16Print(FILE *fp, uint16_t data, int indent)
 {
-    fprintf(fp, "%" PRIu16, *data);
+    fprintf(fp, "%" PRIu16, data);
 }
 
 /*
@@ -1587,12 +1633,12 @@ size_t int16Unpack(const char *buffer, size_t size, int16_t *data)
  * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t int16Pack(const int16_t *data, char **buffer, size_t *size, size_t *pos)
+size_t int16Pack(int16_t data, char **buffer, size_t *size, size_t *pos)
 {
     size_buffer(buffer, size, *pos + sizeof(int16_t));
 
-    (*buffer)[(*pos)++] = (*data & 0xFF00) >> 8;
-    (*buffer)[(*pos)++] = (*data & 0x00FF);
+    (*buffer)[(*pos)++] = (data & 0xFF00) >> 8;
+    (*buffer)[(*pos)++] = (data & 0x00FF);
 
     return sizeof(int16_t);
 }
@@ -1608,9 +1654,9 @@ size_t int16ReadFromFD(int fd, int16_t *data)
 /*
  * Write a int16_t to <fd> from <data).
  */
-size_t int16WriteToFD(int fd, const int16_t *data)
+size_t int16WriteToFD(int fd, int16_t data)
 {
-    return write_FD_BE(fd, data, sizeof(int16_t));
+    return write_FD_BE(fd, &data, sizeof(int16_t));
 }
 
 /*
@@ -1624,17 +1670,17 @@ size_t int16ReadFromFP(FILE *fp, int16_t *data)
 /*
  * Write a int16_t to <fp> from <data).
  */
-size_t int16WriteToFP(FILE *fp, const int16_t *data)
+size_t int16WriteToFP(FILE *fp, int16_t data)
 {
-    return write_FP_BE(fp, data, sizeof(int16_t));
+    return write_FP_BE(fp, &data, sizeof(int16_t));
 }
 
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void int16Print(FILE *fp, const int16_t *data, int indent)
+void int16Print(FILE *fp, int16_t data, int indent)
 {
-    fprintf(fp, "%" PRId16, *data);
+    fprintf(fp, "%" PRId16, data);
 }
 
 /*
@@ -1696,14 +1742,14 @@ size_t uint32Unpack(const char *buffer, size_t size, uint32_t *data)
  * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t uint32Pack(const uint32_t *data, char **buffer, size_t *size, size_t *pos)
+size_t uint32Pack(uint32_t data, char **buffer, size_t *size, size_t *pos)
 {
     size_buffer(buffer, size, *pos + sizeof(uint32_t));
 
-    (*buffer)[(*pos)++] = (*data >> 24) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 16) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 8)  & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 0)  & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 24) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 16) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 8)  & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 0)  & 0xFF;
 
     return sizeof(uint32_t);
 }
@@ -1719,9 +1765,9 @@ size_t uint32ReadFromFD(int fd, uint32_t *data)
 /*
  * Write a uint32_t to <fd> from <data).
  */
-size_t uint32WriteToFD(int fd, const uint32_t *data)
+size_t uint32WriteToFD(int fd, uint32_t data)
 {
-    return write_FD_BE(fd, data, sizeof(uint32_t));
+    return write_FD_BE(fd, &data, sizeof(uint32_t));
 }
 
 /*
@@ -1735,17 +1781,17 @@ size_t uint32ReadFromFP(FILE *fp, uint32_t *data)
 /*
  * Write a uint32_t to <fp> from <data).
  */
-size_t uint32WriteToFP(FILE *fp, const uint32_t *data)
+size_t uint32WriteToFP(FILE *fp, uint32_t data)
 {
-    return write_FP_BE(fp, data, sizeof(uint32_t));
+    return write_FP_BE(fp, &data, sizeof(uint32_t));
 }
 
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void uint32Print(FILE *fp, const uint32_t *data, int indent)
+void uint32Print(FILE *fp, uint32_t data, int indent)
 {
-    fprintf(fp, "%" PRIu32, *data);
+    fprintf(fp, "%" PRIu32, data);
 }
 
 /*
@@ -1807,14 +1853,14 @@ size_t int32Unpack(const char *buffer, size_t size, int32_t *data)
  * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t int32Pack(const int32_t *data, char **buffer, size_t *size, size_t *pos)
+size_t int32Pack(int32_t data, char **buffer, size_t *size, size_t *pos)
 {
     size_buffer(buffer, size, *pos + sizeof(int32_t));
 
-    (*buffer)[(*pos)++] = (*data >> 24) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 16) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 8)  & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 0)  & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 24) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 16) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 8)  & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 0)  & 0xFF;
 
     return sizeof(uint32_t);
 }
@@ -1830,9 +1876,9 @@ size_t int32ReadFromFD(int fd, int32_t *data)
 /*
  * Write an int32_t to <fd> from <data).
  */
-size_t int32WriteToFD(int fd, const int32_t *data)
+size_t int32WriteToFD(int fd, int32_t data)
 {
-    return write_FD_BE(fd, data, sizeof(int32_t));
+    return write_FD_BE(fd, &data, sizeof(int32_t));
 }
 
 /*
@@ -1846,17 +1892,17 @@ size_t int32ReadFromFP(FILE *fp, int32_t *data)
 /*
  * Write an int32_t to <fp> from <data).
  */
-size_t int32WriteToFP(FILE *fp, const int32_t *data)
+size_t int32WriteToFP(FILE *fp, int32_t data)
 {
-    return write_FP_BE(fp, data, sizeof(int32_t));
+    return write_FP_BE(fp, &data, sizeof(int32_t));
 }
 
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void int32Print(FILE *fp, const int32_t *data, int indent)
+void int32Print(FILE *fp, int32_t data, int indent)
 {
-    fprintf(fp, "%" PRId32, *data);
+    fprintf(fp, "%" PRId32, data);
 }
 
 /*
@@ -1922,18 +1968,18 @@ size_t uint64Unpack(const char *buffer, size_t size, uint64_t *data)
  * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t uint64Pack(const uint64_t *data, char **buffer, size_t *size, size_t *pos)
+size_t uint64Pack(uint64_t data, char **buffer, size_t *size, size_t *pos)
 {
     size_buffer(buffer, size, *pos + sizeof(uint64_t));
 
-    (*buffer)[(*pos)++] = (*data >> 56) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 48) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 40) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 32) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 24) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 16) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >>  8) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >>  0) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 56) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 48) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 40) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 32) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 24) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 16) & 0xFF;
+    (*buffer)[(*pos)++] = (data >>  8) & 0xFF;
+    (*buffer)[(*pos)++] = (data >>  0) & 0xFF;
 
     return sizeof(uint64_t);
 }
@@ -1949,9 +1995,9 @@ size_t uint64ReadFromFD(int fd, uint64_t *data)
 /*
  * Write a uint64_t to <fd> from <data).
  */
-size_t uint64WriteToFD(int fd, const uint64_t *data)
+size_t uint64WriteToFD(int fd, uint64_t data)
 {
-    return write_FD_BE(fd, data, sizeof(uint64_t));
+    return write_FD_BE(fd, &data, sizeof(uint64_t));
 }
 
 /*
@@ -1965,17 +2011,17 @@ size_t uint64ReadFromFP(FILE *fp, uint64_t *data)
 /*
  * Write a uint64_t to <fp> from <data).
  */
-size_t uint64WriteToFP(FILE *fp, const uint64_t *data)
+size_t uint64WriteToFP(FILE *fp, uint64_t data)
 {
-    return write_FP_BE(fp, data, sizeof(uint64_t));
+    return write_FP_BE(fp, &data, sizeof(uint64_t));
 }
 
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void uint64Print(FILE *fp, const uint64_t *data, int indent)
+void uint64Print(FILE *fp, uint64_t data, int indent)
 {
-    fprintf(fp, "%" PRIu64, *data);
+    fprintf(fp, "%" PRIu64, data);
 }
 
 /*
@@ -2041,18 +2087,18 @@ size_t int64Unpack(const char *buffer, size_t size, int64_t *data)
  * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t int64Pack(const int64_t *data, char **buffer, size_t *size, size_t *pos)
+size_t int64Pack(int64_t data, char **buffer, size_t *size, size_t *pos)
 {
     size_buffer(buffer, size, *pos + sizeof(int64_t));
 
-    (*buffer)[(*pos)++] = (*data >> 56) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 48) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 40) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 32) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 24) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >> 16) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >>  8) & 0xFF;
-    (*buffer)[(*pos)++] = (*data >>  0) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 56) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 48) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 40) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 32) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 24) & 0xFF;
+    (*buffer)[(*pos)++] = (data >> 16) & 0xFF;
+    (*buffer)[(*pos)++] = (data >>  8) & 0xFF;
+    (*buffer)[(*pos)++] = (data >>  0) & 0xFF;
 
     return sizeof(int64_t);
 }
@@ -2068,9 +2114,9 @@ size_t int64ReadFromFD(int fd, int64_t *data)
 /*
  * Write an int64_t to <fd> from <data).
  */
-size_t int64WriteToFD(int fd, const int64_t *data)
+size_t int64WriteToFD(int fd, int64_t data)
 {
-    return write_FD_BE(fd, data, sizeof(int64_t));
+    return write_FD_BE(fd, &data, sizeof(int64_t));
 }
 
 /*
@@ -2084,17 +2130,17 @@ size_t int64ReadFromFP(FILE *fp, int64_t *data)
 /*
  * Write an int64_t to <fp> from <data).
  */
-size_t int64WriteToFP(FILE *fp, const int64_t *data)
+size_t int64WriteToFP(FILE *fp, int64_t data)
 {
-    return write_FP_BE(fp, data, sizeof(int64_t));
+    return write_FP_BE(fp, &data, sizeof(int64_t));
 }
 
 /*
  * Print an ASCII representation of <data> to <fp>.
  */
-void int64Print(FILE *fp, const int64_t *data, int indent)
+void int64Print(FILE *fp, int64_t data, int indent)
 {
-    fprintf(fp, "%" PRId64, *data);
+    fprintf(fp, "%" PRId64, data);
 }
 
 /*
@@ -2143,7 +2189,7 @@ int main(int argc, char *argv[])
     astring_data = strdup("Hoi");
 
     assert(astringPackSize((const char **) &astring_data) == 7);
-    astringPack((const char **) &astring_data, &buffer, &size, &pos);
+    astringPack(astring_data, &buffer, &size, &pos);
     assert(pos == 7);
     assert(size >= 7);
     assert(memcmp(buffer, "\x00\x00\x00\x03Hoi", 7) == 0);
@@ -2155,7 +2201,7 @@ int main(int argc, char *argv[])
     ustring_data = wcsdup(L"αß¢");
 
     assert(ustringPackSize((const wchar_t **) &ustring_data) == 10);
-    ustringPack((const wchar_t **) &ustring_data, &buffer, &size, &pos);
+    ustringPack(ustring_data, &buffer, &size, &pos);
     assert(pos == 10);
     assert(size >= 10);
     assert(memcmp(buffer, "\x00\x00\x00\x06\xCE\xB1\xC3\x9F\xC2\xA2", 10) == 0);
@@ -2166,7 +2212,7 @@ int main(int argc, char *argv[])
 
     float32_data = 1.0;
 
-    float32Pack(&float32_data, &buffer, &size, &pos);
+    float32Pack(float32_data, &buffer, &size, &pos);
     float32Unpack(buffer, pos, &float32_data);
     assert(float32PackSize() == 4);
     assert(memcmp(buffer, "\x3F\x80\x00\x00", 4) == 0);
@@ -2175,7 +2221,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     float64_data = 2.0;
-    float64Pack(&float64_data, &buffer, &size, &pos);
+    float64Pack(float64_data, &buffer, &size, &pos);
     float64Unpack(buffer, pos, &float64_data);
     assert(float64PackSize() == 8);
     assert(memcmp(buffer, "\x40\x00\x00\x00\x00\x00\x00\x00", 8) == 0);
@@ -2184,7 +2230,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     uint8_data = 8;
-    uint8Pack(&uint8_data, &buffer, &size, &pos);
+    uint8Pack(uint8_data, &buffer, &size, &pos);
     uint8Unpack(buffer, pos, &uint8_data);
     assert(memcmp(buffer, "\x08", 1) == 0);
     assert(uint8_data == 8);
@@ -2192,7 +2238,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     int8_data = 8;
-    int8Pack(&int8_data, &buffer, &size, &pos);
+    int8Pack(int8_data, &buffer, &size, &pos);
     int8Unpack(buffer, pos, &int8_data);
     assert(memcmp(buffer, "\x08", 1) == 0);
     assert(int8_data == 8);
@@ -2200,7 +2246,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     uint8_data = -8;
-    uint8Pack(&uint8_data, &buffer, &size, &pos);
+    uint8Pack(uint8_data, &buffer, &size, &pos);
     uint8Unpack(buffer, pos, &uint8_data);
     assert(memcmp(buffer, "\xF8", 1) == 0);
     assert(uint8_data == (256 - 8));
@@ -2208,7 +2254,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     int8_data = -8;
-    int8Pack(&int8_data, &buffer, &size, &pos);
+    int8Pack(int8_data, &buffer, &size, &pos);
     int8Unpack(buffer, pos, &int8_data);
     assert(memcmp(buffer, "\xF8", 1) == 0);
     assert(int8_data == -8);
@@ -2216,7 +2262,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     uint16_data = 16;
-    uint16Pack(&uint16_data, &buffer, &size, &pos);
+    uint16Pack(uint16_data, &buffer, &size, &pos);
     uint16Unpack(buffer, pos, &uint16_data);
     assert(memcmp(buffer, "\x00\x10", 2) == 0);
     assert(uint16_data == 16);
@@ -2224,7 +2270,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     int16_data = 16;
-    int16Pack(&int16_data, &buffer, &size, &pos);
+    int16Pack(int16_data, &buffer, &size, &pos);
     int16Unpack(buffer, pos, &int16_data);
     assert(memcmp(buffer, "\x00\x10", 2) == 0);
     assert(int16_data == 16);
@@ -2232,7 +2278,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     uint16_data = -16;
-    uint16Pack(&uint16_data, &buffer, &size, &pos);
+    uint16Pack(uint16_data, &buffer, &size, &pos);
     uint16Unpack(buffer, pos, &uint16_data);
     assert(memcmp(buffer, "\xFF\xF0", 2) == 0);
     assert(uint16_data == (65536 - 16));
@@ -2240,7 +2286,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     int16_data = -16;
-    int16Pack(&int16_data, &buffer, &size, &pos);
+    int16Pack(int16_data, &buffer, &size, &pos);
     int16Unpack(buffer, pos, &int16_data);
     assert(memcmp(buffer, "\xFF\xF0", 2) == 0);
     assert(int16_data == -16);
@@ -2248,7 +2294,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     uint32_data = 32;
-    uint32Pack(&uint32_data, &buffer, &size, &pos);
+    uint32Pack(uint32_data, &buffer, &size, &pos);
     uint32Unpack(buffer, pos, &uint32_data);
     assert(memcmp(buffer, "\x00\x00\x00\x20", 4) == 0);
     assert(uint32_data == 32);
@@ -2256,7 +2302,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     int32_data = 32;
-    int32Pack(&int32_data, &buffer, &size, &pos);
+    int32Pack(int32_data, &buffer, &size, &pos);
     int32Unpack(buffer, pos, &int32_data);
     assert(memcmp(buffer, "\x00\x00\x00\x20", 4) == 0);
     assert(int32_data == 32);
@@ -2264,7 +2310,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     uint32_data = -32;
-    uint32Pack(&uint32_data, &buffer, &size, &pos);
+    uint32Pack(uint32_data, &buffer, &size, &pos);
     uint32Unpack(buffer, pos, &uint32_data);
     assert(memcmp(buffer, "\xFF\xFF\xFF\xE0", 4) == 0);
     assert(uint32_data == (0x100000000L - 32));
@@ -2272,7 +2318,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     int32_data = -32;
-    int32Pack(&int32_data, &buffer, &size, &pos);
+    int32Pack(int32_data, &buffer, &size, &pos);
     int32Unpack(buffer, pos, &int32_data);
     assert(memcmp(buffer, "\xFF\xFF\xFF\xE0", 4) == 0);
     assert(int32_data == -32);
@@ -2280,7 +2326,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     uint64_data = 64;
-    uint64Pack(&uint64_data, &buffer, &size, &pos);
+    uint64Pack(uint64_data, &buffer, &size, &pos);
     uint64Unpack(buffer, pos, &uint64_data);
     assert(memcmp(buffer, "\x00\x00\x00\x00\x00\x00\x00\x40", 8) == 0);
     assert(uint64_data == 64);
@@ -2288,7 +2334,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     int64_data = 64;
-    int64Pack(&int64_data, &buffer, &size, &pos);
+    int64Pack(int64_data, &buffer, &size, &pos);
     int64Unpack(buffer, pos, &int64_data);
     assert(memcmp(buffer, "\x00\x00\x00\x00\x00\x00\x00\x40", 8) == 0);
     assert(int64_data == 64);
@@ -2296,7 +2342,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     uint64_data = -64;
-    uint64Pack(&uint64_data, &buffer, &size, &pos);
+    uint64Pack(uint64_data, &buffer, &size, &pos);
     uint64Unpack(buffer, pos, &uint64_data);
     assert(memcmp(buffer, "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xC0", 8) == 0);
     assert(uint64_data == (0xFFFFFFFFFFFFFFFF - 63));
@@ -2304,7 +2350,7 @@ int main(int argc, char *argv[])
     reset_buffer(&buffer, &size, &pos);
 
     int64_data = -64;
-    int64Pack(&int64_data, &buffer, &size, &pos);
+    int64Pack(int64_data, &buffer, &size, &pos);
     int64Unpack(buffer, pos, &int64_data);
     assert(memcmp(buffer, "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xC0", 8) == 0);
     assert(int64_data == -64);
@@ -2313,21 +2359,21 @@ int main(int argc, char *argv[])
 
     uint32_data = 256;
 
-    uint32Pack(&uint32_data, &buffer, &size, &pos);
+    uint32Pack(uint32_data, &buffer, &size, &pos);
 
     assert(buffer != NULL);
     assert(size >= 4);
     assert(pos == 4);
     assert(memcmp(buffer, "\x00\x00\x01\x00", 4) == 0);
 
-    astringPack((const char **) &astring_data, &buffer, &size, &pos);
+    astringPack(astring_data, &buffer, &size, &pos);
 
     assert(buffer != NULL);
     assert(size >= 11);
     assert(pos == 11);
     assert(memcmp(buffer, "\x00\x00\x01\x00\x00\x00\x00\x03" "Hoi", 11) == 0);
 
-    ustringPack((const wchar_t **) &ustring_data, &buffer, &size, &pos);
+    ustringPack(ustring_data, &buffer, &size, &pos);
 
     assert(buffer != NULL);
     assert(size >= 21);
