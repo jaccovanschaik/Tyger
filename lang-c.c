@@ -334,7 +334,7 @@ static void emit_typedef(FILE *fp, Definition *def)
              union_item; union_item = listNext(union_item)) {
             if (is_void_type(union_item->def)) continue;
 
-            ifprintf(fp, 2, "%s %s;\n", union_item->def->name, union_item->name);
+            ifprintf(fp, 2, "%s%s;\n", equivalent_c_type(union_item->def), union_item->name);
         }
         ifprintf(fp, 1, "};\n");
 
@@ -454,6 +454,12 @@ static void emit_packsize_body(FILE *fp, Definition *def)
                             union_item->def->name,
                             listNext(union_item) == NULL ? "\n\n" : "\n");
                 }
+                else if (is_pass_by_value(union_item->def)) {
+                    ifprintf(fp, 2, "size += %sPackSize(data->%s);%s",
+                            union_item->def->name,
+                            union_item->name,
+                            listNext(union_item) == NULL ? "\n\n" : "\n");
+                }
                 else {
                     ifprintf(fp, 2, "size += %sPackSize(%s&data->%s);%s",
                             union_item->def->name,
@@ -570,10 +576,17 @@ static void emit_pack_body(FILE *fp, Definition *def)
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "byte_count += %sPack(%s&data->%s, buffer, size, pos);\n",
-                        union_item->def->name,
-                        const_double_pointer_cast(union_item->def),
-                        union_item->name);
+                if (is_pass_by_value(union_item->def)) {
+                    ifprintf(fp, 2, "byte_count += %sPack(data->%s, buffer, size, pos);\n",
+                            union_item->def->name,
+                            union_item->name);
+                }
+                else {
+                    ifprintf(fp, 2, "byte_count += %sPack(%s&data->%s, buffer, size, pos);\n",
+                            union_item->def->name,
+                            const_double_pointer_cast(union_item->def),
+                            union_item->name);
+                }
             }
 
             ifprintf(fp, 2, "break;\n");
@@ -1119,9 +1132,16 @@ static void emit_print_body(FILE *fp, Definition *def)
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "%sPrint(fp, &data->%s, level);\n",
-                        union_item->def->name,
-                        union_item->name);
+                if (is_pass_by_value(union_item->def)) {
+                    ifprintf(fp, 2, "%sPrint(fp, data->%s, level);\n",
+                            union_item->def->name,
+                            union_item->name);
+                }
+                else {
+                    ifprintf(fp, 2, "%sPrint(fp, &data->%s, level);\n",
+                            union_item->def->name,
+                            union_item->name);
+                }
             }
 
             ifprintf(fp, 2, "break;\n");
@@ -1573,6 +1593,8 @@ int emit_c_hdr(const char *out_file, const char *in_file,
     fprintf(fp, "#include <stdint.h>\t/* int types */\n");
     fprintf(fp, "#include <stdbool.h>\t/* bool */\n");
     fprintf(fp, "#include <wchar.h>\t/* wchar_t */\n\n");
+
+    fprintf(fp, "\n#include <libtyger.h>\t/* Tyger functions. */\n\n");
 
     if (do_mx_send || do_mx_bcast) {
         fprintf(fp, "#include <libmx.h>\t/* MX functions. */\n");
