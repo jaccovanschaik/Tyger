@@ -161,7 +161,11 @@ clean:
             core vgcore.* tyger.tgz libtyger.a libtyger.so \
             tokenizer-test libtyger-test \
             test_objects Objects.c Objects.h Objects.py \
-            version.h tokentype.c tokentype.h deftype.c deftype.h
+            version.h tokentype.c tokentype.h deftype.c deftype.h \
+            Test.c Test.h Test.py
+
+veryclean: clean
+	rm -f tags
 
 tags:
 	ctags -R --c-kinds=+p /usr/include $(JVS_TOP)/include .
