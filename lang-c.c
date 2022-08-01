@@ -161,16 +161,6 @@ static const char *equivalent_c_type(const Definition *def)
     }
 }
 
-static Definition *effective_definition(Definition *def)
-{
-    if (def->type == DT_ALIAS) {
-        return effective_definition(def->alias_def.alias);
-    }
-    else {
-        return def;
-    }
-}
-
 static bool is_pass_by_value(Definition *def)
 {
     switch(def->type) {
@@ -1175,13 +1165,8 @@ static void emit_create_signature(FILE *fp, Definition *def)
     for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
     {
-        Definition *def = effective_definition(struct_item->def);
-
-        int indirect = !(def->type == DT_INT || def->type == DT_FLOAT ||
-                         def->type == DT_ENUM || def->type == DT_BOOL ||
-                         def->type == DT_ASTRING || def->type == DT_USTRING);
-
-        int string = def->type == DT_ASTRING || def->type == DT_USTRING;
+        bool indirect = !is_pass_by_value(struct_item->def);
+        bool string   = is_string_type(struct_item->def);
 
         if (listPrev(struct_item) != NULL) {
             fprintf(fp, ", ");
@@ -1239,13 +1224,8 @@ static void emit_set_signature(FILE *fp, Definition *def)
     for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
     {
-        Definition *def = effective_definition(struct_item->def);
-
-        int indirect = !(def->type == DT_INT || def->type == DT_FLOAT ||
-                         def->type == DT_ENUM || def->type == DT_BOOL ||
-                         def->type == DT_ASTRING || def->type == DT_USTRING);
-
-        int string = def->type == DT_ASTRING || def->type == DT_USTRING;
+        bool indirect = !is_pass_by_value(struct_item->def);
+        bool string   = is_string_type(struct_item->def);
 
         fprintf(fp, ", ");
 
