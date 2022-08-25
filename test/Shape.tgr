@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Primitives.tgr"
 
 /* A general shape, which can be any primitive. */
@@ -8,7 +10,6 @@ ShapeType = enum {
     ST_POLYGON
     ST_PLANE   = 0x1234
     ST_SPHERE  = 0x4321
-    ST_NAME
 }
 
 Shape = union(ShapeType shape_type) {
@@ -16,6 +17,5 @@ Shape = union(ShapeType shape_type) {
     ST_POLYGON: Polygon polygon
     ST_PLANE:   Plane   plane
     ST_SPHERE:  Sphere  sphere
-    ST_NAME:    ustring name
     ST_NONE:    void
 }

@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <assert.h>
+#include <wchar.h>
 
 #include <libjvs/list.h>
 #include <libjvs/utils.h>
@@ -24,6 +25,7 @@
 #include "switches.h"
 #include "parser.h"
 #include "utils.h"
+#include "utf8.h"
 #include "lang-c.h"
 
 static int do_packsize = 0;
@@ -32,7 +34,7 @@ static int do_unpack = 0;
 static int do_wrap = 0;
 static int do_unwrap = 0;
 static int do_read_fd = 0;
-static int do_write_fd = 0;
+// static int do_write_fd = 0;
 static int do_read_fp = 0;
 static int do_write_fp = 0;
 static int do_print_fp = 0;
@@ -48,6 +50,9 @@ static Switch switches[] = {
     { "--c-packsize", &do_packsize, "Generate packsize functions" },
     { "--c-pack",     &do_pack,     "Generate pack functions" },
     { "--c-unpack",   &do_unpack,   "Generate unpack functions" },
+    { "--c-clear",    &do_clear,    "Generate clear functions" },
+    { "--c-destroy",  &do_destroy,  "Generate destroy functions" },
+#if 0
     { "--c-wrap",     &do_wrap,     "Generate wrap functions" },
     { "--c-unwrap",   &do_unwrap,   "Generate unwrap functions" },
     { "--c-read-fd",  &do_read_fd,  "Generate functions to read from an fd" },
@@ -58,14 +63,14 @@ static Switch switches[] = {
     { "--c-create",   &do_create,   "Generate create functions" },
     { "--c-set",      &do_set,      "Generate set functions" },
     { "--c-copy",     &do_copy,     "Generate copy functions" },
-    { "--c-clear",    &do_clear,    "Generate clear functions" },
-    { "--c-destroy",  &do_destroy,  "Generate destroy functions" },
     { "--c-mx-send",  &do_mx_send,  "Generate MX send functions" },
     { "--c-mx-bcast", &do_mx_bcast, "Generate MX broadcast functions" },
+#endif
 };
 
 static int num_switches = sizeof(switches) / sizeof(switches[0]);
 
+#if 0
 typedef enum {
     FILE_ID_FD,
     FILE_ID_FP
@@ -81,6 +86,7 @@ static FileAttributes file_attr[] = {
     [FILE_ID_FD] = { "FD", "int ", "fd" },
     [FILE_ID_FP] = { "FP", "FILE *", "fp" },
 };
+#endif
 
 static const char *include_guard_name(const char *filename)
 {
@@ -148,10 +154,10 @@ static const char *equivalent_c_type(const Definition *def)
         }
     }
     else if (def->type == DT_ASTRING) {
-        return "char *";
+        return "astring ";
     }
     else if (def->type == DT_USTRING) {
-        return "wchar_t *";
+        return "ustring ";
     }
     else if (def->type == DT_BOOL) {
         return "bool ";
@@ -167,13 +173,13 @@ static bool is_pass_by_value(Definition *def)
     case DT_INT:
     case DT_BOOL:
     case DT_FLOAT:
-    case DT_ASTRING:
-    case DT_USTRING:
     case DT_ENUM:
         return true;
     case DT_ARRAY:
     case DT_STRUCT:
     case DT_UNION:
+    case DT_ASTRING:
+    case DT_USTRING:
         return false;
     case DT_ALIAS:
         return is_pass_by_value(def->alias_def.alias);
@@ -229,23 +235,41 @@ static void emit_const_declaration(FILE *fp, Definition *def)
 
 static void emit_const_definition(FILE *fp, Definition *def)
 {
-    fprintf(fp, "const %s%s = ",
-            equivalent_c_type(def->const_def.const_type), def->name);
+    size_t wchar_len;
 
     switch (def->const_def.const_type->type) {
     case DT_INT:
+        fprintf(fp, "const %s%s = ",
+                equivalent_c_type(def->const_def.const_type), def->name);
         fprintf(fp, "%ld;\n", def->const_def.value.l);
         break;
     case DT_FLOAT:
+        fprintf(fp, "const %s%s = ",
+                equivalent_c_type(def->const_def.const_type), def->name);
         fprintf(fp, "%g;\n", def->const_def.value.d);
         break;
     case DT_ASTRING:
-        fprintf(fp, "\"%s\";\n", def->const_def.value.s);
+        ifprintf(fp, 0, "const %s%s = {\n",
+                equivalent_c_type(def->const_def.const_type), def->name);
+        ifprintf(fp, 1, ".data = \"%s\",\n", def->const_def.value.s);
+        ifprintf(fp, 1, ".len  = %d,\n", strlen(def->const_def.value.s));
+        ifprintf(fp, 1, ".cap  = %d,\n", strlen(def->const_def.value.s) + 1);
+        ifprintf(fp, 0, "};\n");
         break;
     case DT_USTRING:
-        fprintf(fp, "L\"%s\";\n", def->const_def.value.s);
+        utf8_to_wchar((uint8_t *) def->const_def.value.s,
+                strlen(def->const_def.value.s), &wchar_len);
+
+        ifprintf(fp, 0, "const %s%s = {\n",
+                equivalent_c_type(def->const_def.const_type), def->name);
+        ifprintf(fp, 1, ".data = L\"%s\",\n", def->const_def.value.s);
+        ifprintf(fp, 1, ".len  = %d,\n", wchar_len);
+        ifprintf(fp, 1, ".cap  = %d,\n", wchar_len + 1);
+        ifprintf(fp, 0, "};\n");
         break;
     case DT_BOOL:
+        fprintf(fp, "const %s%s = ",
+                equivalent_c_type(def->const_def.const_type), def->name);
         fprintf(fp, "%s;\n", def->const_def.value.l ? "true" : "false");
         break;
     default:
@@ -278,9 +302,16 @@ static void emit_typedef(FILE *fp, Definition *def)
 
         for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
-            ifprintf(fp, 1, "%s%s;\n",
-                    equivalent_c_type(struct_item->def),
-                    struct_item->name);
+            if (struct_item->optional) {
+                ifprintf(fp, 1, "%s*%s;\n",
+                        equivalent_c_type(struct_item->def),
+                        struct_item->name);
+            }
+            else {
+                ifprintf(fp, 1, "%s%s;\n",
+                        equivalent_c_type(struct_item->def),
+                        struct_item->name);
+            }
         }
 
         fprintf(fp, "} %s;\n", def->name);
@@ -399,28 +430,52 @@ static void emit_packsize_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "return size;\n");
         break;
     case DT_STRUCT:
-        ifprintf(fp, 1, "size_t size = 0;\n\n");
+        ifprintf(fp, 1, "size_t size = 0;\n");
 
         for (struct_item = listHead(&def->struct_def.items);
-             struct_item; struct_item = listNext(struct_item)) {
-            if (has_constant_pack_size(struct_item->def)) {
-                ifprintf(fp, 1, "size += %sPackSize();%s",
-                        struct_item->def->name,
-                        listNext(struct_item) == NULL ? "\n\n" : "\n");
-            }
-            else if (is_pass_by_value(struct_item->def)) {
-                ifprintf(fp, 1, "size += %sPackSize(data->%s);%s",
-                        struct_item->def->name,
-                        struct_item->name,
-                        listNext(struct_item) == NULL ? "\n\n" : "\n");
+             struct_item; struct_item = listNext(struct_item))
+        {
+            fputc('\n', fp);
+
+            if (struct_item->optional) {
+                ifprintf(fp, 1, "size += uint8PackSize();\n");
+                ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
+
+                if (has_constant_pack_size(struct_item->def)) {
+                    ifprintf(fp, 2, "size += %sPackSize();\n",
+                            struct_item->def->name);
+                }
+                else if (is_pass_by_value(struct_item->def)) { //  && !is_string_type(struct_item->def)) {
+                    ifprintf(fp, 2, "size += %sPackSize(*data->%s);\n",
+                            struct_item->def->name,
+                            struct_item->name);
+                }
+                else {
+                    ifprintf(fp, 2, "size += %sPackSize(data->%s);\n",
+                            struct_item->def->name,
+                            struct_item->name);
+                }
+                ifprintf(fp, 1, "}\n");
             }
             else {
-                ifprintf(fp, 1, "size += %sPackSize(&data->%s);%s",
-                        struct_item->def->name,
-                        struct_item->name,
-                        listNext(struct_item) == NULL ? "\n\n" : "\n");
+                if (has_constant_pack_size(struct_item->def)) {
+                    ifprintf(fp, 1, "size += %sPackSize();\n",
+                            struct_item->def->name);
+                }
+                else if (is_pass_by_value(struct_item->def)) {
+                    ifprintf(fp, 1, "size += %sPackSize(data->%s);\n",
+                            struct_item->def->name,
+                            struct_item->name);
+                }
+                else {
+                    ifprintf(fp, 1, "size += %sPackSize(&data->%s);\n",
+                            struct_item->def->name,
+                            struct_item->name);
+                }
             }
         }
+
+        fputc('\n', fp);
 
         ifprintf(fp, 1, "return size;\n");
         break;
@@ -480,23 +535,23 @@ static void emit_pack_signature(FILE *fp, Definition *def)
 
     fprintf(fp,
             "\n/*\n"
-            " * Pack <data> into <buffer>, enlarging it if necessary. <data>\n"
-            " * points to the data to write, <buffer> is a pointer to a pointer\n"
+            " * Pack <data> into <buf>, enlarging it if necessary. <data>\n"
+            " * points to the data to write, <buf> is a pointer to a pointer\n"
             " * to the start of the buffer, <size> points to its current size\n"
             " * and <pos> points to the position in the buffer where the data is\n"
-            " * to be written. The contents of <buffer> and <size> are updated\n"
+            " * to be written. The contents of <buf> and <size> are updated\n"
             " * if the buffer is enlarged. <pos> is updated with the new write\n"
             " * position. The number of bytes written is returned.\n"
             " */\n");
 
     if (is_pass_by_value(def)) {
         fprintf(fp,
-                "size_t %sPack(%s data, char **buffer, size_t *size, size_t *pos)",
+                "buffer *%sPack(%s data, buffer *buf)",
                 def->name, def->name);
     }
     else {
         fprintf(fp,
-                "size_t %sPack(const %s *data, char **buffer, size_t *size, size_t *pos)",
+                "buffer *%sPack(const %s *data, buffer *buf)",
                 def->name, def->name);
     }
 }
@@ -512,56 +567,79 @@ static void emit_pack_body(FILE *fp, Definition *def)
 
     switch(def->type) {
     case DT_ALIAS:
-        ifprintf(fp, 1, "return %sPack(data, buffer, size, pos);\n",
+        ifprintf(fp, 1, "return %sPack(data, buf);\n",
                 def->alias_def.alias->name);
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n");
         ifprintf(fp, 1,
-                "size_t byte_count = uint32Pack(data->count, buffer, size, pos);\n\n");
+                "uint32Pack(data->count, buf);\n\n");
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
 
         if (is_pass_by_value(def->array_def.item_type)) {
-            ifprintf(fp, 2, "byte_count += %sPack(data->%s[i], buffer, size, pos);\n",
+            ifprintf(fp, 2, "%sPack(data->%s[i], buf);\n",
                     def->array_def.item_type->name,
                     def->array_def.item_name);
         }
         else {
-            ifprintf(fp, 2, "byte_count += %sPack(data->%s + i, buffer, size, pos);\n",
+            ifprintf(fp, 2, "%sPack(data->%s + i, buf);\n",
                     def->array_def.item_type->name,
                     def->array_def.item_name);
         }
 
         ifprintf(fp, 1, "}\n\n");
-        ifprintf(fp, 1, "return byte_count;\n");
+        ifprintf(fp, 1, "return buf;\n");
         break;
     case DT_STRUCT:
-        ifprintf(fp, 1, "size_t byte_count = 0;\n\n");
-
         for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
-            if (is_pass_by_value(struct_item->def)) {
-                ifprintf(fp, 1, "byte_count += %sPack(data->%s, buffer, size, pos);%s",
-                        struct_item->def->name,
-                        struct_item->name,
-                        listNext(struct_item) == NULL ? "\n\n" : "\n");
+
+            if (struct_item->optional) {
+                fputc('\n', fp);
+                ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
+                ifprintf(fp, 2, "uint8Pack(1, buf);\n");
+
+                if (is_pass_by_value(struct_item->def)) { //  && !is_string_type(struct_item->def)) {
+                    ifprintf(fp, 2, "%sPack(*data->%s, buf);%s",
+                            struct_item->def->name,
+                            struct_item->name,
+                            listNext(struct_item) == NULL ? "\n\n" : "\n");
+                }
+                else {
+                    ifprintf(fp, 2, "%sPack(data->%s, buf);%s",
+                            struct_item->def->name,
+                            struct_item->name,
+                            listNext(struct_item) == NULL ? "\n\n" : "\n");
+                }
+
+                ifprintf(fp, 1, "}\n");
             }
             else {
-                ifprintf(fp, 1, "byte_count += %sPack(&data->%s, buffer, size, pos);%s",
-                        struct_item->def->name,
-                        struct_item->name,
-                        listNext(struct_item) == NULL ? "\n\n" : "\n");
+                if (is_pass_by_value(struct_item->def)) {
+                    ifprintf(fp, 1, "%sPack(data->%s, buf);%s",
+                            struct_item->def->name,
+                            struct_item->name,
+                            listNext(struct_item) == NULL ? "\n\n" : "\n");
+                }
+                else {
+                    ifprintf(fp, 1, "%sPack(&data->%s, buf);%s",
+                            struct_item->def->name,
+                            struct_item->name,
+                            listNext(struct_item) == NULL ? "\n\n" : "\n");
+                }
             }
         }
 
-        ifprintf(fp, 1, "return byte_count;\n");
+        fputc('\n', fp);
+
+        ifprintf(fp, 1, "return buf;\n");
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "return uintPack(data, %d, buffer, size, pos);\n", def->enum_def.num_bytes);
+        ifprintf(fp, 1, "return uintPack(data, %d, buf);\n", def->enum_def.num_bytes);
         break;
     case DT_UNION:
-        ifprintf(fp, 1, "size_t byte_count = %sPack(data->%s, buffer, size, pos);\n\n",
+        ifprintf(fp, 1, "%sPack(data->%s, buf);\n\n",
                 def->union_def.discr_def->name,
                 def->union_def.discr_name);
         ifprintf(fp, 1, "switch(data->%s) {\n",
@@ -573,12 +651,12 @@ static void emit_pack_body(FILE *fp, Definition *def)
 
             if (!is_void_type(union_item->def)) {
                 if (is_pass_by_value(union_item->def)) {
-                    ifprintf(fp, 2, "byte_count += %sPack(data->%s, buffer, size, pos);\n",
+                    ifprintf(fp, 2, "%sPack(data->%s, buf);\n",
                             union_item->def->name,
                             union_item->name);
                 }
                 else {
-                    ifprintf(fp, 2, "byte_count += %sPack(&data->%s, buffer, size, pos);\n",
+                    ifprintf(fp, 2, "%sPack(&data->%s, buf);\n",
                             union_item->def->name,
                             union_item->name);
                 }
@@ -588,7 +666,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
         }
 
         ifprintf(fp, 1, "}\n\n");
-        ifprintf(fp, 1, "return byte_count;\n");
+        ifprintf(fp, 1, "return buf;\n");
         break;
     default:
         fprintf(stderr, "%s: Unexpected definition type %d (%s).\n",
@@ -605,9 +683,9 @@ static void emit_unpack_signature(FILE *fp, Definition *def)
 
     fprintf(fp,
             "\n/*\n"
-            " * Unpack <data> from <buffer>, which is <size> bytes in size.\n"
+            " * Unpack <data> from <buf>, which is <size> bytes in size.\n"
             " */\n");
-    fprintf(fp, "size_t %sUnpack(const char *buffer, size_t size, %s *data)",
+    fprintf(fp, "size_t %sUnpack(const buffer *buf, size_t pos, %s *data)",
             def->name, def->name);
 }
 
@@ -622,12 +700,12 @@ static void emit_unpack_body(FILE *fp, Definition *def)
 
     switch(def->type) {
     case DT_ALIAS:
-        ifprintf(fp, 1, "return %sUnpack(buffer, size, data);\n", def->alias_def.alias->name);
+        ifprintf(fp, 1, "return %sUnpack(buf, pos, data);\n", def->alias_def.alias->name);
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n");
         ifprintf(fp, 1, "uint32_t old_count = data->count;\n");
-        ifprintf(fp, 1, "size_t offset = uint32Unpack(buffer, size, &data->count);\n\n");
+        ifprintf(fp, 1, "pos = uint32Unpack(buf, pos, &data->count);\n\n");
 
         ifprintf(fp, 1, "data->%s = realloc(data->%s, data->count * sizeof(%s));\n\n",
                 def->array_def.item_name,
@@ -642,32 +720,53 @@ static void emit_unpack_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "}\n");
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
-        ifprintf(fp, 2, "offset += %sUnpack(buffer + offset, "
-            "size > offset ? size - offset : 0, data->%s + i);\n",
+        ifprintf(fp, 2, "pos = %sUnpack(buf, pos, data->%s + i);\n",
                 def->array_def.item_type->name, def->array_def.item_name);
 
         ifprintf(fp, 1, "}\n\n");
 
-        ifprintf(fp, 1, "return offset;\n");
+        ifprintf(fp, 1, "return pos;\n");
         break;
     case DT_STRUCT:
-        ifprintf(fp, 1, "size_t offset = 0;\n\n");
-
         for (struct_item = listHead(&def->struct_def.items);
-             struct_item; struct_item = listNext(struct_item)) {
-            ifprintf(fp, 1, "offset += %sUnpack(buffer + offset, "
-                "size > offset ? size - offset : 0, &data->%s);%s",
-                    struct_item->def->name, struct_item->name,
-                    listNext(struct_item) == NULL ? "\n\n" : "\n");
+             struct_item; struct_item = listNext(struct_item))
+        {
+            if (struct_item->optional) {
+                ifprintf(fp, 1, "uint8_t %s_follows;\n", struct_item->name);
+                ifprintf(fp, 1, "pos = uint8Unpack(buf, pos, &%s_follows);\n\n",
+                        struct_item->name);
+                ifprintf(fp, 1, "if (data->%s != NULL && %s_follows) {\n",
+                        struct_item->name, struct_item->name);
+                ifprintf(fp, 2, "pos = %sUnpack(buf, pos, data->%s);\n",
+                        struct_item->def->name, struct_item->name);
+                ifprintf(fp, 1, "}\n");
+                ifprintf(fp, 1, "else if (data->%s != NULL && !%s_follows) {\n",
+                        struct_item->name, struct_item->name);
+                ifprintf(fp, 2, "%sDestroy(data->%s);\n",
+                        struct_item->def->name, struct_item->name);
+                ifprintf(fp, 2, "data->%s = NULL;\n", struct_item->name);
+                ifprintf(fp, 1, "}\n");
+                ifprintf(fp, 1, "else if (data->%s == NULL && %s_follows) {\n",
+                        struct_item->name, struct_item->name);
+                ifprintf(fp, 2, "data->%s = calloc(1, sizeof(%s));\n",
+                        struct_item->name, equivalent_c_type(struct_item->def));
+                ifprintf(fp, 2, "pos = %sUnpack(buf, pos, data->%s);\n",
+                        struct_item->def->name, struct_item->name);
+                ifprintf(fp, 1, "}\n\n");
+            }
+            else {
+                ifprintf(fp, 1, "pos = %sUnpack(buf, pos, &data->%s);\n\n",
+                        struct_item->def->name, struct_item->name);
+            }
         }
 
-        ifprintf(fp, 1, "return offset;\n");
+        ifprintf(fp, 1, "return pos;\n");
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "return uintUnpack(%d, buffer, size, data);\n", def->enum_def.num_bytes);
+        ifprintf(fp, 1, "return uintUnpack(%d, buf, pos, data);\n", def->enum_def.num_bytes);
         break;
     case DT_UNION:
-        ifprintf(fp, 1, "size_t offset = %sUnpack(buffer, size, &data->%s);\n\n",
+        ifprintf(fp, 1, "pos = %sUnpack(buf, pos, &data->%s);\n\n",
                 def->union_def.discr_def->name,
                 def->union_def.discr_name);
         ifprintf(fp, 1, "switch(data->%s) {\n",
@@ -678,8 +777,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "offset += %sUnpack(buffer + offset, "
-                    "size > offset ? size - offset : 0, &data->%s);\n",
+                ifprintf(fp, 2, "pos = %sUnpack(buf, pos, &data->%s);\n",
                         union_item->def->name, union_item->name);
             }
 
@@ -687,7 +785,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
         }
 
         ifprintf(fp, 1, "}\n\n");
-        ifprintf(fp, 1, "return offset;\n");
+        ifprintf(fp, 1, "return pos;\n");
         break;
     default:
         fprintf(stderr, "%s: Unexpected definition type %d (%s).\n",
@@ -698,6 +796,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
     fprintf(fp, "}\n");
 }
 
+#if 0
 static void emit_wrap_signature(FILE *fp, Definition *def)
 {
     StructItem *struct_item;
@@ -706,13 +805,13 @@ static void emit_wrap_signature(FILE *fp, Definition *def)
 
     fprintf(fp,
             "\n/*\n"
-            " * Pack the given %s fields into <buffer>, enlarging it as\n"
+            " * Pack the given %s fields into <buf>, enlarging it as\n"
             " * necessary. <size> and <pos> are the current size of\n"
-            " * <buffer> and the position upto which it is filled,\n"
+            " * <buf> and the position upto which it is filled,\n"
             " * and they are updated if necessary.\n"
             " */\n", def->name);
     fprintf(fp,
-            "size_t %sWrap(char **buffer, size_t *size, size_t *pos", def->name);
+            "size_t %sWrap(char **buf, size_t *size, size_t *pos", def->name);
 
     for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
@@ -750,7 +849,7 @@ static void emit_wrap_body(FILE *fp, Definition *def)
 
     for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item)) {
-            ifprintf(fp, 1, "byte_count += %sPack(%s, buffer, size, pos);\n",
+            ifprintf(fp, 1, "byte_count += %sPack(%s, buf, size, pos);\n",
                     struct_item->def->name,
                     struct_item->name);
     }
@@ -770,11 +869,11 @@ static void emit_unwrap_signature(FILE *fp, Definition *def)
 
     fprintf(fp,
             "\n/*\n"
-            " * Unpack the given %s fields from <buffer>, which has size\n"
+            " * Unpack the given %s fields from <buf>, which has size\n"
             " * <size>.\n"
             " */\n", def->name);
     fprintf(fp,
-            "size_t %sUnwrap(char *buffer, size_t size", def->name);
+            "size_t %sUnwrap(char *buf, size_t size", def->name);
 
     for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
@@ -807,7 +906,7 @@ static void emit_unwrap_body(FILE *fp, Definition *def)
 
     for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item)) {
-        ifprintf(fp, 1, "offset += %sUnpack(buffer + offset, size > offset ? size - offset : 0, %s);\n",
+        ifprintf(fp, 1, "offset += %sUnpack(buf + offset, size > offset ? size - offset : 0, %s);\n",
                 struct_item->def->name,
                 struct_item->name);
     }
@@ -871,13 +970,47 @@ static void emit_read_body(FILE *fp, Definition *def, FileAttributes *attr)
         ifprintf(fp, 1, "return(byte_count);\n");
         break;
     case DT_STRUCT:
-        ifprintf(fp, 1, "size_t byte_count = 0;\n\n");
+        ifprintf(fp, 1, "size_t byte_count = 0;\n");
 
         for (struct_item = listHead(&def->struct_def.items);
-             struct_item; struct_item = listNext(struct_item)) {
-            ifprintf(fp, 1, "byte_count += %sReadFrom%s(%s, &data->%s);\n",
-                    struct_item->def->name, attr->suffix, attr->varname,
-                    struct_item->name);
+             struct_item; struct_item = listNext(struct_item))
+        {
+            if (struct_item->optional) {
+                ifprintf(fp, 1, "uint8_t is_present;\n");
+                break;
+            }
+        }
+
+        fputc('\n', fp);
+
+        for (struct_item = listHead(&def->struct_def.items);
+             struct_item; struct_item = listNext(struct_item))
+        {
+            if (struct_item->optional) {
+                fputc('\n', fp);
+
+                ifprintf(fp, 1, "byte_count += uint8ReadFrom%s(%s, &is_present);\n",
+                        attr->suffix, attr->varname);
+                ifprintf(fp, 1, "if (is_present) {\n");
+
+                if (is_string_type(struct_item->def)) {
+                    ifprintf(fp, 2, "byte_count += %sReadFrom%s(%s, &data->%s);\n",
+                            struct_item->def->name, attr->suffix, attr->varname,
+                            struct_item->name);
+                }
+                else {
+                    ifprintf(fp, 2, "byte_count += %sReadFrom%s(%s, data->%s);\n",
+                            struct_item->def->name, attr->suffix, attr->varname,
+                            struct_item->name);
+                }
+
+                ifprintf(fp, 1, "}\n");
+            }
+            else {
+                ifprintf(fp, 1, "byte_count += %sReadFrom%s(%s, &data->%s);\n",
+                        struct_item->def->name, attr->suffix, attr->varname,
+                        struct_item->name);
+            }
         }
 
         fputc('\n', fp);
@@ -984,16 +1117,43 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
         ifprintf(fp, 1, "size_t byte_count = 0;\n\n");
 
         for (struct_item = listHead(&def->struct_def.items);
-             struct_item; struct_item = listNext(struct_item)) {
-            if (is_pass_by_value(struct_item->def)) {
-                ifprintf(fp, 1, "byte_count += %sWriteTo%s(%s, data->%s);\n",
-                        struct_item->def->name, attr->suffix, attr->varname,
-                        struct_item->name);
+             struct_item; struct_item = listNext(struct_item))
+        {
+            fputc('\n', fp);
+
+            if (struct_item->optional) {
+                ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
+                ifprintf(fp, 2, "byte_count += uint8WriteTo%s(%s, 1);\n",
+                        attr->suffix, attr->varname);
+
+                if (is_pass_by_value(struct_item->def) && !is_string_type(struct_item->def)) {
+                    ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, *data->%s);\n",
+                            struct_item->def->name, attr->suffix, attr->varname,
+                            struct_item->name);
+                }
+                else {
+                    ifprintf(fp, 2, "byte_count += %sWriteTo%s(%s, data->%s);\n",
+                            struct_item->def->name, attr->suffix, attr->varname,
+                            struct_item->name);
+                }
+
+                ifprintf(fp, 1, "}\n");
+                ifprintf(fp, 1, "else {\n");
+                ifprintf(fp, 2, "byte_count += uint8WriteTo%s(%s, 0);\n",
+                        attr->suffix, attr->varname);
+                ifprintf(fp, 1, "}\n");
             }
             else {
-                ifprintf(fp, 1, "byte_count += %sWriteTo%s(%s, &data->%s);\n",
-                        struct_item->def->name, attr->suffix, attr->varname,
-                        struct_item->name);
+                if (is_pass_by_value(struct_item->def)) {
+                    ifprintf(fp, 1, "byte_count += %sWriteTo%s(%s, data->%s);\n",
+                            struct_item->def->name, attr->suffix, attr->varname,
+                            struct_item->name);
+                }
+                else {
+                    ifprintf(fp, 1, "byte_count += %sWriteTo%s(%s, &data->%s);\n",
+                            struct_item->def->name, attr->suffix, attr->varname,
+                            struct_item->name);
+                }
             }
         }
 
@@ -1111,20 +1271,40 @@ static void emit_print_body(FILE *fp, Definition *def)
             ifprintf(fp, 1, "level++;\n\n");
 
             for (struct_item = listHead(&def->struct_def.items);
-                struct_item; struct_item = listNext(struct_item)) {
+                struct_item; struct_item = listNext(struct_item))
+            {
                 ifprintf(fp, 1, "fprintf(fp, \"%%s%s: \", indent(level));\n", struct_item->name);
 
-                if (is_pass_by_value(struct_item->def)) {
-                    ifprintf(fp, 1, "%sPrint(fp, data->%s, level);\n",
-                            struct_item->def->name,
-                            struct_item->name);
+                if (struct_item->optional) {
+                    ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
+                    if (is_pass_by_value(struct_item->def) && !is_string_type(struct_item->def)) {
+                        ifprintf(fp, 2, "%sPrint(fp, *data->%s, level);\n",
+                                struct_item->def->name,
+                                struct_item->name);
+                    }
+                    else {
+                        ifprintf(fp, 2, "%sPrint(fp, data->%s, level);\n",
+                                struct_item->def->name,
+                                struct_item->name);
+                    }
+                    ifprintf(fp, 1, "}\n");
+                    ifprintf(fp, 1, "else {\n");
+                    ifprintf(fp, 2, "astringPrint(fp, \"(null)\", level);\n");
+                    ifprintf(fp, 1, "}\n");
                 }
                 else {
-                    ifprintf(fp, 1, "%sPrint(fp, &data->%s, level);\n",
-                            struct_item->def->name,
-                            struct_item->name);
+                    if (is_pass_by_value(struct_item->def)) {
+                        ifprintf(fp, 1, "%sPrint(fp, data->%s, level);\n",
+                                struct_item->def->name,
+                                struct_item->name);
+                    }
+                    else {
+                        ifprintf(fp, 1, "%sPrint(fp, &data->%s, level);\n",
+                                struct_item->def->name,
+                                struct_item->name);
+                    }
                 }
-                ifprintf(fp, 1, "fprintf(fp, \"\\n\");\n\n");
+                ifprintf(fp, 1, "fputc('\\n', fp);\n\n");
             }
 
             ifprintf(fp, 1, "level--;\n\n");
@@ -1201,7 +1381,7 @@ static void emit_create_signature(FILE *fp, Definition *def)
     for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
     {
-        bool indirect = !is_pass_by_value(struct_item->def);
+        bool indirect = !is_pass_by_value(struct_item->def) || struct_item->optional;
         bool string   = is_string_type(struct_item->def);
 
         if (listPrev(struct_item) != NULL) {
@@ -1211,7 +1391,7 @@ static void emit_create_signature(FILE *fp, Definition *def)
         fprintf(fp, "%s%s%s%s",
                 indirect || string ? "const " : "",
                 equivalent_c_type(struct_item->def),
-                indirect ? "*" : "",
+                indirect && !string ? "*" : "",
                 struct_item->name);
     }
 
@@ -1261,7 +1441,7 @@ static void emit_set_signature(FILE *fp, Definition *def)
     for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
     {
-        bool indirect = !is_pass_by_value(struct_item->def);
+        bool indirect = !is_pass_by_value(struct_item->def) || struct_item->optional;
         bool string   = is_string_type(struct_item->def);
 
         fprintf(fp, ", ");
@@ -1269,7 +1449,7 @@ static void emit_set_signature(FILE *fp, Definition *def)
         fprintf(fp, "%s%s%s%s",
                 indirect || string ? "const " : "",
                 equivalent_c_type(struct_item->def),
-                indirect ? "*" : "",
+                indirect && !string ? "*" : "",
                 struct_item->name);
     }
 
@@ -1289,14 +1469,47 @@ static void emit_set_body(FILE *fp, Definition *def)
     for (struct_item = listHead(&def->struct_def.items);
          struct_item; struct_item = listNext(struct_item))
     {
-        if (is_pass_by_value(struct_item->def) && !is_string_type(struct_item->def)) {
-            ifprintf(fp, 1, "dst->%s = %s;\n", struct_item->name, struct_item->name);
+        if (struct_item->optional) {
+            fputc('\n', fp);
+
+            ifprintf(fp, 1, "if (dst->%s) {\n", struct_item->name);
+            if (is_string_type(struct_item->def)) {
+                ifprintf(fp, 2, "%sDestroy(&dst->%s);\n", struct_item->def->name, struct_item->name);
+            }
+            else {
+                ifprintf(fp, 2, "%sDestroy(dst->%s);\n", struct_item->def->name, struct_item->name);
+            }
+
+            ifprintf(fp, 2, "dst->%s = NULL;\n", struct_item->name);
+
+            ifprintf(fp, 1, "}\n\n");
+
+            ifprintf(fp, 1, "if (%s) {\n", struct_item->name);
+            ifprintf(fp, 2, "dst->%s = calloc(1, sizeof(%s));\n",
+                    struct_item->name, equivalent_c_type(struct_item->def));
+
+            if (is_pass_by_value(struct_item->def) && !is_string_type(struct_item->def)) {
+                ifprintf(fp, 2, "*dst->%s = *%s;\n", struct_item->name, struct_item->name);
+            }
+            else {
+                ifprintf(fp, 2, "%sCopy(&dst->%s, %s);\n",
+                        struct_item->def->name,
+                        struct_item->name,
+                        struct_item->name);
+            }
+
+            ifprintf(fp, 1, "}\n");
         }
         else {
-            ifprintf(fp, 1, "%sCopy(&dst->%s, %s);\n",
-                    struct_item->def->name,
-                    struct_item->name,
-                    struct_item->name);
+            if (is_pass_by_value(struct_item->def) && !is_string_type(struct_item->def)) {
+                ifprintf(fp, 1, "dst->%s = %s;\n", struct_item->name, struct_item->name);
+            }
+            else {
+                ifprintf(fp, 1, "%sCopy(&dst->%s, %s);\n",
+                        struct_item->def->name,
+                        struct_item->name,
+                        struct_item->name);
+            }
         }
     }
 
@@ -1385,22 +1598,26 @@ static void emit_copy_body(FILE *fp, Definition *def)
     case DT_STRUCT:
         for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
-            if (is_string_type(struct_item->def)) {
-                ifprintf(fp, 1, "%sCopy(&dst->%s, src->%s);\n",
-                        struct_item->def->name,
-                        struct_item->name,
-                        struct_item->name);
-            }
-            else if (is_pass_by_value(struct_item->def)) {
-                ifprintf(fp, 1, "dst->%s = src->%s;\n",
-                        struct_item->name,
-                        struct_item->name);
+            if (struct_item->optional) {
             }
             else {
-                ifprintf(fp, 1, "%sCopy(&dst->%s, &src->%s);\n",
-                        struct_item->def->name,
-                        struct_item->name,
-                        struct_item->name);
+                if (is_string_type(struct_item->def)) {
+                    ifprintf(fp, 1, "%sCopy(&dst->%s, src->%s);\n",
+                            struct_item->def->name,
+                            struct_item->name,
+                            struct_item->name);
+                }
+                else if (is_pass_by_value(struct_item->def)) {
+                    ifprintf(fp, 1, "dst->%s = src->%s;\n",
+                            struct_item->name,
+                            struct_item->name);
+                }
+                else {
+                    ifprintf(fp, 1, "%sCopy(&dst->%s, &src->%s);\n",
+                            struct_item->def->name,
+                            struct_item->name,
+                            struct_item->name);
+                }
             }
         }
         break;
@@ -1449,6 +1666,7 @@ static void emit_copy_body(FILE *fp, Definition *def)
 
     fprintf(fp, "}\n");
 }
+#endif
 
 static void emit_clear_signature(FILE *fp, Definition *def)
 {
@@ -1488,8 +1706,18 @@ static void emit_clear_body(FILE *fp, Definition *def)
         break;
     case DT_STRUCT:
         for (struct_item = listHead(&def->struct_def.items);
-             struct_item; struct_item = listNext(struct_item)) {
-            ifprintf(fp, 1, "%sClear(&data->%s);\n", struct_item->def->name, struct_item->name);
+             struct_item; struct_item = listNext(struct_item))
+        {
+            if (struct_item->optional) {
+                ifprintf(fp, 1, "if (data->%s != NULL) {\n", struct_item->name);
+                ifprintf(fp, 2, "%sDestroy(data->%s);\n",
+                        struct_item->def->name, struct_item->name);
+                ifprintf(fp, 2, "data->%s = NULL;\n", struct_item->name);
+                ifprintf(fp, 1, "}\n");
+            }
+            else {
+                ifprintf(fp, 1, "%sClear(&data->%s);\n", struct_item->def->name, struct_item->name);
+            }
         }
         break;
     case DT_ENUM:
@@ -1541,6 +1769,7 @@ static void emit_destroy_body(FILE *fp, Definition *def)
     fprintf(fp, "}\n");
 }
 
+#if 0
 static void emit_mx_send_signature(FILE *fp, Definition *def)
 {
     if (def->type == DT_CONST || def->builtin) return;
@@ -1606,6 +1835,7 @@ static void emit_mx_bcast_body(FILE *fp, Definition *def)
     ifprintf(fp, 1, "free(buf);\n");
     fprintf(fp, "}\n");
 }
+#endif
 
 static void set_dependencies(void)
 {
@@ -1670,7 +1900,7 @@ int emit_c_hdr(const char *out_file, const char *in_file,
         fprintf(fp, "\n#include <libmx.h>\t/* MX functions. */\n");
     }
 
-    fprintf(fp, "\n#include <libtyger.h>\t/* Tyger functions. */\n\n");
+    fprintf(fp, "\n#include \"libtyger.h\"\t/* Tyger functions. */\n\n");
 
     for (def = listHead(definitions); def; def = listNext(def)) {
         if (def->type == DT_CONST) {
@@ -1698,6 +1928,7 @@ int emit_c_hdr(const char *out_file, const char *in_file,
                 emit_unpack_signature(fp, def);
                 fprintf(fp, ";\n");
             }
+#if 0
             if (do_wrap && def->type == DT_STRUCT) {
                 emit_wrap_signature(fp, def);
                 fprintf(fp, ";\n");
@@ -1738,6 +1969,7 @@ int emit_c_hdr(const char *out_file, const char *in_file,
                 emit_copy_signature(fp, def);
                 fprintf(fp, ";\n");
             }
+#endif
             if (do_clear) {
                 emit_clear_signature(fp, def);
                 fprintf(fp, ";\n");
@@ -1746,6 +1978,7 @@ int emit_c_hdr(const char *out_file, const char *in_file,
                 emit_destroy_signature(fp, def);
                 fprintf(fp, ";\n");
             }
+#if 0
             if (do_mx_send) {
                 emit_mx_send_signature(fp, def);
                 fprintf(fp, ";\n");
@@ -1754,6 +1987,7 @@ int emit_c_hdr(const char *out_file, const char *in_file,
                 emit_mx_bcast_signature(fp, def);
                 fprintf(fp, ";\n");
             }
+#endif
         }
     }
 
@@ -1809,7 +2043,7 @@ int emit_c_src(const char *out_file, const char *in_file,
         fprintf(fp, "\n#include <libmx.h>\t/* MX functions. */\n");
     }
 
-    fprintf(fp, "\n#include <libtyger.h>\t/* Tyger functions. */\n");
+    fprintf(fp, "\n#include \"libtyger.h\"\t/* Tyger functions. */\n");
 
     fprintf(fp, "\n#include \"%s\"\n\n", associated_header_file(out_file));
 
@@ -1833,6 +2067,7 @@ int emit_c_src(const char *out_file, const char *in_file,
                 emit_unpack_signature(fp, def);
                 emit_unpack_body(fp, def);
             }
+#if 0
             if (do_wrap && def->type == DT_STRUCT) {
                 emit_wrap_signature(fp, def);
                 emit_wrap_body(fp, def);
@@ -1873,6 +2108,7 @@ int emit_c_src(const char *out_file, const char *in_file,
                 emit_copy_signature(fp, def);
                 emit_copy_body(fp, def);
             }
+#endif
             if (do_clear) {
                 emit_clear_signature(fp, def);
                 emit_clear_body(fp, def);
@@ -1881,6 +2117,7 @@ int emit_c_src(const char *out_file, const char *in_file,
                 emit_destroy_signature(fp, def);
                 emit_destroy_body(fp, def);
             }
+#if 0
             if (do_mx_send) {
                 emit_mx_send_signature(fp, def);
                 emit_mx_send_body(fp, def);
@@ -1889,6 +2126,7 @@ int emit_c_src(const char *out_file, const char *in_file,
                 emit_mx_bcast_signature(fp, def);
                 emit_mx_bcast_body(fp, def);
             }
+#endif
         }
     }
 

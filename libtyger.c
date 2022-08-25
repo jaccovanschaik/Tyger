@@ -21,11 +21,38 @@
 #include <errno.h>
 
 #include "libtyger.h"
+#include "utf8.h"
 
 static char *indent_string = NULL;
 static int   indent_length = 0;
 
 #define SWAP(from, to) do { char temp = to; to = from; from = temp; } while (0)
+
+// =============================== Internals ===============================
+
+/*
+ * Resize <buf>, which currently has size <size>, so that it can hold at
+ * least <requirement> bytes.
+ *
+ * If the size is insufficient it will be doubled until it is. If it is
+ * currently 0, it will be initialized to 1024.
+ */
+static void buffer_expand(buffer *buf, size_t req)
+{
+    bool must_realloc = false;
+
+    while (buf->cap < req) {
+        buf->cap = (buf->cap == 0) ? 1024 : 2 * buf->cap;
+
+        must_realloc = true;
+    }
+
+    if (must_realloc) {
+        buf->data = realloc(buf->data, buf->cap * sizeof(uint8_t));
+    }
+}
+
+// =============================== Indent handling ===============================
 
 /*
  * Set the indentation string.
@@ -45,7 +72,7 @@ void setIndent(const char *str)
  */
 const char *indent(int level)
 {
-    static char *buffer = NULL;
+    static char *buf = NULL;
     static int   available = -1;
 
     if (indent_string == NULL) {
@@ -57,20 +84,996 @@ const char *indent(int level)
     if (required > available) {
         int i;
 
-        buffer = realloc(buffer, required + 1);
+        buf = realloc(buf, required + 1);
 
         available = required;
 
         for (i = 0; i < available; i++) {
-            buffer[i] = indent_string[i % indent_length];
+            buf[i] = indent_string[i % indent_length];
         }
 
-        buffer[i] = '\0';
+        buf[i] = '\0';
     }
 
-    return buffer + available - level * indent_length;
+    return buf + available - level * indent_length;
 }
 
+// =============================== "Length" functions ===============================
+
+size_t bufferLen(const buffer *buf, size_t pos)
+{
+    return buf->len - pos;
+}
+
+// =============================== "Get" functions ===============================
+
+const uint8_t *bufferGet(const buffer *buf, size_t pos)
+{
+    return buf->data + pos;
+}
+
+uint8_t bufferGetC(const buffer *buf, size_t pos)
+{
+    return buf->data[pos];
+}
+
+const char *astringGet(const astring *astr)
+{
+    return astr->data;
+}
+
+const wchar_t *ustringGet(const ustring *ustr)
+{
+    return ustr->data;
+}
+
+// =============================== "Clear" functions ===============================
+
+/*
+ * Clear the contents of <data>.
+ */
+void uint8Clear(uint8_t *data)
+{
+    *data = 0;
+}
+
+/*
+ * Clear the contents of <data>.
+ */
+void uint16Clear(uint16_t *data)
+{
+    *data = 0;
+}
+
+/*
+ * Clear the contents of <data>.
+ */
+void uint32Clear(uint32_t *data)
+{
+    *data = 0;
+}
+
+/*
+ * Clear the contents of <data>.
+ */
+void uint64Clear(uint64_t *data)
+{
+    *data = 0;
+}
+
+/*
+ * Clear the contents of <data>.
+ */
+void int8Clear(int8_t *data)
+{
+    *data = 0;
+}
+
+/*
+ * Clear the contents of <data>.
+ */
+void int16Clear(int16_t *data)
+{
+    *data = 0;
+}
+
+/*
+ * Clear the contents of <data>.
+ */
+void int32Clear(int32_t *data)
+{
+    *data = 0;
+}
+
+/*
+ * Clear the contents of <data>.
+ */
+void int64Clear(int64_t *data)
+{
+    *data = 0;
+}
+
+/*
+ * Clear the contents of <data>.
+ */
+void boolClear(bool *data)
+{
+    *data = false;
+}
+
+/*
+ * Clear the contents of <data>.
+ */
+void float32Clear(float *data)
+{
+    *data = 0.0;
+}
+
+/*
+ * Clear the contents of <data>.
+ */
+void float64Clear(double *data)
+{
+    *data = 0.0;
+}
+
+void bufferClear(buffer *buf)
+{
+    free(buf->data);
+
+    memset(buf, 0, sizeof(buffer));
+}
+
+astring *astringClear(astring *astr)
+{
+    free(astr->data);
+
+    memset(astr, 0, sizeof(astring));
+
+    return astr;
+}
+
+ustring *ustringClear(ustring *ustr)
+{
+    free(ustr->data);
+
+    memset(ustr, 0, sizeof(ustring));
+
+    return ustr;
+}
+
+// =============================== "Destroy" functions ===============================
+
+/*
+ * Destroy the contents of <data>.
+ */
+void uint8Destroy(uint8_t *data)
+{
+    free(data);
+}
+
+/*
+ * Destroy the contents of <data>.
+ */
+void uint16Destroy(uint16_t *data)
+{
+    free(data);
+}
+
+/*
+ * Destroy the contents of <data>.
+ */
+void uint32Destroy(uint32_t *data)
+{
+    free(data);
+}
+
+/*
+ * Destroy the contents of <data>.
+ */
+void uint64Destroy(uint64_t *data)
+{
+    free(data);
+}
+
+/*
+ * Destroy the contents of <data>.
+ */
+void int8Destroy(int8_t *data)
+{
+    free(data);
+}
+
+/*
+ * Destroy the contents of <data>.
+ */
+void int16Destroy(int16_t *data)
+{
+    free(data);
+}
+
+/*
+ * Destroy the contents of <data>.
+ */
+void int32Destroy(int32_t *data)
+{
+    free(data);
+}
+
+/*
+ * Destroy the contents of <data>.
+ */
+void int64Destroy(int64_t *data)
+{
+    free(data);
+}
+
+/*
+ * Destroy the contents of <data>.
+ */
+void boolDestroy(bool *data)
+{
+    free(data);
+}
+
+/*
+ * Destroy the contents of <data>.
+ */
+void float32Destroy(float *data)
+{
+    free(data);
+}
+
+/*
+ * Destroy the contents of <data>.
+ */
+void float64Destroy(double *data)
+{
+    free(data);
+}
+
+/*
+ * Destroy buffer <buf>.
+ */
+void bufferDestroy(buffer *buf)
+{
+    bufferClear(buf);
+
+    free(buf);
+}
+
+/*
+ * Destroy astring <astr>.
+ */
+void astringDestroy(astring *astr)
+{
+    astringClear(astr);
+
+    free(astr);
+}
+
+/*
+ * Destroy ustring <ustr>.
+ */
+void ustringDestroy(ustring *ustr)
+{
+    ustringClear(ustr);
+
+    free(ustr);
+}
+
+// =============================== "Add" functions ===============================
+
+buffer *bufferAdd(buffer *buf, const void *add_data, size_t add_size)
+{
+    buffer_expand(buf, buf->len + add_size);
+
+    memcpy(buf->data + buf->len, add_data, add_size);
+
+    buf->len += add_size;
+
+    return buf;
+}
+
+buffer *bufferAddC(buffer *buf, uint8_t add_data)
+{
+    return bufferAdd(buf, &add_data, 1);
+}
+
+astring *astringAdd(astring *astr, const char *data, size_t data_len)
+{
+    size_t req_cap = sizeof(char) * (astr->len + data_len + 1);
+
+    if (astr->cap < req_cap) {
+        astr->cap = req_cap;
+
+        astr->data = realloc(astr->data, req_cap);
+    }
+
+    memcpy(astr->data + astr->len, data, data_len);
+
+    astr->len += data_len;
+
+    astr->data[astr->len] = 0;
+
+    return astr;
+}
+
+ustring *ustringAdd(ustring *ustr, const wchar_t *data, size_t data_len)
+{
+    size_t req_cap = sizeof(wchar_t) * (ustr->len + data_len + 1);
+
+    if (ustr->cap < req_cap) {
+        ustr->cap = req_cap;
+
+        ustr->data = realloc(ustr->data, req_cap);
+    }
+
+    wmemcpy(ustr->data + ustr->len, data, data_len);
+
+    ustr->len += data_len;
+
+    ustr->data[ustr->len] = 0;
+
+    return ustr;
+}
+
+astring *astringAddZ(astring *astr, const char *data)
+{
+    return astringAdd(astr, data, strlen(data));
+}
+
+ustring *ustringAddZ(ustring *ustr, const wchar_t *data)
+{
+    return ustringAdd(ustr, data, wcslen(data));
+}
+
+// =============================== "Rewind" functions ===============================
+
+astring *astringRewind(astring *astr)
+{
+    astr->len = 0;
+
+    if (astr->cap > 0) astr->data[0] = 0;
+
+    return astr;
+}
+
+ustring *ustringRewind(ustring *ustr)
+{
+    ustr->len = 0;
+
+    if (ustr->cap > 0) ustr->data[0] = 0;
+
+    return ustr;
+}
+
+// =============================== "Set" functions ===============================
+
+astring *astringSet(astring *astr, const char *data, size_t data_len)
+{
+    return astringAdd(astringRewind(astr), data, data_len);
+}
+
+ustring *ustringSet(ustring *ustr, const wchar_t *data, size_t data_len)
+{
+    return ustringAdd(ustringRewind(ustr), data, data_len);
+}
+
+astring *astringSetZ(astring *astr, const char *data)
+{
+    return astringSet(astringRewind(astr), data, strlen(data));
+}
+
+ustring *ustringSetZ(ustring *ustr, const wchar_t *data)
+{
+    return ustringSet(ustringRewind(ustr), data, wcslen(data));
+}
+
+// =============================== "Make" functions ===============================
+
+astring astringMake(const char *str)
+{
+    astring new_str = { };
+
+    astringSetZ(&new_str, str);
+
+    return new_str;
+}
+
+ustring ustringMake(const wchar_t *str)
+{
+    ustring new_str = { };
+
+    ustringSetZ(&new_str, str);
+
+    return new_str;
+}
+
+// =============================== "Create" functions ===============================
+
+astring *astringCreate(const char *str)
+{
+    astring *new_str = calloc(1, sizeof(astring));
+
+    astringSetZ(new_str, str);
+
+    return new_str;
+}
+
+ustring *ustringCreate(const wchar_t *str)
+{
+    ustring *new_str = calloc(1, sizeof(ustring));
+
+    ustringSetZ(new_str, str);
+
+    return new_str;
+}
+
+// =============================== "PackSize" functions ===============================
+
+/*
+ * Return the number of bytes required to pack a bool.
+ */
+size_t boolPackSize(void)
+{
+    return 1;
+}
+
+/*
+ * Return the number of bytes required to pack a uint8_t.
+ */
+size_t uint8PackSize(void)
+{
+    return sizeof(uint8_t);
+}
+
+/*
+ * Return the number of bytes required to pack a uint8_t.
+ */
+size_t uint16PackSize(void)
+{
+    return sizeof(uint16_t);
+}
+
+/*
+ * Return the number of bytes required to pack a uint32_t.
+ */
+size_t uint32PackSize(void)
+{
+    return sizeof(uint32_t);
+}
+
+/*
+ * Return the number of bytes required to pack a uint64_t.
+ */
+size_t uint64PackSize(void)
+{
+    return sizeof(uint64_t);
+}
+
+/*
+ * Return the number of bytes required to pack a int8_t.
+ */
+size_t int8PackSize(void)
+{
+    return sizeof(int8_t);
+}
+
+/*
+ * Return the number of bytes required to pack a int8_t.
+ */
+size_t int16PackSize(void)
+{
+    return sizeof(int16_t);
+}
+
+/*
+ * Return the number of bytes required to pack a int32_t.
+ */
+size_t int32PackSize(void)
+{
+    return sizeof(int32_t);
+}
+
+/*
+ * Return the number of bytes required to pack a int64_t.
+ */
+size_t int64PackSize(void)
+{
+    return sizeof(int64_t);
+}
+
+/*
+ * Return the number of bytes required to pack a float32.
+ */
+size_t float32PackSize(void)
+{
+    return sizeof(float);
+}
+
+/*
+ * Return the number of bytes required to pack a float64.
+ */
+size_t float64PackSize(void)
+{
+    return sizeof(double);
+}
+
+/*
+ * Return the number of bytes required to pack the char *pointed to by <data>.
+ */
+size_t astringPackSize(const astring *str)
+{
+    return uint32PackSize() + str->len;
+}
+
+/*
+ * Return the number of bytes required to pack the wchar_t *pointed to by <data>.
+ */
+size_t ustringPackSize(const ustring *str)
+{
+    size_t pack_size = uint32PackSize();
+
+    if (str->data == NULL || str->len == 0) return pack_size;
+
+    uint32_t utf8_size;
+
+    wchar_to_utf8(str->data, str->len, &utf8_size);
+
+    return pack_size + utf8_size;
+}
+
+// =============================== "Pack" functions ===============================
+
+/*
+ * Pack the least-significant <num_bytes> of <data> into <buf>, updating
+ * <size> and <pos>.
+ */
+buffer *uintPack(unsigned int data, size_t num_bytes, buffer *buf)
+{
+    for (int i = num_bytes - 1; i >= 0; i--) {
+        bufferAddC(buf, (data >> (8 * i)) & 0xFF);
+    }
+
+    return buf;
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
+buffer *boolPack(const bool data, buffer *buf)
+{
+    bufferAddC(buf, data ? 1 : 0);
+
+    return buf;
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
+buffer *uint8Pack(uint8_t data, buffer *buf)
+{
+    size_t pack_size = uint8PackSize();
+
+    for (int i = pack_size - 1; i >= 0; i--) {
+        bufferAddC(buf, (data >> (8 * i)) & 0xFF);
+    }
+
+    return buf;
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
+buffer *uint16Pack(uint16_t data, buffer *buf)
+{
+    size_t pack_size = uint16PackSize();
+
+    for (int i = pack_size - 1; i >= 0; i--) {
+        bufferAddC(buf, (data >> (8 * i)) & 0xFF);
+    }
+
+    return buf;
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
+buffer *uint32Pack(uint32_t data, buffer *buf)
+{
+    size_t pack_size = uint32PackSize();
+
+    for (int i = pack_size - 1; i >= 0; i--) {
+        bufferAddC(buf, (data >> (8 * i)) & 0xFF);
+    }
+
+    return buf;
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
+buffer *uint64Pack(uint64_t data, buffer *buf)
+{
+    size_t pack_size = uint64PackSize();
+
+    for (int i = pack_size - 1; i >= 0; i--) {
+        bufferAddC(buf, (data >> (8 * i)) & 0xFF);
+    }
+
+    return buf;
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
+buffer *int8Pack(int8_t data, buffer *buf)
+{
+    return uint8Pack(data, buf);
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
+buffer *int16Pack(int16_t data, buffer *buf)
+{
+    return uint16Pack(data, buf);
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
+buffer *int32Pack(int32_t data, buffer *buf)
+{
+    return uint32Pack(data, buf);
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
+buffer *int64Pack(int64_t data, buffer *buf)
+{
+    return uint64Pack(data, buf);
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
+buffer *float32Pack(const float data, buffer *buf)
+{
+    union {
+        float f;
+        char c[4];
+    } u;
+
+    u.f = data;
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    bufferAddC(buf, u.c[3]);
+    bufferAddC(buf, u.c[2]);
+    bufferAddC(buf, u.c[1]);
+    bufferAddC(buf, u.c[0]);
+#else
+    bufferAdd(buf, &u.f);
+#endif
+
+    return buf;
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
+buffer *float64Pack(const double data, buffer *buf)
+{
+    union {
+        double f;
+        char c[8];
+    } u;
+
+    u.f = data;
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    bufferAddC(buf, u.c[7]);
+    bufferAddC(buf, u.c[6]);
+    bufferAddC(buf, u.c[5]);
+    bufferAddC(buf, u.c[4]);
+    bufferAddC(buf, u.c[3]);
+    bufferAddC(buf, u.c[2]);
+    bufferAddC(buf, u.c[1]);
+    bufferAddC(buf, u.c[0]);
+#else
+    bufferAdd(buf, &u.f, 8);
+#endif
+
+    return buf;
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
+buffer *astringPack(const astring *str, buffer *buf)
+{
+    uint32Pack(str->len, buf);
+
+    if (str->data != NULL && str->len > 0) bufferAdd(buf, str->data, str->len);
+
+    return buf;
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which currently has size <size>, enlarging it if
+ * necessary. Return the number of bytes added to <buf>.
+ */
+buffer *ustringPack(const ustring *str, buffer *buf)
+{
+    if (str->data == NULL || str->len == 0) {
+        uint32Pack(0, buf);
+    }
+    else {
+        uint32_t utf8_size;
+        const uint8_t *utf8_text = wchar_to_utf8(str->data, str->len, &utf8_size);
+
+        uint32Pack(utf8_size, buf);
+
+        bufferAdd(buf, utf8_text, utf8_size);
+    }
+
+    return buf;
+}
+
+// =============================== "Unpack" functions ===============================
+
+/*
+ * Unpack <num_bytes> from buf (which has size <size>) and fill <data> with them.
+ */
+size_t uintUnpack(size_t num_bytes, const buffer *buf, size_t pos, unsigned int *data)
+{
+    assert(bufferLen(buf, pos) >= num_bytes);
+
+    *data = 0;
+
+    for (int i = 0; i < num_bytes; i++, pos++) {
+        *data <<= 8;
+
+        *data |= bufferGetC(buf, pos);
+    }
+
+    return pos;
+}
+
+/*
+ * Unpack a bool from <buf> (which has size <size>) and put it at the
+ * address pointed to by <data>.
+ */
+size_t boolUnpack(const buffer *buf, size_t pos, bool *data)
+{
+    size_t pack_size = boolPackSize();
+
+    assert(bufferLen(buf, pos) >= pack_size);
+
+    *data = (bufferGetC(buf, pos) == 1);
+
+    pos += pack_size;
+
+    return pos;
+}
+
+size_t uint8Unpack(const buffer *buf, size_t pos, uint8_t *data)
+{
+    size_t pack_size = uint8PackSize();
+
+    assert(bufferLen(buf, pos) >= pack_size);
+
+    *data = 0;
+
+    for (int i = 0; i < pack_size; i++, pos++) {
+        *data <<= 8;
+
+        *data |= bufferGetC(buf, pos);
+    }
+
+    return pos;
+}
+
+size_t uint16Unpack(const buffer *buf, size_t pos, uint16_t *data)
+{
+    size_t pack_size = uint16PackSize();
+
+    assert(bufferLen(buf, pos) >= pack_size);
+
+    *data = 0;
+
+    for (int i = 0; i < pack_size; i++, pos++) {
+        *data <<= 8;
+
+        *data |= bufferGetC(buf, pos);
+    }
+
+    return pos;
+}
+
+size_t uint32Unpack(const buffer *buf, size_t pos, uint32_t *data)
+{
+    size_t pack_size = uint32PackSize();
+
+    assert(bufferLen(buf, pos) >= pack_size);
+
+    *data = 0;
+
+    for (int i = 0; i < pack_size; i++, pos++) {
+        *data <<= 8;
+
+        *data |= bufferGetC(buf, pos);
+    }
+
+    return pos;
+}
+
+size_t uint64Unpack(const buffer *buf, size_t pos, uint64_t *data)
+{
+    size_t pack_size = uint64PackSize();
+
+    assert(bufferLen(buf, pos) >= pack_size);
+
+    *data = 0;
+
+    for (int i = 0; i < pack_size; i++, pos++) {
+        *data <<= 8;
+
+        *data |= bufferGetC(buf, pos);
+    }
+
+    return pos;
+}
+
+size_t int8Unpack(const buffer *buf, size_t pos, int8_t *data)
+{
+    return uint8Unpack(buf, pos, (uint8_t *) data);
+}
+
+size_t int16Unpack(const buffer *buf, size_t pos, int16_t *data)
+{
+    return uint16Unpack(buf, pos, (uint16_t *) data);
+}
+
+size_t int32Unpack(const buffer *buf, size_t pos, int32_t *data)
+{
+    return uint32Unpack(buf, pos, (uint32_t *) data);
+}
+
+size_t int64Unpack(const buffer *buf, size_t pos, int64_t *data)
+{
+    return uint64Unpack(buf, pos, (uint64_t *) data);
+}
+
+/*
+ * Unpack a float from <buf> (which has size <size>) and put it at the
+ * address pointed to by <data>.
+ */
+size_t float32Unpack(const buffer *buf, size_t pos, float *data)
+{
+    size_t req = float32PackSize();
+
+    union {
+        float f;
+        char c[4];
+    } u;
+
+    assert(bufferLen(buf, pos) >= req);
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    u.c[3] = bufferGetC(buf, pos + 0);
+    u.c[2] = bufferGetC(buf, pos + 1);
+    u.c[1] = bufferGetC(buf, pos + 2);
+    u.c[0] = bufferGetC(buf, pos + 3);
+#else
+    memcpy(u.c, bufferGet(buf, pos), 4);
+#endif
+
+    *data = u.f;
+
+    return req;
+}
+
+/*
+ * Unpack a double from <buf> (which has size <size>) and put it at the
+ * address pointed to by <data>.
+ */
+size_t float64Unpack(const buffer *buf, size_t pos, double *data)
+{
+    size_t req = float64PackSize();
+
+    union {
+        double f;
+        char c[8];
+    } u;
+
+    assert(bufferLen(buf, pos) >= req);
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    u.c[7] = bufferGetC(buf, pos + 0);
+    u.c[6] = bufferGetC(buf, pos + 1);
+    u.c[5] = bufferGetC(buf, pos + 2);
+    u.c[4] = bufferGetC(buf, pos + 3);
+    u.c[3] = bufferGetC(buf, pos + 4);
+    u.c[2] = bufferGetC(buf, pos + 5);
+    u.c[1] = bufferGetC(buf, pos + 6);
+    u.c[0] = bufferGetC(buf, pos + 7);
+#else
+    memcpy(u.c, bufferGet(buf, pos), 8);
+#endif
+
+    *data = u.f;
+
+    return req;
+}
+
+/*
+ * Unpack an char *from <buf> (which has size <size>) and put it at the
+ * address pointed to by <data>.
+ */
+size_t astringUnpack(const buffer *buf, size_t pos, astring *data)
+{
+    size_t packsize_of_string_length = uint32PackSize();
+
+    assert(bufferLen(buf, pos) >= packsize_of_string_length);
+
+    uint32_t string_length;
+
+    pos = uint32Unpack(buf, pos, &string_length);
+
+    assert(bufferLen(buf, pos) >= string_length);
+
+    astringSet(data, (char *) bufferGet(buf, pos), string_length);
+
+    pos += string_length;
+
+    return pos;
+}
+
+/*
+ * Unpack a UTF-8 encoded Unicode string from <buf> (which has size <size>), write it to a newly
+ * allocated wide-character string whose starting address is written to <wchar_str>, and return the
+ * number of bytes consumed from <buf>.
+ */
+size_t ustringUnpack(const buffer *buf, size_t pos, ustring *data)
+{
+    size_t packsize_of_utf8_len = uint32PackSize();
+
+    assert(bufferLen(buf, pos) >= packsize_of_utf8_len);
+
+    uint32_t utf8_len;
+
+    pos = uint32Unpack(buf, pos, &utf8_len);
+
+    assert(bufferLen(buf, pos) >= utf8_len);
+
+    size_t wchar_len;
+    const wchar_t *wchar_tmp = utf8_to_wchar(bufferGet(buf, pos), utf8_len, &wchar_len);
+
+    if (wchar_tmp) {
+        ustringSet(data, wchar_tmp, wchar_len);
+    }
+
+    pos += utf8_len;
+
+    return pos;
+}
+
+#if 0
 /*
  * Read <size> bytes from <fd> into <data>. Returns the number of bytes read
  * (which might be less than <size> if an error occurred).
@@ -236,60 +1239,6 @@ static size_t write_FP_BE(FILE *fp, const void *data, size_t size)
 }
 
 /*
- * Resize <buffer>, which currently has size <size>, so that it can hold at
- * least <requirement> bytes.
- *
- * If the size is insufficient it will be doubled until it is. If it is
- * currently 0, it will be initialized to 1024.
- */
-static void size_buffer(char **buffer, size_t *size, size_t requirement)
-{
-    while (*size < requirement) {
-        *size = (*size == 0) ? 1024 : 2 * *size;
-        *buffer = realloc(*buffer, *size);
-    }
-}
-
-/*
- * Pack the least-significant <num_bytes> of <data> into <buffer>, updating
- * <size> and <pos>.
- */
-size_t uintPack(unsigned int data, size_t num_bytes,
-                char **buffer, size_t *size, size_t *pos)
-{
-    size_buffer(buffer, size, *pos + num_bytes);
-
-    for (int i = num_bytes - 1; i >= 0; i--) {
-        *(*buffer + *pos) = (data >> (8 * i)) & 0xFF;
-
-        (*pos)++;
-    }
-
-    return num_bytes;
-}
-
-/*
- * Unpack <num_bytes> from buffer (which has size <size>) fill <data> with
- * them.
- */
-size_t uintUnpack(size_t num_bytes, const char *buffer, size_t size,
-        unsigned int *data)
-{
-    *data = 0;
-
-    for (int i = num_bytes - 1; i >= 0; i--) {
-        if (size <= 0) break;
-
-        *data |= (*buffer << (8 * i));
-
-        buffer++;
-        size--;
-    }
-
-    return num_bytes;
-}
-
-/*
  * Read <num_bytes> bytes from <fd> and put them towards the least-significant
  * side of <data>.
  */
@@ -344,84 +1293,7 @@ size_t uintWriteToFP(FILE *fp, size_t num_bytes, unsigned int data)
 }
 
 /*
- * Clear the contents of <data>.
- */
-void astringClear(char **data)
-{
-    free(*data);
-
-    *data = NULL;
-}
-
-/*
- * Destroy <data>.
- */
-void astringDestroy(char **data)
-{
-    astringClear(data);
-
-    free(data);
-}
-
-/*
- * Return the number of bytes required to pack the astring pointed to by <data>.
- */
-size_t astringPackSize(const char *data)
-{
-    return (data == NULL) ? 4 : 4 + strlen(data);
-}
-
-/*
- * Unpack an astring from <buffer> (which has size <size>) and put it at the
- * address pointed to by <data>.
- */
-size_t astringUnpack(const char *buffer, size_t size, char **data)
-{
-    uint32_t length;
-
-    if (size < sizeof(uint32_t)) {
-        return sizeof(uint32_t);
-    }
-
-    uint32Unpack(buffer, size, &length);
-
-    buffer += sizeof(uint32_t);
-
-    if (size < sizeof(uint32_t) + length * sizeof(char)) {
-        return sizeof(uint32_t) + length * sizeof(char);
-    }
-
-    if (*data != NULL) free(*data);
-
-    *data = calloc(length + 1, sizeof(char));
-
-    memcpy(*data, buffer, length * sizeof(char));
-
-    return sizeof(uint32_t) + length * sizeof(char);
-}
-
-/*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
- */
-size_t astringPack(const char *data, char **buffer, size_t *size, size_t *pos)
-{
-    size_t byte_count = 0;
-    uint32_t str_len = strlen(data);
-
-    byte_count += uint32Pack(str_len, buffer, size, pos);
-
-    size_buffer(buffer, size, *pos + str_len);
-
-    memcpy(*buffer + *pos, data, str_len);
-
-    *pos += str_len;
-
-    return sizeof(uint32_t) + str_len;
-}
-
-/*
- * Read an astring from <fd> into <data).
+ * Read an char *from <fd> into <data).
  */
 size_t astringReadFromFD(int fd, char **data)
 {
@@ -440,7 +1312,7 @@ size_t astringReadFromFD(int fd, char **data)
 }
 
 /*
- * Write an astring to <fd> from <data).
+ * Write an char *to <fd> from <data).
  */
 size_t astringWriteToFD(int fd, const char *data)
 {
@@ -455,7 +1327,7 @@ size_t astringWriteToFD(int fd, const char *data)
 }
 
 /*
- * Read an astring from <fp> into <data).
+ * Read an char *from <fp> into <data).
  */
 size_t astringReadFromFP(FILE *fp, char **data)
 {
@@ -474,7 +1346,7 @@ size_t astringReadFromFP(FILE *fp, char **data)
 }
 
 /*
- * Write an astring to <fp> from <data).
+ * Write an char *to <fp> from <data).
  */
 size_t astringWriteToFP(FILE *fp, const char *data)
 {
@@ -513,229 +1385,7 @@ void astringCopy(char **dst, const char *src)
 }
 
 /*
- * Clear the contents of <data>.
- */
-void ustringClear(wchar_t **data)
-{
-    free(*data);
-
-    *data = NULL;
-}
-
-/*
- * Destroy <data>.
- */
-void ustringDestroy(wchar_t **data)
-{
-    ustringClear(data);
-
-    free(data);
-}
-
-/*
- * Convert the <count> wide characters pointed to by <in> to UTF-8 characters.
- * Returns a pointer to a statically allocated buffer containing the UTF-8 text,
- * and returns the number of bytes contained therein through <size>.
- */
-static const char *wchar_to_utf8(const wchar_t *in, size_t count, uint32_t *size)
-{
-    static iconv_t wchar_to_utf8_conv = NULL;
-
-    static char *out = NULL;
-    static size_t out_size = 16;
-
-    size_t inbytesleft;
-    size_t outbytesleft;
-
-    if (wchar_to_utf8_conv == NULL) {
-        if ((wchar_to_utf8_conv = iconv_open("UTF-8", "wchar_t")) == (iconv_t) -1) {
-            perror("wchar_to_utf8: iconv_open");
-            wchar_to_utf8_conv = NULL;
-        }
-    }
-
-    if (out == NULL) {
-        out = calloc(1, out_size);
-    }
-    else {
-        memset(out, 0, out_size);
-    }
-
-    size_t in_size = sizeof(wchar_t) * count;
-
-    while (1) {
-        inbytesleft = in_size;
-        outbytesleft = out_size;
-
-#ifdef __WIN32
-        const
-#endif
-        char *in_ptr = (char *) in;
-        char *out_ptr = out;
-
-        size_t r = iconv(wchar_to_utf8_conv,
-                &in_ptr, &inbytesleft,
-                &out_ptr, &outbytesleft);
-
-        if (r != -1) {
-            break;
-        }
-        else if (errno == E2BIG) {
-            out_size *= 2;
-            out = realloc(out, out_size);
-        }
-        else {
-            return NULL;
-        }
-    }
-
-    *size = out_size - outbytesleft;
-
-    return out;
-}
-
-/*
- * Convert the <count> UTF-8 bytes pointed to by <in> to wide characters.
- * Returns a pointer to a statically allocated buffer that contains the wide
- * characters, and returns the number of characters contained therein through
- * <size>.
- */
-static const wchar_t *utf8_to_wchar(char *in, size_t count, size_t *size)
-{
-    static iconv_t utf8_to_wchar_conv = NULL;
-
-    static wchar_t *out = NULL;
-    static size_t out_size = 16;
-
-    size_t inbytesleft;
-    size_t outbytesleft;
-
-    if (utf8_to_wchar_conv == NULL) {
-        if ((utf8_to_wchar_conv = iconv_open("wchar_t", "UTF-8")) == (iconv_t) -1) {
-            perror("utf8_to_wchar: iconv_open");
-            utf8_to_wchar_conv = NULL;
-        }
-    }
-
-    if (out == NULL) {
-        out = calloc(1, out_size);
-    }
-    else {
-        memset(out, 0, out_size);
-    }
-
-    size_t in_size = sizeof(char) * count;
-
-    while (1) {
-        inbytesleft = in_size;
-        outbytesleft = out_size;
-
-#ifdef __WIN32
-        const
-#endif
-        char *in_ptr = in;
-        char *out_ptr = (char *) out;
-
-        size_t r = iconv(utf8_to_wchar_conv,
-                &in_ptr, &inbytesleft,
-                &out_ptr, &outbytesleft);
-
-        if (r != -1) {
-            break;
-        }
-        else if (errno == E2BIG) {
-            out_size *= 2;
-            out = realloc(out, out_size);
-        }
-        else {
-            return NULL;
-        }
-    }
-
-    *size = (out_size - outbytesleft) / sizeof(wchar_t);
-
-    return out;
-}
-
-/*
- * Return the number of bytes required to pack the ustring pointed to by <data>.
- */
-size_t ustringPackSize(const wchar_t *data)
-{
-    uint32_t out_size = 0;
-
-    if (data != NULL) {
-        wchar_to_utf8(data, wcslen(data), &out_size);
-    }
-
-    return sizeof(uint32_t) + out_size;
-}
-
-/*
- * Unpack a UTF-8 encoded ustring from <buffer> (which has size <size>), write
- * it to a newly allocated wide-character string whose starting address is
- * written to <data>, and return the number of bytes consumed from <buffer>.
- * If <buffer> doesn't contain enough bytes to successfully extract a string
- * from it return the mininum number of bytes we would need.
- */
-size_t ustringUnpack(const char *buffer, size_t size, wchar_t **data)
-{
-    size_t wchar_count;
-    uint32_t length;
-
-    if (size < sizeof(uint32_t)) {
-        return sizeof(uint32_t);
-    }
-
-    uint32Unpack(buffer, size, &length);
-
-    buffer += sizeof(uint32_t);
-    size -= sizeof(uint32_t);
-
-    if (size < length) {
-        return sizeof(uint32_t) + length;
-    }
-
-    const wchar_t *wchar = utf8_to_wchar((char *) buffer, length, &wchar_count);
-
-    if (*data != NULL) free(*data);
-
-    *data = calloc(wchar_count + 1, sizeof(wchar_t));
-
-    memcpy(*data, wchar, wchar_count * sizeof(wchar_t));
-
-    return sizeof(uint32_t) + length;
-}
-
-/*
- * Add <data> to position <pos> in <buffer>, which currently has size <size>,
- * enlarging it if necessary. Return the number of bytes added to <buffer>.
- */
-size_t ustringPack(const wchar_t *data, char **buffer, size_t *size, size_t *pos)
-{
-    uint32_t utf8_size;
-    const char *utf8_text;
-
-    if (data == NULL) {
-        utf8_size = 0;
-    }
-    else {
-        utf8_text = wchar_to_utf8(data, wcslen(data), &utf8_size);
-    }
-
-    uint32Pack(utf8_size, buffer, size, pos);
-
-    size_buffer(buffer, size, *pos + utf8_size);
-
-    memcpy(*buffer + *pos, utf8_text, utf8_size);
-
-    *pos += utf8_size;
-
-    return sizeof(uint32_t) + utf8_size;
-}
-
-/*
- * Read a ustring from <fd> into <data).
+ * Read a wchar_t *from <fd> into <data).
  */
 size_t ustringReadFromFD(int fd, wchar_t **data)
 {
@@ -744,7 +1394,7 @@ size_t ustringReadFromFD(int fd, wchar_t **data)
 
     count += uint32ReadFromFD(fd, &uint8_len);
 
-    char *uint8_buf = calloc(1, uint8_len + 1);
+    uint8_t *uint8_buf = calloc(1, uint8_len + 1);
 
     count += read_FD(fd, uint8_buf, uint8_len);
 
@@ -760,7 +1410,7 @@ size_t ustringReadFromFD(int fd, wchar_t **data)
 }
 
 /*
- * Write a ustring to <fd> from <data).
+ * Write a wchar_t *to <fd> from <data).
  */
 size_t ustringWriteToFD(int fd, const wchar_t *data)
 {
@@ -783,7 +1433,7 @@ size_t ustringWriteToFD(int fd, const wchar_t *data)
 }
 
 /*
- * Read a ustring from <fp> into <data).
+ * Read a wchar_t *from <fp> into <data).
  */
 size_t ustringReadFromFP(FILE *fp, wchar_t **data)
 {
@@ -792,7 +1442,7 @@ size_t ustringReadFromFP(FILE *fp, wchar_t **data)
 
     count += uint32ReadFromFP(fp, &uint8_len);
 
-    char *uint8_buf = calloc(1, uint8_len + 1);
+    uint8_t *uint8_buf = calloc(1, uint8_len + 1);
 
     count += read_FP(fp, uint8_buf, uint8_len);
 
@@ -808,7 +1458,7 @@ size_t ustringReadFromFP(FILE *fp, wchar_t **data)
 }
 
 /*
- * Write a ustring to <fp> from <data).
+ * Write a wchar_t *to <fp> from <data).
  */
 size_t ustringWriteToFP(FILE *fp, const wchar_t *data)
 {
@@ -855,88 +1505,6 @@ void ustringCopy(wchar_t **dst, const wchar_t *src)
 }
 
 /*
- * Clear the contents of <data>.
- */
-void float32Clear(float *data)
-{
-    *data = 0.0;
-}
-
-/*
- * Destroy <data>.
- */
-void float32Destroy(float *data)
-{
-    float32Clear(data);
-
-    free(data);
-}
-
-/*
- * Return the number of bytes required to pack a float32.
- */
-size_t float32PackSize(void)
-{
-    return sizeof(float);
-}
-
-/*
- * Unpack a float from <buffer> (which has size <size>) and put it at the
- * address pointed to by <data>.
- */
-size_t float32Unpack(const char *buffer, size_t size, float *data)
-{
-    size_t req = float32PackSize();
-
-    union {
-        float f;
-        char c[4];
-    } u;
-
-    if (size >= req) {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        u.c[3] = buffer[0];
-        u.c[2] = buffer[1];
-        u.c[1] = buffer[2];
-        u.c[0] = buffer[3];
-#else
-        memcpy(u.c, buffer, 4);
-#endif
-    }
-
-    *data = u.f;
-
-    return req;
-}
-
-/*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
- */
-size_t float32Pack(const float data, char **buffer, size_t *size, size_t *pos)
-{
-    union {
-        float f;
-        char c[4];
-    } u;
-
-    u.f = data;
-
-    size_buffer(buffer, size, *pos + sizeof(float));
-
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    (*buffer)[(*pos)++] = u.c[3];
-    (*buffer)[(*pos)++] = u.c[2];
-    (*buffer)[(*pos)++] = u.c[1];
-    (*buffer)[(*pos)++] = u.c[0];
-#else
-    memcpy(buffer, u.c, 4);
-#endif
-
-    return sizeof(float);
-}
-
-/*
  * Read a float from <fd> into <data).
  */
 size_t float32ReadFromFD(int fd, float *data)
@@ -977,96 +1545,6 @@ void float32Print(FILE *fp, float data, int indent)
 }
 
 /*
- * Clear the contents of <data>.
- */
-void float64Clear(double *data)
-{
-    *data = 0.0;
-}
-
-/*
- * Destroy <data>.
- */
-void float64Destroy(double *data)
-{
-    float64Clear(data);
-
-    free(data);
-}
-
-/*
- * Return the number of bytes required to pack a float64.
- */
-size_t float64PackSize(void)
-{
-    return sizeof(double);
-}
-
-/*
- * Unpack a double from <buffer> (which has size <size>) and put it at the
- * address pointed to by <data>.
- */
-size_t float64Unpack(const char *buffer, size_t size, double *data)
-{
-    size_t req = float64PackSize();
-
-    union {
-        double f;
-        char c[8];
-    } u;
-
-    if (size >= req) {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        u.c[7] = buffer[0];
-        u.c[6] = buffer[1];
-        u.c[5] = buffer[2];
-        u.c[4] = buffer[3];
-        u.c[3] = buffer[4];
-        u.c[2] = buffer[5];
-        u.c[1] = buffer[6];
-        u.c[0] = buffer[7];
-#else
-        memcpy(u.c, buffer, 8);
-#endif
-    }
-
-    *data = u.f;
-
-    return req;
-}
-
-/*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
- */
-size_t float64Pack(const double data, char **buffer, size_t *size, size_t *pos)
-{
-    union {
-        double f;
-        char c[8];
-    } u;
-
-    u.f = data;
-
-    size_buffer(buffer, size, *pos + sizeof(double));
-
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    (*buffer)[(*pos)++] = u.c[7];
-    (*buffer)[(*pos)++] = u.c[6];
-    (*buffer)[(*pos)++] = u.c[5];
-    (*buffer)[(*pos)++] = u.c[4];
-    (*buffer)[(*pos)++] = u.c[3];
-    (*buffer)[(*pos)++] = u.c[2];
-    (*buffer)[(*pos)++] = u.c[1];
-    (*buffer)[(*pos)++] = u.c[0];
-#else
-    memcpy(buffer, u.c, 4);
-#endif
-
-    return sizeof(double);
-}
-
-/*
  * Read a double from <fd> into <data).
  */
 size_t float64ReadFromFD(int fd, double *data)
@@ -1104,74 +1582,6 @@ size_t float64WriteToFP(FILE *fp, double data)
 void float64Print(FILE *fp, double data, int indent)
 {
     fprintf(fp, "%g", data);
-}
-
-static uint8_t bool_encode(bool b)
-{
-    return b ? 1 : 0;
-}
-
-static bool bool_decode(uint8_t e)
-{
-    return (e == 0) ? false : true;
-}
-
-/*
- * Clear the contents of <data>.
- */
-void boolClear(bool *data)
-{
-    *data = false;
-}
-
-/*
- * Destroy <data>.
- */
-void boolDestroy(bool *data)
-{
-    boolClear(data);
-
-    free(data);
-}
-
-/*
- * Return the number of bytes required to pack a bool.
- */
-size_t boolPackSize(void)
-{
-    return 1;
-}
-
-/*
- * Unpack a bool from <buffer> (which has size <size>) and put it at the
- * address pointed to by <data>.
- */
-size_t boolUnpack(const char *buffer, size_t size, bool *data)
-{
-    size_t req = boolPackSize();
-
-    if (size >= req) {
-        *data = bool_decode(buffer[0]);
-    }
-
-    return req;
-}
-
-/*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
- */
-size_t boolPack(const bool data, char **buffer, size_t *size, size_t *pos)
-{
-    size_t req = boolPackSize();
-
-    size_buffer(buffer, size, *pos + req);
-
-    (*buffer)[*pos] = bool_encode(data);
-
-    (*pos) += req;
-
-    return req;
 }
 
 /*
@@ -1241,60 +1651,6 @@ void boolCopy(bool *dst, bool src)
 }
 
 /*
- * Clear the contents of <data>.
- */
-void uint8Clear(uint8_t *data)
-{
-    *data = 0;
-}
-
-/*
- * Destroy <data>.
- */
-void uint8Destroy(uint8_t *data)
-{
-    uint8Clear(data);
-
-    free(data);
-}
-
-/*
- * Return the number of bytes required to pack a uint8_t.
- */
-size_t uint8PackSize(void)
-{
-    return sizeof(uint8_t);
-}
-
-/*
- * Unpack a uint8_t from <buffer> (which has size <size>) and put it at the
- * address pointed to by <data>.
- */
-size_t uint8Unpack(const char *buffer, size_t size, uint8_t *data)
-{
-    size_t req = uint8PackSize();
-
-    if (size >= req) {
-        *data = buffer[0];
-    }
-
-    return req;
-}
-
-/*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
- */
-size_t uint8Pack(const uint8_t data, char **buffer, size_t *size, size_t *pos)
-{
-    size_buffer(buffer, size, *pos + sizeof(uint8_t));
-
-    (*buffer)[(*pos)++] = data;
-
-    return sizeof(uint8_t);
-}
-
-/*
  * Read a uint8_t from <fd> into <data).
  */
 size_t uint8ReadFromFD(int fd, uint8_t *data)
@@ -1335,24 +1691,6 @@ void uint8Print(FILE *fp, uint8_t data, int indent)
 }
 
 /*
- * Clear the contents of <data>.
- */
-void int8Clear(int8_t *data)
-{
-    *data = 0;
-}
-
-/*
- * Destroy <data>.
- */
-void int8Destroy(int8_t *data)
-{
-    int8Clear(data);
-
-    free(data);
-}
-
-/*
  * Return the number of bytes required to pack an int8_t.
  */
 size_t int8PackSize(void)
@@ -1361,29 +1699,29 @@ size_t int8PackSize(void)
 }
 
 /*
- * Unpack an int8_t from <buffer> (which has size <size>) and put it at the
+ * Unpack an int8_t from <buf> (which has size <size>) and put it at the
  * address pointed to by <data>.
  */
-size_t int8Unpack(const char *buffer, size_t size, int8_t *data)
+size_t int8Unpack(const buffer *buf, size_t pos, int8_t *data)
 {
     size_t req = int8PackSize();
 
-    if (size >= req) {
-        *data = buffer[0];
-    }
+    assert(bufferLen(buf, pos) >= req);
+
+        *data = buf[0];
 
     return req;
 }
 
 /*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-size_t int8Pack(const int8_t data, char **buffer, size_t *size, size_t *pos)
+buffer *int8Pack(const int8_t data, buffer *buf)
 {
-    size_buffer(buffer, size, *pos + sizeof(int8_t));
+    buffer_expand(buf, size, *pos + sizeof(int8_t));
 
-    (*buffer)[(*pos)++] = data;
+    (*buf)[(*pos)++] = data;
 
     return sizeof(uint8_t);
 }
@@ -1429,62 +1767,6 @@ void int8Print(FILE *fp, int8_t data, int indent)
 }
 
 /*
- * Clear the contents of <data>.
- */
-void uint16Clear(uint16_t *data)
-{
-    *data = 0;
-}
-
-/*
- * Destroy <data>.
- */
-void uint16Destroy(uint16_t *data)
-{
-    uint16Clear(data);
-
-    free(data);
-}
-
-/*
- * Return the number of bytes required to pack a uint16_t.
- */
-size_t uint16PackSize(void)
-{
-    return sizeof(uint16_t);
-}
-
-/*
- * Unpack a uint16_t from <buffer> (which has size <size>) and put it at the
- * address pointed to by <data>.
- */
-size_t uint16Unpack(const char *buffer, size_t size, uint16_t *data)
-{
-    size_t req = uint16PackSize();
-
-    if (size >= req) {
-        *data = (buffer[0] << 8)
-              | (buffer[1]);
-    }
-
-    return req;
-}
-
-/*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
- */
-size_t uint16Pack(const uint16_t data, char **buffer, size_t *size, size_t *pos)
-{
-    size_buffer(buffer, size, *pos + sizeof(uint16_t));
-
-    (*buffer)[(*pos)++] = (data & 0xFF00) >> 8;
-    (*buffer)[(*pos)++] = (data & 0x00FF);
-
-    return sizeof(uint16_t);
-}
-
-/*
  * Read a uint16_t from <fd> into <data).
  */
 size_t uint16ReadFromFD(int fd, uint16_t *data)
@@ -1522,62 +1804,6 @@ size_t uint16WriteToFP(FILE *fp, uint16_t data)
 void uint16Print(FILE *fp, uint16_t data, int indent)
 {
     fprintf(fp, "%" PRIu16, data);
-}
-
-/*
- * Clear the contents of <data>.
- */
-void int16Clear(int16_t *data)
-{
-    *data = 0;
-}
-
-/*
- * Destroy <data>.
- */
-void int16Destroy(int16_t *data)
-{
-    int16Clear(data);
-
-    free(data);
-}
-
-/*
- * Return the number of bytes required to pack an int16_t.
- */
-size_t int16PackSize(void)
-{
-    return sizeof(int16_t);
-}
-
-/*
- * Unpack an int16_t from <buffer> (which has size <size>) and put it at the
- * address pointed to by <data>.
- */
-size_t int16Unpack(const char *buffer, size_t size, int16_t *data)
-{
-    size_t req = int16PackSize();
-
-    if (size >= req) {
-        *data = (buffer[0] << 8)
-              | (buffer[1]);
-    }
-
-    return req;
-}
-
-/*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
- */
-size_t int16Pack(int16_t data, char **buffer, size_t *size, size_t *pos)
-{
-    size_buffer(buffer, size, *pos + sizeof(int16_t));
-
-    (*buffer)[(*pos)++] = (data & 0xFF00) >> 8;
-    (*buffer)[(*pos)++] = (data & 0x00FF);
-
-    return sizeof(int16_t);
 }
 
 /*
@@ -1621,66 +1847,6 @@ void int16Print(FILE *fp, int16_t data, int indent)
 }
 
 /*
- * Clear the contents of <data>.
- */
-void uint32Clear(uint32_t *data)
-{
-    *data = 0;
-}
-
-/*
- * Destroy <data>.
- */
-void uint32Destroy(uint32_t *data)
-{
-    uint32Clear(data);
-
-    free(data);
-}
-
-/*
- * Return the number of bytes required to pack a uint32_t.
- */
-size_t uint32PackSize(void)
-{
-    return sizeof(uint32_t);
-}
-
-/*
- * Unpack a uint32_t from <buffer> (which has size <size>) and put it at the
- * address pointed to by <data>.
- */
-size_t uint32Unpack(const char *buffer, size_t size, uint32_t *data)
-{
-    size_t req = uint32PackSize();
-
-    if (size >= req) {
-        *data = (buffer[0] << 24)
-              | (buffer[1] << 16)
-              | (buffer[2] <<  8)
-              | (buffer[3]);
-    }
-
-    return req;
-}
-
-/*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
- */
-size_t uint32Pack(uint32_t data, char **buffer, size_t *size, size_t *pos)
-{
-    size_buffer(buffer, size, *pos + sizeof(uint32_t));
-
-    (*buffer)[(*pos)++] = (data >> 24) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 16) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 8)  & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 0)  & 0xFF;
-
-    return sizeof(uint32_t);
-}
-
-/*
  * Read a uint32_t from <fd> into <data).
  */
 size_t uint32ReadFromFD(int fd, uint32_t *data)
@@ -1718,66 +1884,6 @@ size_t uint32WriteToFP(FILE *fp, uint32_t data)
 void uint32Print(FILE *fp, uint32_t data, int indent)
 {
     fprintf(fp, "%" PRIu32, data);
-}
-
-/*
- * Clear the contents of <data>.
- */
-void int32Clear(int32_t *data)
-{
-    *data = 0;
-}
-
-/*
- * Destroy <data>.
- */
-void int32Destroy(int32_t *data)
-{
-    int32Clear(data);
-
-    free(data);
-}
-
-/*
- * Return the number of bytes required to pack an int32_t.
- */
-size_t int32PackSize(void)
-{
-    return sizeof(int32_t);
-}
-
-/*
- * Unpack an int32_t from <buffer> (which has size <size>) and put it at the
- * address pointed to by <data>.
- */
-size_t int32Unpack(const char *buffer, size_t size, int32_t *data)
-{
-    size_t req = int32PackSize();
-
-    if (size >= req) {
-        *data = (buffer[0] << 24)
-              | (buffer[1] << 16)
-              | (buffer[2] <<  8)
-              | (buffer[3]);
-    }
-
-    return req;
-}
-
-/*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
- */
-size_t int32Pack(int32_t data, char **buffer, size_t *size, size_t *pos)
-{
-    size_buffer(buffer, size, *pos + sizeof(int32_t));
-
-    (*buffer)[(*pos)++] = (data >> 24) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 16) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 8)  & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 0)  & 0xFF;
-
-    return sizeof(uint32_t);
 }
 
 /*
@@ -1821,74 +1927,6 @@ void int32Print(FILE *fp, int32_t data, int indent)
 }
 
 /*
- * Clear the contents of <data>.
- */
-void uint64Clear(uint64_t *data)
-{
-    *data = 0;
-}
-
-/*
- * Destroy <data>.
- */
-void uint64Destroy(uint64_t *data)
-{
-    uint64Clear(data);
-
-    free(data);
-}
-
-/*
- * Return the number of bytes required to pack a uint64_t.
- */
-size_t uint64PackSize(void)
-{
-    return sizeof(uint64_t);
-}
-
-/*
- * Unpack a uint64_t from <buffer> (which has size <size>) and put it at the
- * address pointed to by <data>.
- */
-size_t uint64Unpack(const char *buffer, size_t size, uint64_t *data)
-{
-    size_t req = uint64PackSize();
-
-    if (size >= req) {
-        *data = ((uint64_t) buffer[0] << 56)
-              | ((uint64_t) buffer[1] << 48)
-              | ((uint64_t) buffer[2] << 40)
-              | ((uint64_t) buffer[3] << 32)
-              | ((uint64_t) buffer[4] << 24)
-              | ((uint64_t) buffer[5] << 16)
-              | ((uint64_t) buffer[6] <<  8)
-              | ((uint64_t) buffer[7]);
-    }
-
-    return req;
-}
-
-/*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
- */
-size_t uint64Pack(uint64_t data, char **buffer, size_t *size, size_t *pos)
-{
-    size_buffer(buffer, size, *pos + sizeof(uint64_t));
-
-    (*buffer)[(*pos)++] = (data >> 56) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 48) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 40) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 32) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 24) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 16) & 0xFF;
-    (*buffer)[(*pos)++] = (data >>  8) & 0xFF;
-    (*buffer)[(*pos)++] = (data >>  0) & 0xFF;
-
-    return sizeof(uint64_t);
-}
-
-/*
  * Read a uint64_t from <fd> into <data).
  */
 size_t uint64ReadFromFD(int fd, uint64_t *data)
@@ -1926,74 +1964,6 @@ size_t uint64WriteToFP(FILE *fp, uint64_t data)
 void uint64Print(FILE *fp, uint64_t data, int indent)
 {
     fprintf(fp, "%" PRIu64, data);
-}
-
-/*
- * Clear the contents of <data>.
- */
-void int64Clear(int64_t *data)
-{
-    *data = 0;
-}
-
-/*
- * Destroy <data>.
- */
-void int64Destroy(int64_t *data)
-{
-    int64Clear(data);
-
-    free(data);
-}
-
-/*
- * Return the number of bytes required to pack an int64_t.
- */
-size_t int64PackSize(void)
-{
-    return sizeof(int64_t);
-}
-
-/*
- * Unpack an int64_t from <buffer> (which has size <size>) and put it at the
- * address pointed to by <data>.
- */
-size_t int64Unpack(const char *buffer, size_t size, int64_t *data)
-{
-    size_t req = int64PackSize();
-
-    if (size >= req) {
-        *data = ((uint64_t) buffer[0] << 56)
-              | ((uint64_t) buffer[1] << 48)
-              | ((uint64_t) buffer[2] << 40)
-              | ((uint64_t) buffer[3] << 32)
-              | ((uint64_t) buffer[4] << 24)
-              | ((uint64_t) buffer[5] << 16)
-              | ((uint64_t) buffer[6] <<  8)
-              | ((uint64_t) buffer[7]);
-    }
-
-    return req;
-}
-
-/*
- * Add <data> to position <pos> in <buffer>, which has size <size>, enlarging it
- * if necessary.
- */
-size_t int64Pack(int64_t data, char **buffer, size_t *size, size_t *pos)
-{
-    size_buffer(buffer, size, *pos + sizeof(int64_t));
-
-    (*buffer)[(*pos)++] = (data >> 56) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 48) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 40) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 32) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 24) & 0xFF;
-    (*buffer)[(*pos)++] = (data >> 16) & 0xFF;
-    (*buffer)[(*pos)++] = (data >>  8) & 0xFF;
-    (*buffer)[(*pos)++] = (data >>  0) & 0xFF;
-
-    return sizeof(int64_t);
 }
 
 /*
@@ -2035,233 +2005,240 @@ void int64Print(FILE *fp, int64_t data, int indent)
 {
     fprintf(fp, "%" PRId64, data);
 }
+#endif
 
 #ifdef TEST
-static void reset_buffer(char **buffer, size_t *size, size_t *pos)
-{
-    if (*buffer != NULL) {
-        free(*buffer);
-        *buffer = NULL;
-    }
-
-    *size = 0;
-    *pos = 0;
-}
-
 int main(int argc, char *argv[])
 {
-    char *astring_data;
-    wchar_t *ustring_data;
+    buffer  buf  = { };
+    astring *astr = NULL;
+    ustring *ustr = NULL;
 
-    float float32_data;
-    double float64_data;
+    float f32;
+    double f64;
 
-    uint8_t  uint8_data;
-    int8_t   int8_data;
-    uint16_t uint16_data;
-    int16_t  int16_data;
-    uint32_t uint32_data;
-    int32_t  int32_data;
-    uint64_t uint64_data;
-    int64_t  int64_data;
+    uint8_t  u8;
+    int8_t   i8;
+    uint16_t u16;
+    int16_t  i16;
+    uint32_t u32;
+    int32_t  i32;
+    uint64_t u64;
+    int64_t  i64;
 
-    char *buffer = NULL;
-    size_t size = 0, pos = 0;
+    astr = astringCreate("Hoi");
+    assert(astringPackSize(astr) == 7);
 
-    astring_data = strdup("Hoi");
+    assert(astringPack(astr, &buf) == &buf);
+    assert(buf.len == 7);
+    assert(buf.cap >= 7);
+    assert(memcmp(bufferGet(&buf, 0), "\x00\x00\x00\x03Hoi", 7) == 0);
 
-    assert(astringPackSize(astring_data) == 7);
-    astringPack(astring_data, &buffer, &size, &pos);
-    assert(pos == 7);
-    assert(size >= 7);
-    assert(memcmp(buffer, "\x00\x00\x00\x03Hoi", 7) == 0);
-    astringUnpack(buffer, pos, &astring_data);
-    assert(strcmp(astring_data, "Hoi") == 0);
+    assert(astringUnpack(&buf, 0, astr) == 7);
+    assert(strcmp(astringGet(astr), "Hoi") == 0);
 
-    reset_buffer(&buffer, &size, &pos);
+    bufferClear(&buf);
 
-    ustring_data = wcsdup(L"αß¢");
+    ustr = ustringCreate(L"αß¢");
+    assert(ustringPackSize(ustr) == 10);
 
-    assert(ustringPackSize(ustring_data) == 10);
-    ustringPack(ustring_data, &buffer, &size, &pos);
-    assert(pos == 10);
-    assert(size >= 10);
-    assert(memcmp(buffer, "\x00\x00\x00\x06\xCE\xB1\xC3\x9F\xC2\xA2", 10) == 0);
-    ustringUnpack(buffer, pos, &ustring_data);
-    assert(wcscmp(ustring_data, L"αß¢") == 0);
+    assert(ustringPack(ustr, &buf) == &buf);
+    assert(buf.len == 10);
+    assert(buf.cap >= 10);
+    assert(memcmp(buf.data, "\x00\x00\x00\x06\xCE\xB1\xC3\x9F\xC2\xA2", 10) == 0);
 
-    reset_buffer(&buffer, &size, &pos);
+    assert(ustringUnpack(&buf, 0, ustr) == 10);
+    assert(wcscmp(ustringGet(ustr), L"αß¢") == 0);
 
-    float32_data = 1.0;
+    bufferClear(&buf);
 
-    float32Pack(float32_data, &buffer, &size, &pos);
-    float32Unpack(buffer, pos, &float32_data);
+    f32 = 1.0;
+
+    assert(float32Pack(f32, &buf) == &buf);
     assert(float32PackSize() == 4);
-    assert(memcmp(buffer, "\x3F\x80\x00\x00", 4) == 0);
-    assert(float32_data == 1.0);
+    assert(memcmp(bufferGet(&buf, 0), "\x3F\x80\x00\x00", 4) == 0);
 
-    reset_buffer(&buffer, &size, &pos);
+    assert(float32Unpack(&buf, 0, &f32) == 4);
+    assert(f32 == 1.0);
 
-    float64_data = 2.0;
-    float64Pack(float64_data, &buffer, &size, &pos);
-    float64Unpack(buffer, pos, &float64_data);
+    bufferClear(&buf);
+
+    f64 = 2.0;
+
+    assert(float64Pack(f64, &buf) == &buf);
     assert(float64PackSize() == 8);
-    assert(memcmp(buffer, "\x40\x00\x00\x00\x00\x00\x00\x00", 8) == 0);
-    assert(float64_data == 2.0);
+    assert(memcmp(bufferGet(&buf, 0), "\x40\x00\x00\x00\x00\x00\x00\x00", 8) == 0);
 
-    reset_buffer(&buffer, &size, &pos);
+    assert(float64Unpack(&buf, 0, &f64) == 8);
+    assert(f64 == 2.0);
 
-    uint8_data = 8;
-    uint8Pack(uint8_data, &buffer, &size, &pos);
-    uint8Unpack(buffer, pos, &uint8_data);
-    assert(memcmp(buffer, "\x08", 1) == 0);
-    assert(uint8_data == 8);
+    bufferClear(&buf);
 
-    reset_buffer(&buffer, &size, &pos);
+    u8 = 8;
+    assert(uint8Pack(u8, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\x08", 1) == 0);
 
-    int8_data = 8;
-    int8Pack(int8_data, &buffer, &size, &pos);
-    int8Unpack(buffer, pos, &int8_data);
-    assert(memcmp(buffer, "\x08", 1) == 0);
-    assert(int8_data == 8);
+    assert(uint8Unpack(&buf, 0, &u8) == 1);
+    assert(u8 == 8);
 
-    reset_buffer(&buffer, &size, &pos);
+    bufferClear(&buf);
 
-    uint8_data = -8;
-    uint8Pack(uint8_data, &buffer, &size, &pos);
-    uint8Unpack(buffer, pos, &uint8_data);
-    assert(memcmp(buffer, "\xF8", 1) == 0);
-    assert(uint8_data == (256 - 8));
+    i8 = 8;
+    assert(int8Pack(i8, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\x08", 1) == 0);
 
-    reset_buffer(&buffer, &size, &pos);
+    assert(int8Unpack(&buf, 0, &i8) == 1);
+    assert(i8 == 8);
 
-    int8_data = -8;
-    int8Pack(int8_data, &buffer, &size, &pos);
-    int8Unpack(buffer, pos, &int8_data);
-    assert(memcmp(buffer, "\xF8", 1) == 0);
-    assert(int8_data == -8);
+    bufferClear(&buf);
 
-    reset_buffer(&buffer, &size, &pos);
+    u8 = -8;
+    assert(uint8Pack(u8, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\xF8", 1) == 0);
 
-    uint16_data = 16;
-    uint16Pack(uint16_data, &buffer, &size, &pos);
-    uint16Unpack(buffer, pos, &uint16_data);
-    assert(memcmp(buffer, "\x00\x10", 2) == 0);
-    assert(uint16_data == 16);
+    assert(uint8Unpack(&buf, 0, &u8) == 1);
+    assert(u8 == (256 - 8));
 
-    reset_buffer(&buffer, &size, &pos);
+    bufferClear(&buf);
 
-    int16_data = 16;
-    int16Pack(int16_data, &buffer, &size, &pos);
-    int16Unpack(buffer, pos, &int16_data);
-    assert(memcmp(buffer, "\x00\x10", 2) == 0);
-    assert(int16_data == 16);
+    i8 = -8;
+    assert(int8Pack(i8, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\xF8", 1) == 0);
 
-    reset_buffer(&buffer, &size, &pos);
+    assert(int8Unpack(&buf, 0, &i8) == 1);
+    assert(i8 == -8);
 
-    uint16_data = -16;
-    uint16Pack(uint16_data, &buffer, &size, &pos);
-    uint16Unpack(buffer, pos, &uint16_data);
-    assert(memcmp(buffer, "\xFF\xF0", 2) == 0);
-    assert(uint16_data == (65536 - 16));
+    bufferClear(&buf);
 
-    reset_buffer(&buffer, &size, &pos);
+    u16 = 16;
+    assert(uint16Pack(u16, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\x00\x10", 2) == 0);
 
-    int16_data = -16;
-    int16Pack(int16_data, &buffer, &size, &pos);
-    int16Unpack(buffer, pos, &int16_data);
-    assert(memcmp(buffer, "\xFF\xF0", 2) == 0);
-    assert(int16_data == -16);
+    assert(uint16Unpack(&buf, 0, &u16) == 2);
+    assert(u16 == 16);
 
-    reset_buffer(&buffer, &size, &pos);
+    bufferClear(&buf);
 
-    uint32_data = 32;
-    uint32Pack(uint32_data, &buffer, &size, &pos);
-    uint32Unpack(buffer, pos, &uint32_data);
-    assert(memcmp(buffer, "\x00\x00\x00\x20", 4) == 0);
-    assert(uint32_data == 32);
+    i16 = 16;
+    assert(int16Pack(i16, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\x00\x10", 2) == 0);
 
-    reset_buffer(&buffer, &size, &pos);
+    assert(int16Unpack(&buf, 0, &i16) == 2);
+    assert(i16 == 16);
 
-    int32_data = 32;
-    int32Pack(int32_data, &buffer, &size, &pos);
-    int32Unpack(buffer, pos, &int32_data);
-    assert(memcmp(buffer, "\x00\x00\x00\x20", 4) == 0);
-    assert(int32_data == 32);
+    bufferClear(&buf);
 
-    reset_buffer(&buffer, &size, &pos);
+    u16 = -16;
+    assert(uint16Pack(u16, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\xFF\xF0", 2) == 0);
 
-    uint32_data = -32;
-    uint32Pack(uint32_data, &buffer, &size, &pos);
-    uint32Unpack(buffer, pos, &uint32_data);
-    assert(memcmp(buffer, "\xFF\xFF\xFF\xE0", 4) == 0);
-    assert(uint32_data == (0x100000000L - 32));
+    assert(uint16Unpack(&buf, 0, &u16) == 2);
+    assert(u16 == (65536 - 16));
 
-    reset_buffer(&buffer, &size, &pos);
+    bufferClear(&buf);
 
-    int32_data = -32;
-    int32Pack(int32_data, &buffer, &size, &pos);
-    int32Unpack(buffer, pos, &int32_data);
-    assert(memcmp(buffer, "\xFF\xFF\xFF\xE0", 4) == 0);
-    assert(int32_data == -32);
+    i16 = -16;
+    assert(int16Pack(i16, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\xFF\xF0", 2) == 0);
 
-    reset_buffer(&buffer, &size, &pos);
+    assert(int16Unpack(&buf, 0, &i16) == 2);
+    assert(i16 == -16);
 
-    uint64_data = 64;
-    uint64Pack(uint64_data, &buffer, &size, &pos);
-    uint64Unpack(buffer, pos, &uint64_data);
-    assert(memcmp(buffer, "\x00\x00\x00\x00\x00\x00\x00\x40", 8) == 0);
-    assert(uint64_data == 64);
+    bufferClear(&buf);
 
-    reset_buffer(&buffer, &size, &pos);
+    u32 = 32;
+    assert(uint32Pack(u32, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\x00\x00\x00\x20", 4) == 0);
 
-    int64_data = 64;
-    int64Pack(int64_data, &buffer, &size, &pos);
-    int64Unpack(buffer, pos, &int64_data);
-    assert(memcmp(buffer, "\x00\x00\x00\x00\x00\x00\x00\x40", 8) == 0);
-    assert(int64_data == 64);
+    assert(uint32Unpack(&buf, 0, &u32) == 4);
+    assert(u32 == 32);
 
-    reset_buffer(&buffer, &size, &pos);
+    bufferClear(&buf);
 
-    uint64_data = -64;
-    uint64Pack(uint64_data, &buffer, &size, &pos);
-    uint64Unpack(buffer, pos, &uint64_data);
-    assert(memcmp(buffer, "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xC0", 8) == 0);
-    assert(uint64_data == (0xFFFFFFFFFFFFFFFF - 63));
+    i32 = 32;
+    assert(int32Pack(i32, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\x00\x00\x00\x20", 4) == 0);
 
-    reset_buffer(&buffer, &size, &pos);
+    assert(int32Unpack(&buf, 0, &i32) == 4);
+    assert(i32 == 32);
 
-    int64_data = -64;
-    int64Pack(int64_data, &buffer, &size, &pos);
-    int64Unpack(buffer, pos, &int64_data);
-    assert(memcmp(buffer, "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xC0", 8) == 0);
-    assert(int64_data == -64);
+    bufferClear(&buf);
 
-    reset_buffer(&buffer, &size, &pos);
+    u32 = -32;
+    assert(uint32Pack(u32, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\xFF\xFF\xFF\xE0", 4) == 0);
 
-    uint32_data = 256;
+    assert(uint32Unpack(&buf, 0, &u32) == 4);
+    assert(u32 == (0x100000000L - 32));
 
-    uint32Pack(uint32_data, &buffer, &size, &pos);
+    bufferClear(&buf);
 
-    assert(buffer != NULL);
-    assert(size >= 4);
-    assert(pos == 4);
-    assert(memcmp(buffer, "\x00\x00\x01\x00", 4) == 0);
+    i32 = -32;
+    assert(int32Pack(i32, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\xFF\xFF\xFF\xE0", 4) == 0);
 
-    astringPack(astring_data, &buffer, &size, &pos);
+    assert(int32Unpack(&buf, 0, &i32) == 4);
+    assert(i32 == -32);
 
-    assert(buffer != NULL);
-    assert(size >= 11);
-    assert(pos == 11);
-    assert(memcmp(buffer, "\x00\x00\x01\x00\x00\x00\x00\x03" "Hoi", 11) == 0);
+    bufferClear(&buf);
 
-    ustringPack(ustring_data, &buffer, &size, &pos);
+    u64 = 64;
+    assert(uint64Pack(u64, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\x00\x00\x00\x00\x00\x00\x00\x40", 8) == 0);
 
-    assert(buffer != NULL);
-    assert(size >= 21);
-    assert(pos == 21);
-    assert(memcmp(buffer,
-                "\x00\x00\x01\x00\x00\x00\x00\x03" "Hoi"
+    assert(uint64Unpack(&buf, 0, &u64) == 8);
+    assert(u64 == 64);
+
+    bufferClear(&buf);
+
+    i64 = 64;
+    assert(int64Pack(i64, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\x00\x00\x00\x00\x00\x00\x00\x40", 8) == 0);
+
+    assert(int64Unpack(&buf, 0, &i64) == 8);
+    assert(i64 == 64);
+
+    bufferClear(&buf);
+
+    u64 = -64;
+    assert(uint64Pack(u64, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xC0", 8) == 0);
+
+    assert(uint64Unpack(&buf, 0, &u64) == 8);
+    assert(u64 == (0xFFFFFFFFFFFFFFFF - 63));
+
+    bufferClear(&buf);
+
+    i64 = -64;
+    assert(int64Pack(i64, &buf) == &buf);
+    assert(memcmp(bufferGet(&buf, 0), "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xC0", 8) == 0);
+
+    assert(int64Unpack(&buf, 0, &i64) == 8);
+    assert(i64 == -64);
+
+    bufferClear(&buf);
+
+    u32 = 256;
+
+    assert(uint32Pack(u32, &buf) == &buf);
+
+    assert(buf.cap >= 4);
+    assert(buf.len == 4);
+    assert(memcmp(bufferGet(&buf, 0), "\x00\x00\x01\x00", 4) == 0);
+
+    assert(astringPack(astr, &buf) == &buf);
+
+    assert(buf.cap >= 11);
+    assert(buf.len == 11);
+    assert(memcmp(bufferGet(&buf, 0), "\x00\x00\x01\x00\x00\x00\x00\x03" "Hoi", 11) == 0);
+
+    assert(ustringPack(ustr, &buf) == &buf);
+
+    assert(buf.cap >= 21);
+    assert(buf.len == 21);
+    assert(memcmp(bufferGet(&buf, 0),
+                "\x00\x00\x01\x00"
+                "\x00\x00\x00\x03" "Hoi"
                 "\x00\x00\x00\x06\xCE\xB1\xC3\x9F\xC2\xA2", 21) == 0);
 
     return 0;

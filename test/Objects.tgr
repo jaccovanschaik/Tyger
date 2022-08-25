@@ -1,10 +1,10 @@
 #include "Shape.tgr"
 
 Object = struct {
-    astring name
-    ustring creator
-    bool    visible
-    Shape   shape
+    astring     name
+    opt ustring creator
+    bool        visible
+    Shape       shape
 }
 
 Objects = array(Object object)

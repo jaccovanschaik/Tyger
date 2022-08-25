@@ -157,7 +157,8 @@ static void dump_definitions(FILE *fp, List *definitions)
             fprintf(stderr, "\tcontents:\n");
             for (struct_item = listHead(&def->struct_def.items);
                  struct_item; struct_item = listNext(struct_item)) {
-                fprintf(stderr, "\t\t%s %s\n",
+                fprintf(stderr, "\t\t%s%s %s\n",
+                        struct_item->optional ? "optional " : "",
                         struct_item->def->name, struct_item->name);
             }
             break;

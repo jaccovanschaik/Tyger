@@ -209,9 +209,27 @@ static int process_struct(Definition *def, List *defs, tkToken **token, Buffer *
         return 1;
     }
 
+    bool optional = false;
+
     while ((*token)->type == TT_USTRING) {
         char *elem_name;
         char *elem_type = (*token)->s;
+
+        if (strcmp(elem_type, "opt") == 0) {
+            if (optional) {
+                bufSetF(error, "%s:%d:%d: multiple \"opt\" keywords.\n",
+                        (*token)->file, (*token)->line, (*token)->column);
+                return 1;
+            }
+            else {
+                optional = true;
+
+                *token = listNext(*token);
+
+                continue;
+            }
+        }
+
         Definition *elem_def = find_def(defs, elem_type);
 
         if (elem_def == NULL) {
@@ -235,8 +253,11 @@ static int process_struct(Definition *def, List *defs, tkToken **token, Buffer *
 
         item->name = strdup(elem_name);
         item->def = elem_def;
+        item->optional = optional;
 
         listAppendTail(&def->struct_def.items, item);
+
+        optional = false;
     }
 
     if (expect_token(token, TT_CBRACE, error) != 0) {
