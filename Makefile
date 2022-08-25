@@ -41,8 +41,8 @@ test_objects: test_objects.o Objects.o libtyger.a
 	$(CC) $(CFLAGS) -o $@ $^ $(JVS_LIB)
 
 test: test-tokenizer test-libtyger test-objects Objects.py Test.o Test.py
-	python2 ./test_objects.py
-	python3 ./test_objects.py
+	if command -v python2; then python2 ./test_objects.py; fi
+	if command -v python3; then python3 ./test_objects.py; fi
 
 test-tokenizer: tokenizer-test
 	./tokenizer-test

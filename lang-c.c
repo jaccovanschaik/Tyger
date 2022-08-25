@@ -252,8 +252,8 @@ static void emit_const_definition(FILE *fp, Definition *def)
         ifprintf(fp, 0, "const %s%s = {\n",
                 equivalent_c_type(def->const_def.const_type), def->name);
         ifprintf(fp, 1, ".data = \"%s\",\n", def->const_def.value.s);
-        ifprintf(fp, 1, ".len  = %d,\n", strlen(def->const_def.value.s));
-        ifprintf(fp, 1, ".cap  = %d,\n", strlen(def->const_def.value.s) + 1);
+        ifprintf(fp, 1, ".len  = %ld,\n", strlen(def->const_def.value.s));
+        ifprintf(fp, 1, ".cap  = %ld,\n", strlen(def->const_def.value.s) + 1);
         ifprintf(fp, 0, "};\n");
         break;
     case DT_USTRING:
@@ -263,8 +263,8 @@ static void emit_const_definition(FILE *fp, Definition *def)
         ifprintf(fp, 0, "const %s%s = {\n",
                 equivalent_c_type(def->const_def.const_type), def->name);
         ifprintf(fp, 1, ".data = L\"%s\",\n", def->const_def.value.s);
-        ifprintf(fp, 1, ".len  = %d,\n", wchar_len);
-        ifprintf(fp, 1, ".cap  = %d,\n", wchar_len + 1);
+        ifprintf(fp, 1, ".len  = %ld,\n", wchar_len);
+        ifprintf(fp, 1, ".cap  = %ld,\n", wchar_len + 1);
         ifprintf(fp, 0, "};\n");
         break;
     case DT_BOOL:
@@ -480,7 +480,7 @@ static void emit_packsize_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "return size;\n");
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "return %d;\n", def->enum_def.num_bytes);
+        ifprintf(fp, 1, "return %ld;\n", def->enum_def.num_bytes);
         break;
     case DT_UNION:
         ifprintf(fp, 1, "size_t size = %sPackSize();\n\n",
@@ -636,7 +636,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "return buf;\n");
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "return uintPack(data, %d, buf);\n", def->enum_def.num_bytes);
+        ifprintf(fp, 1, "return uintPack(data, %ld, buf);\n", def->enum_def.num_bytes);
         break;
     case DT_UNION:
         ifprintf(fp, 1, "%sPack(data->%s, buf);\n\n",
@@ -763,7 +763,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "return pos;\n");
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "return uintUnpack(%d, buf, pos, data);\n", def->enum_def.num_bytes);
+        ifprintf(fp, 1, "return uintUnpack(%ld, buf, pos, data);\n", def->enum_def.num_bytes);
         break;
     case DT_UNION:
         ifprintf(fp, 1, "pos = %sUnpack(buf, pos, &data->%s);\n\n",
