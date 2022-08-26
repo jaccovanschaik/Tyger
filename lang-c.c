@@ -37,7 +37,7 @@ static int do_read_fd = 0;
 // static int do_write_fd = 0;
 static int do_read_fp = 0;
 static int do_write_fp = 0;
-static int do_print_fp = 0;
+static int do_print = 0;
 static int do_create = 0;
 static int do_set = 0;
 static int do_copy = 0;
@@ -52,6 +52,7 @@ static Switch switches[] = {
     { "--c-unpack",   &do_unpack,   "Generate unpack functions" },
     { "--c-clear",    &do_clear,    "Generate clear functions" },
     { "--c-destroy",  &do_destroy,  "Generate destroy functions" },
+    { "--c-print",    &do_print,    "Generate print functions" },
 #if 0
     { "--c-wrap",     &do_wrap,     "Generate wrap functions" },
     { "--c-unwrap",   &do_unwrap,   "Generate unwrap functions" },
@@ -59,7 +60,6 @@ static Switch switches[] = {
     { "--c-write-fd", &do_write_fd, "Generate functions to write to an fd" },
     { "--c-read-fp",  &do_read_fp,  "Generate functions to read from an FP" },
     { "--c-write-fp", &do_write_fp, "Generate functions to write to an FP" },
-    { "--c-print-fp", &do_print_fp, "Generate print functions" },
     { "--c-create",   &do_create,   "Generate create functions" },
     { "--c-set",      &do_set,      "Generate set functions" },
     { "--c-copy",     &do_copy,     "Generate copy functions" },
@@ -445,7 +445,7 @@ static void emit_packsize_body(FILE *fp, Definition *def)
                     ifprintf(fp, 2, "size += %sPackSize();\n",
                             struct_item->def->name);
                 }
-                else if (is_pass_by_value(struct_item->def)) { //  && !is_string_type(struct_item->def)) {
+                else if (is_pass_by_value(struct_item->def)) {
                     ifprintf(fp, 2, "size += %sPackSize(*data->%s);\n",
                             struct_item->def->name,
                             struct_item->name);
@@ -597,36 +597,32 @@ static void emit_pack_body(FILE *fp, Definition *def)
 
             if (struct_item->optional) {
                 fputc('\n', fp);
+                ifprintf(fp, 1, "uint8Pack(data->%s ? 1 : 0, buf);\n", struct_item->name);
                 ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
-                ifprintf(fp, 2, "uint8Pack(1, buf);\n");
 
-                if (is_pass_by_value(struct_item->def)) { //  && !is_string_type(struct_item->def)) {
-                    ifprintf(fp, 2, "%sPack(*data->%s, buf);%s",
+                if (is_pass_by_value(struct_item->def)) {
+                    ifprintf(fp, 2, "%sPack(*data->%s, buf);\n",
                             struct_item->def->name,
-                            struct_item->name,
-                            listNext(struct_item) == NULL ? "\n\n" : "\n");
+                            struct_item->name);
                 }
                 else {
-                    ifprintf(fp, 2, "%sPack(data->%s, buf);%s",
+                    ifprintf(fp, 2, "%sPack(data->%s, buf);\n",
                             struct_item->def->name,
-                            struct_item->name,
-                            listNext(struct_item) == NULL ? "\n\n" : "\n");
+                            struct_item->name);
                 }
 
                 ifprintf(fp, 1, "}\n");
             }
             else {
                 if (is_pass_by_value(struct_item->def)) {
-                    ifprintf(fp, 1, "%sPack(data->%s, buf);%s",
+                    ifprintf(fp, 1, "%sPack(data->%s, buf);\n",
                             struct_item->def->name,
-                            struct_item->name,
-                            listNext(struct_item) == NULL ? "\n\n" : "\n");
+                            struct_item->name);
                 }
                 else {
-                    ifprintf(fp, 1, "%sPack(&data->%s, buf);%s",
+                    ifprintf(fp, 1, "%sPack(&data->%s, buf);\n",
                             struct_item->def->name,
-                            struct_item->name,
-                            listNext(struct_item) == NULL ? "\n\n" : "\n");
+                            struct_item->name);
                 }
             }
         }
@@ -786,6 +782,163 @@ static void emit_unpack_body(FILE *fp, Definition *def)
 
         ifprintf(fp, 1, "}\n\n");
         ifprintf(fp, 1, "return pos;\n");
+        break;
+    default:
+        fprintf(stderr, "%s: Unexpected definition type %d (%s).\n",
+                __func__, def->type, deftype_enum_to_string(def->type));
+        abort();
+    }
+
+    fprintf(fp, "}\n");
+}
+
+static void emit_print_signature(FILE *fp, Definition *def)
+{
+    if (def->type == DT_CONST || def->builtin) return;
+
+    fprintf(fp, "\n/*\n");
+    fprintf(fp, " * Print an ASCII representation of <data> to <fp>.\n");
+    fprintf(fp, " */\n");
+
+    if (is_pass_by_value(def)) {
+        fprintf(fp, "void %sPrint(FILE *fp, %s data, int level)", def->name, def->name);
+    }
+    else {
+        fprintf(fp, "void %sPrint(FILE *fp, const %s *data, int level)", def->name, def->name);
+    }
+}
+
+static void emit_print_body(FILE *fp, Definition *def)
+{
+    StructItem *struct_item;
+    UnionItem *union_item;
+    EnumItem *enum_item;
+
+    if (def->type == DT_CONST || def->builtin) return;
+
+    fprintf(fp, "\n{\n");
+
+    switch(def->type) {
+    case DT_ALIAS:
+        ifprintf(fp, 1, "%sPrint(fp, data, level);\n", def->alias_def.alias->name);
+        break;
+    case DT_ARRAY:
+        ifprintf(fp, 1, "int i;\n\n");
+        ifprintf(fp, 1, "fprintf(fp, \"{\\n\");\n\n");
+        ifprintf(fp, 1, "level++;\n\n");
+
+        ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
+        ifprintf(fp, 2, "fprintf(fp, \"%%s%s: \", indent(level));\n",
+                def->array_def.item_name);
+
+        if (is_pass_by_value(def->array_def.item_type)) {
+            ifprintf(fp, 2, "%sPrint(fp, data->%s[i], level);\n",
+                    def->array_def.item_type->name,
+                    def->array_def.item_name);
+        }
+        else {
+            ifprintf(fp, 2, "%sPrint(fp, data->%s + i, level);\n",
+                    def->array_def.item_type->name,
+                    def->array_def.item_name);
+        }
+
+        ifprintf(fp, 2, "fprintf(fp, \"\\n\");\n");
+
+        ifprintf(fp, 1, "}\n\n");
+        ifprintf(fp, 1, "level--;\n\n");
+        ifprintf(fp, 1, "fprintf(fp, \"%%s}\", indent(level));\n");
+        break;
+    case DT_STRUCT:
+        ifprintf(fp, 1, "fprintf(fp, \"{\\n\");\n\n");
+
+        if (!listIsEmpty(&def->struct_def.items)) {
+            ifprintf(fp, 1, "level++;\n\n");
+
+            for (struct_item = listHead(&def->struct_def.items);
+                struct_item; struct_item = listNext(struct_item))
+            {
+                ifprintf(fp, 1, "fprintf(fp, \"%%s%s: \", indent(level));\n", struct_item->name);
+
+                if (struct_item->optional) {
+                    ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
+                    if (is_pass_by_value(struct_item->def)) {
+                        ifprintf(fp, 2, "%sPrint(fp, *data->%s, level);\n",
+                                struct_item->def->name,
+                                struct_item->name);
+                    }
+                    else {
+                        ifprintf(fp, 2, "%sPrint(fp, data->%s, level);\n",
+                                struct_item->def->name,
+                                struct_item->name);
+                    }
+                    ifprintf(fp, 1, "}\n");
+                    ifprintf(fp, 1, "else {\n");
+                    ifprintf(fp, 2, "fprintf(fp, \"<none>\");\n");
+                    ifprintf(fp, 1, "}\n");
+                }
+                else {
+                    if (is_pass_by_value(struct_item->def)) {
+                        ifprintf(fp, 1, "%sPrint(fp, data->%s, level);\n",
+                                struct_item->def->name,
+                                struct_item->name);
+                    }
+                    else {
+                        ifprintf(fp, 1, "%sPrint(fp, &data->%s, level);\n",
+                                struct_item->def->name,
+                                struct_item->name);
+                    }
+                }
+                ifprintf(fp, 1, "fputc('\\n', fp);\n\n");
+            }
+
+            ifprintf(fp, 1, "level--;\n\n");
+        }
+
+        ifprintf(fp, 1, "fprintf(fp, \"%%s}\", indent(level));\n");
+        break;
+    case DT_ENUM:
+        ifprintf(fp, 1, "switch(data) {\n");
+
+        for (enum_item = listHead(&def->enum_def.items);
+             enum_item; enum_item = listNext(enum_item)) {
+            ifprintf(fp, 1, "case %s:\n", enum_item->name);
+            ifprintf(fp, 2, "fprintf(fp, \"%s\");\n", enum_item->name);
+            ifprintf(fp, 2, "break;\n");
+        }
+
+        ifprintf(fp, 1, "}\n");
+        break;
+    case DT_UNION:
+        ifprintf(fp, 1, "%sPrint(fp, data->%s, level);\n\n",
+                def->union_def.discr_def->name, def->union_def.discr_name);
+
+        ifprintf(fp, 1, "fprintf(fp, \" \");\n\n");
+
+        ifprintf(fp, 1, "switch(data->%s) {\n",
+                def->union_def.discr_name);
+
+        for (union_item = listHead(&def->union_def.items);
+             union_item; union_item = listNext(union_item)) {
+            ifprintf(fp, 1, "case %s:\n", union_item->value);
+
+            if (!is_void_type(union_item->def)) {
+                if (is_pass_by_value(union_item->def)) {
+                    ifprintf(fp, 2, "%sPrint(fp, data->%s, level);\n",
+                            union_item->def->name,
+                            union_item->name);
+                }
+                else {
+                    ifprintf(fp, 2, "%sPrint(fp, &data->%s, level);\n",
+                            union_item->def->name,
+                            union_item->name);
+                }
+            }
+
+            ifprintf(fp, 2, "break;\n");
+        }
+
+        ifprintf(fp, 1, "}\n");
+
         break;
     default:
         fprintf(stderr, "%s: Unexpected definition type %d (%s).\n",
@@ -1197,163 +1350,6 @@ static void emit_write_body(FILE *fp, Definition *def, FileAttributes *attr)
 
         ifprintf(fp, 1, "}\n\n");
         ifprintf(fp, 1, "return byte_count;\n");
-
-        break;
-    default:
-        fprintf(stderr, "%s: Unexpected definition type %d (%s).\n",
-                __func__, def->type, deftype_enum_to_string(def->type));
-        abort();
-    }
-
-    fprintf(fp, "}\n");
-}
-
-static void emit_print_signature(FILE *fp, Definition *def)
-{
-    if (def->type == DT_CONST || def->builtin) return;
-
-    fprintf(fp, "\n/*\n");
-    fprintf(fp, " * Print an ASCII representation of <data> to <fp>.\n");
-    fprintf(fp, " */\n");
-
-    if (is_pass_by_value(def)) {
-        fprintf(fp, "void %sPrint(FILE *fp, %s data, int level)", def->name, def->name);
-    }
-    else {
-        fprintf(fp, "void %sPrint(FILE *fp, const %s *data, int level)", def->name, def->name);
-    }
-}
-
-static void emit_print_body(FILE *fp, Definition *def)
-{
-    StructItem *struct_item;
-    UnionItem *union_item;
-    EnumItem *enum_item;
-
-    if (def->type == DT_CONST || def->builtin) return;
-
-    fprintf(fp, "\n{\n");
-
-    switch(def->type) {
-    case DT_ALIAS:
-        ifprintf(fp, 1, "%sPrint(fp, data, level);\n", def->alias_def.alias->name);
-        break;
-    case DT_ARRAY:
-        ifprintf(fp, 1, "int i;\n\n");
-        ifprintf(fp, 1, "fprintf(fp, \"{\\n\");\n\n");
-        ifprintf(fp, 1, "level++;\n\n");
-
-        ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
-        ifprintf(fp, 2, "fprintf(fp, \"%%s%s: \", indent(level));\n",
-                def->array_def.item_name);
-
-        if (is_pass_by_value(def->array_def.item_type)) {
-            ifprintf(fp, 2, "%sPrint(fp, data->%s[i], level);\n",
-                    def->array_def.item_type->name,
-                    def->array_def.item_name);
-        }
-        else {
-            ifprintf(fp, 2, "%sPrint(fp, data->%s + i, level);\n",
-                    def->array_def.item_type->name,
-                    def->array_def.item_name);
-        }
-
-        ifprintf(fp, 2, "fprintf(fp, \"\\n\");\n");
-
-        ifprintf(fp, 1, "}\n\n");
-        ifprintf(fp, 1, "level--;\n\n");
-        ifprintf(fp, 1, "fprintf(fp, \"%%s}\", indent(level));\n");
-        break;
-    case DT_STRUCT:
-        ifprintf(fp, 1, "fprintf(fp, \"{\\n\");\n\n");
-
-        if (!listIsEmpty(&def->struct_def.items)) {
-            ifprintf(fp, 1, "level++;\n\n");
-
-            for (struct_item = listHead(&def->struct_def.items);
-                struct_item; struct_item = listNext(struct_item))
-            {
-                ifprintf(fp, 1, "fprintf(fp, \"%%s%s: \", indent(level));\n", struct_item->name);
-
-                if (struct_item->optional) {
-                    ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
-                    if (is_pass_by_value(struct_item->def) && !is_string_type(struct_item->def)) {
-                        ifprintf(fp, 2, "%sPrint(fp, *data->%s, level);\n",
-                                struct_item->def->name,
-                                struct_item->name);
-                    }
-                    else {
-                        ifprintf(fp, 2, "%sPrint(fp, data->%s, level);\n",
-                                struct_item->def->name,
-                                struct_item->name);
-                    }
-                    ifprintf(fp, 1, "}\n");
-                    ifprintf(fp, 1, "else {\n");
-                    ifprintf(fp, 2, "astringPrint(fp, \"(null)\", level);\n");
-                    ifprintf(fp, 1, "}\n");
-                }
-                else {
-                    if (is_pass_by_value(struct_item->def)) {
-                        ifprintf(fp, 1, "%sPrint(fp, data->%s, level);\n",
-                                struct_item->def->name,
-                                struct_item->name);
-                    }
-                    else {
-                        ifprintf(fp, 1, "%sPrint(fp, &data->%s, level);\n",
-                                struct_item->def->name,
-                                struct_item->name);
-                    }
-                }
-                ifprintf(fp, 1, "fputc('\\n', fp);\n\n");
-            }
-
-            ifprintf(fp, 1, "level--;\n\n");
-        }
-
-        ifprintf(fp, 1, "fprintf(fp, \"%%s}\", indent(level));\n");
-        break;
-    case DT_ENUM:
-        ifprintf(fp, 1, "switch(data) {\n");
-
-        for (enum_item = listHead(&def->enum_def.items);
-             enum_item; enum_item = listNext(enum_item)) {
-            ifprintf(fp, 1, "case %s:\n", enum_item->name);
-            ifprintf(fp, 2, "fprintf(fp, \"%s\");\n", enum_item->name);
-            ifprintf(fp, 2, "break;\n");
-        }
-
-        ifprintf(fp, 1, "}\n");
-        break;
-    case DT_UNION:
-        ifprintf(fp, 1, "%sPrint(fp, data->%s, level);\n\n",
-                def->union_def.discr_def->name, def->union_def.discr_name);
-
-        ifprintf(fp, 1, "fprintf(fp, \" \");\n\n");
-
-        ifprintf(fp, 1, "switch(data->%s) {\n",
-                def->union_def.discr_name);
-
-        for (union_item = listHead(&def->union_def.items);
-             union_item; union_item = listNext(union_item)) {
-            ifprintf(fp, 1, "case %s:\n", union_item->value);
-
-            if (!is_void_type(union_item->def)) {
-                if (is_pass_by_value(union_item->def)) {
-                    ifprintf(fp, 2, "%sPrint(fp, data->%s, level);\n",
-                            union_item->def->name,
-                            union_item->name);
-                }
-                else {
-                    ifprintf(fp, 2, "%sPrint(fp, &data->%s, level);\n",
-                            union_item->def->name,
-                            union_item->name);
-                }
-            }
-
-            ifprintf(fp, 2, "break;\n");
-        }
-
-        ifprintf(fp, 1, "}\n");
 
         break;
     default:
@@ -1928,6 +1924,18 @@ int emit_c_hdr(const char *out_file, const char *in_file,
                 emit_unpack_signature(fp, def);
                 fprintf(fp, ";\n");
             }
+            if (do_clear) {
+                emit_clear_signature(fp, def);
+                fprintf(fp, ";\n");
+            }
+            if (do_destroy) {
+                emit_destroy_signature(fp, def);
+                fprintf(fp, ";\n");
+            }
+            if (do_print) {
+                emit_print_signature(fp, def);
+                fprintf(fp, ";\n");
+            }
 #if 0
             if (do_wrap && def->type == DT_STRUCT) {
                 emit_wrap_signature(fp, def);
@@ -1953,10 +1961,6 @@ int emit_c_hdr(const char *out_file, const char *in_file,
                 emit_write_signature(fp, def, &file_attr[FILE_ID_FP]);
                 fprintf(fp, ";\n");
             }
-            if (do_print_fp) {
-                emit_print_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
             if (do_create && def->type == DT_STRUCT) {
                 emit_create_signature(fp, def);
                 fprintf(fp, ";\n");
@@ -1969,16 +1973,6 @@ int emit_c_hdr(const char *out_file, const char *in_file,
                 emit_copy_signature(fp, def);
                 fprintf(fp, ";\n");
             }
-#endif
-            if (do_clear) {
-                emit_clear_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-            if (do_destroy) {
-                emit_destroy_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-#if 0
             if (do_mx_send) {
                 emit_mx_send_signature(fp, def);
                 fprintf(fp, ";\n");
@@ -2029,7 +2023,7 @@ int emit_c_src(const char *out_file, const char *in_file,
         fprintf(fp, "#include <assert.h>\t/* assert */\n");
     }
 
-    if (do_read_fp || do_write_fp || do_print_fp) {
+    if (do_read_fp || do_write_fp || do_print) {
         fprintf(fp, "#include <stdio.h>\t/* FILE, fread, fwrite etc. */\n");
     }
 
@@ -2067,6 +2061,18 @@ int emit_c_src(const char *out_file, const char *in_file,
                 emit_unpack_signature(fp, def);
                 emit_unpack_body(fp, def);
             }
+            if (do_clear) {
+                emit_clear_signature(fp, def);
+                emit_clear_body(fp, def);
+            }
+            if (do_destroy) {
+                emit_destroy_signature(fp, def);
+                emit_destroy_body(fp, def);
+            }
+            if (do_print) {
+                emit_print_signature(fp, def);
+                emit_print_body(fp, def);
+            }
 #if 0
             if (do_wrap && def->type == DT_STRUCT) {
                 emit_wrap_signature(fp, def);
@@ -2092,10 +2098,6 @@ int emit_c_src(const char *out_file, const char *in_file,
                 emit_write_signature(fp, def, &file_attr[FILE_ID_FP]);
                 emit_write_body(fp, def, &file_attr[FILE_ID_FP]);
             }
-            if (do_print_fp) {
-                emit_print_signature(fp, def);
-                emit_print_body(fp, def);
-            }
             if (do_create && def->type == DT_STRUCT) {
                 emit_create_signature(fp, def);
                 emit_create_body(fp, def);
@@ -2108,16 +2110,6 @@ int emit_c_src(const char *out_file, const char *in_file,
                 emit_copy_signature(fp, def);
                 emit_copy_body(fp, def);
             }
-#endif
-            if (do_clear) {
-                emit_clear_signature(fp, def);
-                emit_clear_body(fp, def);
-            }
-            if (do_destroy) {
-                emit_destroy_signature(fp, def);
-                emit_destroy_body(fp, def);
-            }
-#if 0
             if (do_mx_send) {
                 emit_mx_send_signature(fp, def);
                 emit_mx_send_body(fp, def);

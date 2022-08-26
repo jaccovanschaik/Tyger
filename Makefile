@@ -63,6 +63,7 @@ Test.c: test/Test.tgr tyger
             --c-unpack \
             --c-clear \
             --c-destroy \
+            --c-print \
             $<
 
             # --c-wrap \
@@ -87,6 +88,7 @@ Test.h: test/Test.tgr tyger
             --c-unpack \
             --c-clear \
             --c-destroy \
+            --c-print \
             $<
 
             # --c-wrap \
@@ -159,6 +161,7 @@ Objects.c: test/Objects.tgr tyger
             --c-packsize \
             --c-destroy \
             --c-clear \
+            --c-print \
             $<
 
             # --c-wrap \
@@ -175,6 +178,7 @@ Objects.h: test/Objects.tgr tyger
             --c-packsize \
             --c-clear \
             --c-destroy \
+            --c-print \
             $<
 
             # --c-wrap \

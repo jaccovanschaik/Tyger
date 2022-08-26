@@ -19,7 +19,7 @@
 
 #include "Objects.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 static void fill_objects(Objects *objects)
 {
@@ -69,7 +69,7 @@ static void fill_objects(Objects *objects)
     objects->object[2].shape.plane.nv.z = -3;
 
     objects->object[3].name = astringMake("A sphere");
-    objects->object[3].creator = ustringCreate(L"Jürgen");
+    objects->object[3].creator = NULL;
     objects->object[3].visible = false;
     objects->object[3].shape.shape_type = ST_SPHERE;
     objects->object[3].shape.sphere.c.x = 1;
@@ -124,7 +124,7 @@ static int check_objects(const Objects *objects)
     make_sure_that(objects->object[2].shape.plane.nv.z == -3);
 
     make_sure_that(strcmp(astringGet(&objects->object[3].name), "A sphere") == 0);
-    make_sure_that(wcscmp(ustringGet(objects->object[3].creator), L"Jürgen") == 0);
+    make_sure_that(objects->object[3].creator == NULL);
     make_sure_that(objects->object[3].visible == false);
     make_sure_that(objects->object[3].shape.shape_type == ST_SPHERE);
     make_sure_that(objects->object[3].shape.sphere.c.x == 1);
@@ -169,11 +169,11 @@ int main(int argc, char *argv[])
 
     hexdump(stderr, (const char *) buf.data, buf.len);
 
-    make_sure_that(buf.len == 208);
+    make_sure_that(buf.len == 197);
 
 #if DEBUG
     fprintf(stdout, "size = %lu\n", buf.len);
-    hexdump(stdout, buf.data, buf.len);
+    hexdump(stdout, (char *) buf.data, buf.len);
 #endif
 
     make_sure_that(memcmp(buf.data,
@@ -227,9 +227,7 @@ int main(int argc, char *argv[])
                                         /* Object 4: */
                 "\x00\x00\x00\x08"      /* Object name length */
                 "A sphere"              /* Object name */
-                "\x01"                  /* Object creator present? */
-                "\x00\x00\x00\x07"      /* Object creator length */
-                "J\xC3\xBCrgen"         /* Object creator */
+                "\x00"                  /* Object creator present? */
                 "\x00"                  /* Object is invisible */
                 "\x43\x21"              /* Object type (ST_SPHERE) */
                 "\x00\x00\x00\x01"      /* X coordinate of centre */
@@ -242,7 +240,7 @@ int main(int argc, char *argv[])
 
     pos = ObjectsUnpack(&buf, 0, &unpacked);
 
-    make_sure_that(pos == 208);
+    make_sure_that(pos == 197);
 
 #if DEBUG
     ObjectsPrint(stdout, &unpacked, 0);
