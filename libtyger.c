@@ -52,9 +52,8 @@ static void buffer_expand(buffer *buf, size_t req)
     }
 }
 
-// =============================== Indent handling ===============================
-
-/*
+/* =============================== Indent handling ===============================
+ *
  * Set the indentation string.
  */
 void setIndent(const char *str)
@@ -98,38 +97,50 @@ const char *indent(int level)
     return buf + available - level * indent_length;
 }
 
-// =============================== "Length" functions ===============================
-
+/* =============================== "Length" functions ===============================
+ *
+ * Return the number of used bytes in <pos>, counted from <pos>.
+ */
 size_t bufferLen(const buffer *buf, size_t pos)
 {
     return buf->len - pos;
 }
 
-// =============================== "Get" functions ===============================
-
+/* =============================== "Get" functions ===============================
+ *
+ * Get a pointer to the contents of <buf>, starting at <pos>.
+ */
 const uint8_t *bufferGet(const buffer *buf, size_t pos)
 {
     return buf->data + pos;
 }
 
+/*
+ * Get the byte at <pos> in <buf>.
+ */
 uint8_t bufferGetC(const buffer *buf, size_t pos)
 {
     return buf->data[pos];
 }
 
+/*
+ * Get a pointer to the contents of <astr>.
+ */
 const char *astringGet(const astring *astr)
 {
     return astr->data;
 }
 
+/*
+ * Get a pointer to the contents of <astr>.
+ */
 const wchar_t *ustringGet(const ustring *ustr)
 {
     return ustr->data;
 }
 
-// =============================== "Clear" functions ===============================
-
-/*
+/* =============================== "Clear" functions ===============================
+ *
  * Clear the contents of <data>.
  */
 void uint8Clear(uint8_t *data)
@@ -217,6 +228,9 @@ void float64Clear(double *data)
     *data = 0.0;
 }
 
+/*
+ * Clear the contents of <buf>.
+ */
 void bufferClear(buffer *buf)
 {
     free(buf->data);
@@ -224,6 +238,9 @@ void bufferClear(buffer *buf)
     memset(buf, 0, sizeof(buffer));
 }
 
+/*
+ * Clear the contents of <astr>.
+ */
 astring *astringClear(astring *astr)
 {
     free(astr->data);
@@ -233,6 +250,9 @@ astring *astringClear(astring *astr)
     return astr;
 }
 
+/*
+ * Clear the contents of <ustr>.
+ */
 ustring *ustringClear(ustring *ustr)
 {
     free(ustr->data);
@@ -242,9 +262,8 @@ ustring *ustringClear(ustring *ustr)
     return ustr;
 }
 
-// =============================== "Destroy" functions ===============================
-
-/*
+/* =============================== "Destroy" functions ===============================
+ *
  * Destroy the contents of <data>.
  */
 void uint8Destroy(uint8_t *data)
@@ -362,8 +381,10 @@ void ustringDestroy(ustring *ustr)
     free(ustr);
 }
 
-// =============================== "Add" functions ===============================
-
+/* =============================== "Add" functions ===============================
+ *
+ * Add <add_data>, which has size <add_size> to <buf>.
+ */
 buffer *bufferAdd(buffer *buf, const void *add_data, size_t add_size)
 {
     buffer_expand(buf, buf->len + add_size);
@@ -375,11 +396,17 @@ buffer *bufferAdd(buffer *buf, const void *add_data, size_t add_size)
     return buf;
 }
 
+/*
+ * Add the character <add_data> to <buf>.
+ */
 buffer *bufferAddC(buffer *buf, uint8_t add_data)
 {
     return bufferAdd(buf, &add_data, 1);
 }
 
+/*
+ * Add the string at <data>, which has size <data_len> to <astr>.
+ */
 astring *astringAdd(astring *astr, const char *data, size_t data_len)
 {
     size_t req_cap = sizeof(char) * (astr->len + data_len + 1);
@@ -399,6 +426,9 @@ astring *astringAdd(astring *astr, const char *data, size_t data_len)
     return astr;
 }
 
+/*
+ * Add the string at <data>, which has size <data_len> to <ustr>.
+ */
 ustring *ustringAdd(ustring *ustr, const wchar_t *data, size_t data_len)
 {
     size_t req_cap = sizeof(wchar_t) * (ustr->len + data_len + 1);
@@ -418,18 +448,26 @@ ustring *ustringAdd(ustring *ustr, const wchar_t *data, size_t data_len)
     return ustr;
 }
 
+/*
+ * Add the zero-terminated string at <data> to <astr>.
+ */
 astring *astringAddZ(astring *astr, const char *data)
 {
     return astringAdd(astr, data, strlen(data));
 }
 
+/*
+ * Add the zero-terminated string at <data> to <ustr>.
+ */
 ustring *ustringAddZ(ustring *ustr, const wchar_t *data)
 {
     return ustringAdd(ustr, data, wcslen(data));
 }
 
-// =============================== "Rewind" functions ===============================
-
+/* =============================== "Rewind" functions ===============================
+ *
+ * Rewind <astr> back to the beginning.
+ */
 astring *astringRewind(astring *astr)
 {
     astr->len = 0;
@@ -439,6 +477,9 @@ astring *astringRewind(astring *astr)
     return astr;
 }
 
+/*
+ * Rewind <ustr> back to the beginning.
+ */
 ustring *ustringRewind(ustring *ustr)
 {
     ustr->len = 0;
@@ -448,30 +489,44 @@ ustring *ustringRewind(ustring *ustr)
     return ustr;
 }
 
-// =============================== "Set" functions ===============================
-
+/* =============================== "Set" functions ===============================
+ *
+ * Set <astr> to the string starting at <data>, which has length <data_len>.
+ */
 astring *astringSet(astring *astr, const char *data, size_t data_len)
 {
     return astringAdd(astringRewind(astr), data, data_len);
 }
 
+/*
+ * Set <ustr> to the string starting at <data>, which has length <data_len>.
+ */
 ustring *ustringSet(ustring *ustr, const wchar_t *data, size_t data_len)
 {
     return ustringAdd(ustringRewind(ustr), data, data_len);
 }
 
+/*
+ * Set <astr> to the null-terminated string starting at <data>.
+ */
 astring *astringSetZ(astring *astr, const char *data)
 {
-    return astringSet(astringRewind(astr), data, strlen(data));
+    return astringSet(astr, data, strlen(data));
 }
 
+/*
+ * Set <ustr> to the null-terminated string starting at <data>.
+ */
 ustring *ustringSetZ(ustring *ustr, const wchar_t *data)
 {
-    return ustringSet(ustringRewind(ustr), data, wcslen(data));
+    return ustringSet(ustr, data, wcslen(data));
 }
 
-// =============================== "Make" functions ===============================
-
+/* =============================== "Make" functions ===============================
+ *
+ * Make a new astring with the given null-terminated string as its original contents and return it
+ * by value.
+ */
 astring astringMake(const char *str)
 {
     astring new_str = { };
@@ -481,6 +536,10 @@ astring astringMake(const char *str)
     return new_str;
 }
 
+/*
+ * Make a new astring with the given null-terminated string as its original contents and return it
+ * by value.
+ */
 ustring ustringMake(const wchar_t *str)
 {
     ustring new_str = { };
@@ -490,8 +549,11 @@ ustring ustringMake(const wchar_t *str)
     return new_str;
 }
 
-// =============================== "Create" functions ===============================
-
+/* =============================== "Create" functions ===============================
+ *
+ * Create a new astring with the given null-terminated string as its original contents and return a
+ * pointer to it.
+ */
 astring *astringCreate(const char *str)
 {
     astring *new_str = calloc(1, sizeof(astring));
@@ -501,6 +563,10 @@ astring *astringCreate(const char *str)
     return new_str;
 }
 
+/*
+ * Create a new ustring with the given null-terminated string as its original contents and return a
+ * pointer to it.
+ */
 ustring *ustringCreate(const wchar_t *str)
 {
     ustring *new_str = calloc(1, sizeof(ustring));
@@ -510,9 +576,8 @@ ustring *ustringCreate(const wchar_t *str)
     return new_str;
 }
 
-// =============================== "PackSize" functions ===============================
-
-/*
+/* =============================== "PackSize" functions ===============================
+ *
  * Return the number of bytes required to pack a bool.
  */
 size_t boolPackSize(void)
@@ -624,9 +689,8 @@ size_t ustringPackSize(const ustring *str)
     return pack_size + utf8_size;
 }
 
-// =============================== "Pack" functions ===============================
-
-/*
+/* =============================== "Pack" functions ===============================
+ *
  * Pack the least-significant <num_bytes> of <data> into <buf>, updating
  * <size> and <pos>.
  */
@@ -635,17 +699,6 @@ buffer *uintPack(unsigned int data, size_t num_bytes, buffer *buf)
     for (int i = num_bytes - 1; i >= 0; i--) {
         bufferAddC(buf, (data >> (8 * i)) & 0xFF);
     }
-
-    return buf;
-}
-
-/*
- * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
- * if necessary.
- */
-buffer *boolPack(const bool data, buffer *buf)
-{
-    bufferAddC(buf, data ? 1 : 0);
 
     return buf;
 }
@@ -804,6 +857,17 @@ buffer *float64Pack(const double data, buffer *buf)
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
+buffer *boolPack(const bool data, buffer *buf)
+{
+    bufferAddC(buf, data ? 1 : 0);
+
+    return buf;
+}
+
+/*
+ * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
+ * if necessary.
+ */
 buffer *astringPack(const astring *str, buffer *buf)
 {
     uint32Pack(str->len, buf);
@@ -834,9 +898,8 @@ buffer *ustringPack(const ustring *str, buffer *buf)
     return buf;
 }
 
-// =============================== "Unpack" functions ===============================
-
-/*
+/* =============================== "Unpack" functions ===============================
+ *
  * Unpack <num_bytes> from buf (which has size <size>) and fill <data> with them.
  */
 size_t uintUnpack(size_t num_bytes, const buffer *buf, size_t pos, unsigned int *data)
@@ -852,6 +915,118 @@ size_t uintUnpack(size_t num_bytes, const buffer *buf, size_t pos, unsigned int 
     }
 
     return pos;
+}
+
+/*
+ * Unpack a uint8 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
+ */
+size_t uint8Unpack(const buffer *buf, size_t pos, uint8_t *data)
+{
+    size_t pack_size = uint8PackSize();
+
+    assert(bufferLen(buf, pos) >= pack_size);
+
+    *data = 0;
+
+    for (int i = 0; i < pack_size; i++, pos++) {
+        *data <<= 8;
+
+        *data |= bufferGetC(buf, pos);
+    }
+
+    return pos;
+}
+
+/*
+ * Unpack a uint16 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
+ */
+size_t uint16Unpack(const buffer *buf, size_t pos, uint16_t *data)
+{
+    size_t pack_size = uint16PackSize();
+
+    assert(bufferLen(buf, pos) >= pack_size);
+
+    *data = 0;
+
+    for (int i = 0; i < pack_size; i++, pos++) {
+        *data <<= 8;
+
+        *data |= bufferGetC(buf, pos);
+    }
+
+    return pos;
+}
+
+/*
+ * Unpack a uint32 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
+ */
+size_t uint32Unpack(const buffer *buf, size_t pos, uint32_t *data)
+{
+    size_t pack_size = uint32PackSize();
+
+    assert(bufferLen(buf, pos) >= pack_size);
+
+    *data = 0;
+
+    for (int i = 0; i < pack_size; i++, pos++) {
+        *data <<= 8;
+
+        *data |= bufferGetC(buf, pos);
+    }
+
+    return pos;
+}
+
+/*
+ * Unpack a uint64 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
+ */
+size_t uint64Unpack(const buffer *buf, size_t pos, uint64_t *data)
+{
+    size_t pack_size = uint64PackSize();
+
+    assert(bufferLen(buf, pos) >= pack_size);
+
+    *data = 0;
+
+    for (int i = 0; i < pack_size; i++, pos++) {
+        *data <<= 8;
+
+        *data |= bufferGetC(buf, pos);
+    }
+
+    return pos;
+}
+
+/*
+ * Unpack an int8 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
+ */
+size_t int8Unpack(const buffer *buf, size_t pos, int8_t *data)
+{
+    return uint8Unpack(buf, pos, (uint8_t *) data);
+}
+
+/*
+ * Unpack an int16 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
+ */
+size_t int16Unpack(const buffer *buf, size_t pos, int16_t *data)
+{
+    return uint16Unpack(buf, pos, (uint16_t *) data);
+}
+
+/*
+ * Unpack an int32 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
+ */
+size_t int32Unpack(const buffer *buf, size_t pos, int32_t *data)
+{
+    return uint32Unpack(buf, pos, (uint32_t *) data);
+}
+
+/*
+ * Unpack an int64 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
+ */
+size_t int64Unpack(const buffer *buf, size_t pos, int64_t *data)
+{
+    return uint64Unpack(buf, pos, (uint64_t *) data);
 }
 
 /*
@@ -871,97 +1046,9 @@ size_t boolUnpack(const buffer *buf, size_t pos, bool *data)
     return pos;
 }
 
-size_t uint8Unpack(const buffer *buf, size_t pos, uint8_t *data)
-{
-    size_t pack_size = uint8PackSize();
-
-    assert(bufferLen(buf, pos) >= pack_size);
-
-    *data = 0;
-
-    for (int i = 0; i < pack_size; i++, pos++) {
-        *data <<= 8;
-
-        *data |= bufferGetC(buf, pos);
-    }
-
-    return pos;
-}
-
-size_t uint16Unpack(const buffer *buf, size_t pos, uint16_t *data)
-{
-    size_t pack_size = uint16PackSize();
-
-    assert(bufferLen(buf, pos) >= pack_size);
-
-    *data = 0;
-
-    for (int i = 0; i < pack_size; i++, pos++) {
-        *data <<= 8;
-
-        *data |= bufferGetC(buf, pos);
-    }
-
-    return pos;
-}
-
-size_t uint32Unpack(const buffer *buf, size_t pos, uint32_t *data)
-{
-    size_t pack_size = uint32PackSize();
-
-    assert(bufferLen(buf, pos) >= pack_size);
-
-    *data = 0;
-
-    for (int i = 0; i < pack_size; i++, pos++) {
-        *data <<= 8;
-
-        *data |= bufferGetC(buf, pos);
-    }
-
-    return pos;
-}
-
-size_t uint64Unpack(const buffer *buf, size_t pos, uint64_t *data)
-{
-    size_t pack_size = uint64PackSize();
-
-    assert(bufferLen(buf, pos) >= pack_size);
-
-    *data = 0;
-
-    for (int i = 0; i < pack_size; i++, pos++) {
-        *data <<= 8;
-
-        *data |= bufferGetC(buf, pos);
-    }
-
-    return pos;
-}
-
-size_t int8Unpack(const buffer *buf, size_t pos, int8_t *data)
-{
-    return uint8Unpack(buf, pos, (uint8_t *) data);
-}
-
-size_t int16Unpack(const buffer *buf, size_t pos, int16_t *data)
-{
-    return uint16Unpack(buf, pos, (uint16_t *) data);
-}
-
-size_t int32Unpack(const buffer *buf, size_t pos, int32_t *data)
-{
-    return uint32Unpack(buf, pos, (uint32_t *) data);
-}
-
-size_t int64Unpack(const buffer *buf, size_t pos, int64_t *data)
-{
-    return uint64Unpack(buf, pos, (uint64_t *) data);
-}
-
 /*
- * Unpack a float from <buf> (which has size <size>) and put it at the
- * address pointed to by <data>.
+ * Unpack a float (aka. float32) from <buf> (which has size <size>) and put it at <data>. Return the
+ * new <pos>.
  */
 size_t float32Unpack(const buffer *buf, size_t pos, float *data)
 {
@@ -989,8 +1076,8 @@ size_t float32Unpack(const buffer *buf, size_t pos, float *data)
 }
 
 /*
- * Unpack a double from <buf> (which has size <size>) and put it at the
- * address pointed to by <data>.
+ * Unpack a double (aka. float64) from <buf> (which has size <size>) and put it at <data>. Return
+ * the new <pos>.
  */
 size_t float64Unpack(const buffer *buf, size_t pos, double *data)
 {
@@ -1073,302 +1160,8 @@ size_t ustringUnpack(const buffer *buf, size_t pos, ustring *data)
     return pos;
 }
 
-#if 0
-/*
- * Read <size> bytes from <fd> into <data>. Returns the number of bytes read
- * (which might be less than <size> if an error occurred).
- */
-static size_t read_FD(int fd, void *data, size_t size)
-{
-    size_t count = 0;
-
-    while (count < size) {
-        int status = read(fd, (char *) data + count, size - count);
-
-        if (status > 0) {
-            count += status;
-            continue;
-        }
-        else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
-            continue;
-        }
-        else {
-            break;
-        }
-    }
-
-    return count;
-}
-
-/*
- * Write <size> bytes from <data> to <fd>. Returns the number of bytes written
- * (which might be less than <size> if an error occurred).
- */
-static size_t write_FD(int fd, const void *data, size_t size)
-{
-    size_t count = 0;
-
-    while (count < size) {
-        int status = write(fd, (char *) data + count, size - count);
-
-        if (status > 0) {
-            count += status;
-            continue;
-        }
-        else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
-            continue;
-        }
-        else {
-            break;
-        }
-    }
-
-    return count;
-}
-
-/*
- * Read <size> bytes from <fp> into <data>. Returns the number of bytes read
- * (which might be less than <size> if an error occurred).
- */
-static size_t read_FP(FILE *fp, void *data, size_t size)
-{
-    return size * fread(data, size, 1, fp);
-}
-
-/*
- * Write <size> bytes from <data> to <fp>. Returns the number of bytes written
- * (which might be less than <size> if an error occurred).
- */
-static size_t write_FP(FILE *fp, const void *data, size_t size)
-{
-    return size * fwrite(data, size, 1, fp);
-}
-
-/*
- * Copy <size> bytes from <to> to <from>, reversing them if we are on a
- * little-endian architecture. It's OK if <from> and <to> overlap or point to
- * the same data.
- */
-static void reverse_if_little_endian(const char *from, char *to, size_t size)
-{
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    char temp[size];
-    int f, t;
-
-    for (f = 0, t = size - 1; f < size; f++, t--) {
-        temp[t] = from[f];
-    }
-
-    memcpy(to, temp, size);
-#else
-    if (from != to) {
-        memmove(to, from, size);
-    }
-#endif
-}
-
-/*
- * Take the least-significant <size> bytes from <data> and write them to <buf>
- * (which is assumed to have <size> bytes or more of room), in a big-endian
- * (most-significant byte first) layout.
- */
-static void h_to_be(unsigned int data, char *buf, size_t size)
-{
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    for (int i = 0; i < size; i++) {
-        int right_shift = 8 * (sizeof(data) - i - 1);
-        buf[i] = (data >> right_shift) & 0xFF;
-    }
-#else
-    memcpy(buf, ((char *) &data) + sizeof(data) - size, size);
-#endif
-}
-
-/*
- * Take the <size> bytes from <buf>, which is assumed to contain <size> bytes
- * in a big-endian layout, and write them as a host-native integer to <data>.
- */
-static void be_to_h(const char *buf, size_t size, unsigned int *data)
-{
-    *data = 0;
-
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    for (int i = 0; i < size; i++) {
-        *data <<= 8;
-        *data |= buf[i];
-    }
-#else
-    memcpy(((char *) &data) + sizeof(data) - size, buf, size);
-#endif
-}
-
-static size_t read_FD_BE(int fd, void *data, size_t size)
-{
-    size_t count = read_FD(fd, data, size);
-
-    reverse_if_little_endian(data, data, size);
-
-    return count;
-}
-
-static size_t write_FD_BE(int fd, const void *data, size_t size)
-{
-    char temp[size];
-
-    reverse_if_little_endian(data, temp, size);
-
-    return write_FD(fd, temp, size);
-}
-
-static size_t read_FP_BE(FILE *fp, void *data, size_t size)
-{
-    size_t count = read_FP(fp, data, size);
-
-    reverse_if_little_endian(data, data, size);
-
-    return count;
-}
-
-static size_t write_FP_BE(FILE *fp, const void *data, size_t size)
-{
-    char temp[size];
-
-    reverse_if_little_endian(data, temp, size);
-
-    return write_FP(fp, temp, size);
-}
-
-/*
- * Read <num_bytes> bytes from <fd> and put them towards the least-significant
- * side of <data>.
- */
-size_t uintReadFromFD(int fd, size_t num_bytes, unsigned int *data)
-{
-    char temp[num_bytes];
-
-    int r = read_FD(fd, temp, num_bytes);
-
-    be_to_h(temp, num_bytes, data);
-
-    return r;
-}
-
-/*
- * Write the <num_bytes> least-significant bytes from <data> to <fd>
- */
-size_t uintWriteToFD(int fd, size_t num_bytes, unsigned int data)
-{
-    char temp[num_bytes];
-
-    h_to_be(data, temp, num_bytes);
-
-    return write_FD(fd, temp, num_bytes);
-}
-
-/*
- * <num_bytes> bytes from <fp> and put them towards the least-significant side
- * of <data>.
- */
-size_t uintReadFromFP(FILE *fp, size_t num_bytes, unsigned int *data)
-{
-    char temp[num_bytes];
-
-    int r = read_FP(fp, temp, num_bytes);
-
-    be_to_h(temp, num_bytes, data);
-
-    return r;
-}
-
-/*
- * Write the <num_bytes> least-significant bytes from <data> to <fp>
- */
-size_t uintWriteToFP(FILE *fp, size_t num_bytes, unsigned int data)
-{
-    char temp[num_bytes];
-
-    h_to_be(data, temp, num_bytes);
-
-    return write_FP(fp, temp, num_bytes);
-}
-
-/*
- * Read an char *from <fd> into <data).
- */
-size_t astringReadFromFD(int fd, char **data)
-{
-    size_t count = 0;
-    uint32_t length;
-
-    count += uint32ReadFromFD(fd, &length);
-
-    if (*data != NULL) free(*data);
-
-    *data = calloc(length + 1, sizeof(char));
-
-    count += read_FD(fd, *data, length);
-
-    return count;
-}
-
-/*
- * Write an char *to <fd> from <data).
- */
-size_t astringWriteToFD(int fd, const char *data)
-{
-    size_t count = 0;
-    uint32_t length = (data == NULL) ? 0 : strlen(data);
-
-    count += uint32WriteToFD(fd, length);
-
-    count += write_FD(fd, data, length);
-
-    return count;
-}
-
-/*
- * Read an char *from <fp> into <data).
- */
-size_t astringReadFromFP(FILE *fp, char **data)
-{
-    size_t count = 0;
-    uint32_t length;
-
-    count += uint32ReadFromFP(fp, &length);
-
-    if (*data != NULL) free(*data);
-
-    *data = calloc(length + 1, sizeof(char));
-
-    count += read_FP(fp, *data, length);
-
-    return count;
-}
-
-/*
- * Write an char *to <fp> from <data).
- */
-size_t astringWriteToFP(FILE *fp, const char *data)
-{
-    size_t count = 0;
-    uint32_t length = (data == NULL) ? 0 : strlen(data);
-
-    count += uint32WriteToFP(fp, length);
-
-    count += write_FP(fp, data, length);
-
-    return count;
-}
-
-/*
- * Print an ASCII representation of <data> to <fp>.
- */
-void astringPrint(FILE *fp, const char *data, int indent)
-{
-    fprintf(fp, "\"%s\"", data);
-}
-
-/*
+/* =============================== "Copy" functions ===============================
+ *
  * Copy string <src> to <dst>.
  */
 void astringCopy(char **dst, const char *src)
@@ -1382,110 +1175,6 @@ void astringCopy(char **dst, const char *src)
     }
 
     *dst = strdup(src);
-}
-
-/*
- * Read a wchar_t *from <fd> into <data).
- */
-size_t ustringReadFromFD(int fd, wchar_t **data)
-{
-    size_t wchar_count, count = 0;
-    uint32_t uint8_len;
-
-    count += uint32ReadFromFD(fd, &uint8_len);
-
-    uint8_t *uint8_buf = calloc(1, uint8_len + 1);
-
-    count += read_FD(fd, uint8_buf, uint8_len);
-
-    const wchar_t *wchar = utf8_to_wchar(uint8_buf, uint8_len, &wchar_count);
-
-    if (*data != NULL) free(*data);
-
-    *data = calloc(wchar_count + 1, sizeof(wchar_t));
-
-    memcpy(*data, wchar, (wchar_count + 1) * sizeof(wchar_t));
-
-    return count;
-}
-
-/*
- * Write a wchar_t *to <fd> from <data).
- */
-size_t ustringWriteToFD(int fd, const wchar_t *data)
-{
-    uint32_t count = 0;
-    uint32_t utf8_size;
-    const char *utf8_text;
-
-    if (data == NULL) {
-        utf8_size = 0;
-    }
-    else {
-        utf8_text = wchar_to_utf8(data, wcslen(data), &utf8_size);
-    }
-
-    count += uint32WriteToFD(fd, utf8_size);
-
-    count += write_FD(fd, utf8_text, utf8_size);
-
-    return count;
-}
-
-/*
- * Read a wchar_t *from <fp> into <data).
- */
-size_t ustringReadFromFP(FILE *fp, wchar_t **data)
-{
-    size_t wchar_count, count = 0;
-    uint32_t uint8_len;
-
-    count += uint32ReadFromFP(fp, &uint8_len);
-
-    uint8_t *uint8_buf = calloc(1, uint8_len + 1);
-
-    count += read_FP(fp, uint8_buf, uint8_len);
-
-    const wchar_t *wchar = utf8_to_wchar(uint8_buf, uint8_len, &wchar_count);
-
-    if (*data != NULL) free(*data);
-
-    *data = calloc(wchar_count + 1, sizeof(wchar_t));
-
-    memcpy(*data, wchar, (wchar_count + 1) * sizeof(wchar_t));
-
-    return count;
-}
-
-/*
- * Write a wchar_t *to <fp> from <data).
- */
-size_t ustringWriteToFP(FILE *fp, const wchar_t *data)
-{
-    uint32_t count = 0;
-    uint32_t utf8_size;
-    const char *utf8_text;
-
-    if (data == NULL) {
-        utf8_size = 0;
-    }
-    else {
-        utf8_text = wchar_to_utf8(data, wcslen(data), &utf8_size);
-    }
-
-    count += uint32WriteToFP(fp, utf8_size);
-
-    count += write_FP(fp, utf8_text, utf8_size);
-
-    return count;
-}
-
-/*
- * Print an ASCII representation of <data> to <fp>.
- */
-void ustringPrint(FILE *fp, const wchar_t *data, int indent)
-{
-    fprintf(fp, "\"%ls\"", data);
 }
 
 /*
@@ -1504,258 +1193,13 @@ void ustringCopy(wchar_t **dst, const wchar_t *src)
     *dst = wcsdup(src);
 }
 
-/*
- * Read a float from <fd> into <data).
- */
-size_t float32ReadFromFD(int fd, float *data)
-{
-    return read_FD_BE(fd, data, sizeof(float));
-}
-
-/*
- * Write a float to <fd> from <data).
- */
-size_t float32WriteToFD(int fd, float data)
-{
-    return write_FD_BE(fd, &data, sizeof(float));
-}
-
-/*
- * Read a float from <fp> into <data).
- */
-size_t float32ReadFromFP(FILE *fp, float *data)
-{
-    return read_FP_BE(fp, data, sizeof(float));
-}
-
-/*
- * Write a float to <fp> from <data).
- */
-size_t float32WriteToFP(FILE *fp, float data)
-{
-    return write_FP_BE(fp, &data, sizeof(float));
-}
-
-/*
- * Print an ASCII representation of <data> to <fp>.
- */
-void float32Print(FILE *fp, float data, int indent)
-{
-    fprintf(fp, "%g", data);
-}
-
-/*
- * Read a double from <fd> into <data).
- */
-size_t float64ReadFromFD(int fd, double *data)
-{
-    return read_FD_BE(fd, data, sizeof(double));
-}
-
-/*
- * Write a double to <fd> from <data).
- */
-size_t float64WriteToFD(int fd, double data)
-{
-    return write_FD_BE(fd, &data, sizeof(double));
-}
-
-/*
- * Read a double from <fp> into <data).
- */
-size_t float64ReadFromFP(FILE *fp, double *data)
-{
-    return read_FP_BE(fp, data, sizeof(double));
-}
-
-/*
- * Write a double to <fp> from <data).
- */
-size_t float64WriteToFP(FILE *fp, double data)
-{
-    return write_FP_BE(fp, &data, sizeof(double));
-}
-
-/*
- * Print an ASCII representation of <data> to <fp>.
- */
-void float64Print(FILE *fp, double data, int indent)
-{
-    fprintf(fp, "%g", data);
-}
-
-/*
- * Read a bool from <fd> into <data).
- */
-size_t boolReadFromFD(int fd, bool *data)
-{
-    uint8_t encoded;
-
-    size_t r = read_FD(fd, &encoded, sizeof(encoded));
-
-    *data = bool_decode(encoded);
-
-    return r;
-}
-
-/*
- * Write a bool to <fd> from <data).
- */
-size_t boolWriteToFD(int fd, bool data)
-{
-    uint8_t encoded = bool_encode(data);
-
-    return write_FD(fd, &encoded, sizeof(encoded));
-}
-
-/*
- * Read a bool from <fp> into <data).
- */
-size_t boolReadFromFP(FILE *fp, bool *data)
-{
-    uint8_t encoded;
-
-    size_t r = read_FP(fp, &encoded, sizeof(encoded));
-
-    *data = bool_decode(encoded);
-
-    return r;
-}
-
-/*
- * Write a bool to <fp> from <data).
- */
-size_t boolWriteToFP(FILE *fp, bool data)
-{
-    uint8_t encoded = bool_encode(data);
-
-    return write_FP(fp, &encoded, sizeof(encoded));
-}
-
-/*
- * Print an ASCII representation of <data> to <fp>.
- */
-void boolPrint(FILE *fp, bool data, int indent)
-{
-    fprintf(fp, "%s", data ? "true" : "false");
-}
-
-/*
- * Copy <src> to <dst>.
- */
-void boolCopy(bool *dst, bool src)
-{
-    assert(dst != NULL);
-
-    *dst = src;
-}
-
-/*
- * Read a uint8_t from <fd> into <data).
- */
-size_t uint8ReadFromFD(int fd, uint8_t *data)
-{
-    return read_FD(fd, data, sizeof(uint8_t));
-}
-
-/*
- * Write a uint8_t to <fd> from <data).
- */
-size_t uint8WriteToFD(int fd, uint8_t data)
-{
-    return write_FD(fd, &data, sizeof(uint8_t));
-}
-
-/*
- * Read a uint8_t from <fp> into <data).
- */
-size_t uint8ReadFromFP(FILE *fp, uint8_t *data)
-{
-    return read_FP(fp, data, sizeof(uint8_t));
-}
-
-/*
- * Write a uint8_t to <fp> from <data).
- */
-size_t uint8WriteToFP(FILE *fp, uint8_t data)
-{
-    return write_FP(fp, &data, sizeof(uint8_t));
-}
-
-/*
+/* =============================== "Print" functions ===============================
+ *
  * Print an ASCII representation of <data> to <fp>.
  */
 void uint8Print(FILE *fp, uint8_t data, int indent)
 {
     fprintf(fp, "%" PRIu8, data);
-}
-
-/*
- * Return the number of bytes required to pack an int8_t.
- */
-size_t int8PackSize(void)
-{
-    return sizeof(int8_t);
-}
-
-/*
- * Unpack an int8_t from <buf> (which has size <size>) and put it at the
- * address pointed to by <data>.
- */
-size_t int8Unpack(const buffer *buf, size_t pos, int8_t *data)
-{
-    size_t req = int8PackSize();
-
-    assert(bufferLen(buf, pos) >= req);
-
-        *data = buf[0];
-
-    return req;
-}
-
-/*
- * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
- * if necessary.
- */
-buffer *int8Pack(const int8_t data, buffer *buf)
-{
-    buffer_expand(buf, size, *pos + sizeof(int8_t));
-
-    (*buf)[(*pos)++] = data;
-
-    return sizeof(uint8_t);
-}
-
-/*
- * Read an int8_t from <fd> into <data).
- */
-size_t int8ReadFromFD(int fd, int8_t *data)
-{
-    return read_FD(fd, data, sizeof(int8_t));
-}
-
-/*
- * Write an int8_t to <fd> from <data).
- */
-size_t int8WriteToFD(int fd, int8_t data)
-{
-    return write_FD(fd, &data, sizeof(int8_t));
-}
-
-/*
- * Read an int8_t from <fp> into <data).
- */
-size_t int8ReadFromFP(FILE *fp, int8_t *data)
-{
-    return read_FP(fp, data, sizeof(int8_t));
-}
-
-/*
- * Write an int8_t to <fp> from <data).
- */
-size_t int8WriteToFP(FILE *fp, int8_t data)
-{
-    return write_FP(fp, &data, sizeof(int8_t));
 }
 
 /*
@@ -1766,76 +1210,9 @@ void int8Print(FILE *fp, int8_t data, int indent)
     fprintf(fp, "%" PRId8, data);
 }
 
-/*
- * Read a uint16_t from <fd> into <data).
- */
-size_t uint16ReadFromFD(int fd, uint16_t *data)
-{
-    return read_FD_BE(fd, data, sizeof(uint16_t));
-}
-
-/*
- * Write a uint16_t to <fd> from <data).
- */
-size_t uint16WriteToFD(int fd, uint16_t data)
-{
-    return write_FD_BE(fd, &data, sizeof(uint16_t));
-}
-
-/*
- * Read a uint16_t from <fp> into <data).
- */
-size_t uint16ReadFromFP(FILE *fp, uint16_t *data)
-{
-    return read_FP_BE(fp, data, sizeof(uint16_t));
-}
-
-/*
- * Write a uint16_t to <fp> from <data).
- */
-size_t uint16WriteToFP(FILE *fp, uint16_t data)
-{
-    return write_FP_BE(fp, &data, sizeof(uint16_t));
-}
-
-/*
- * Print an ASCII representation of <data> to <fp>.
- */
 void uint16Print(FILE *fp, uint16_t data, int indent)
 {
     fprintf(fp, "%" PRIu16, data);
-}
-
-/*
- * Read a int16_t from <fd> into <data).
- */
-size_t int16ReadFromFD(int fd, int16_t *data)
-{
-    return read_FD_BE(fd, data, sizeof(uint16_t));
-}
-
-/*
- * Write a int16_t to <fd> from <data).
- */
-size_t int16WriteToFD(int fd, int16_t data)
-{
-    return write_FD_BE(fd, &data, sizeof(int16_t));
-}
-
-/*
- * Read a int16_t from <fp> into <data).
- */
-size_t int16ReadFromFP(FILE *fp, int16_t *data)
-{
-    return read_FP_BE(fp, data, sizeof(int16_t));
-}
-
-/*
- * Write a int16_t to <fp> from <data).
- */
-size_t int16WriteToFP(FILE *fp, int16_t data)
-{
-    return write_FP_BE(fp, &data, sizeof(int16_t));
 }
 
 /*
@@ -1847,75 +1224,11 @@ void int16Print(FILE *fp, int16_t data, int indent)
 }
 
 /*
- * Read a uint32_t from <fd> into <data).
- */
-size_t uint32ReadFromFD(int fd, uint32_t *data)
-{
-    return read_FD_BE(fd, data, sizeof(uint32_t));
-}
-
-/*
- * Write a uint32_t to <fd> from <data).
- */
-size_t uint32WriteToFD(int fd, uint32_t data)
-{
-    return write_FD_BE(fd, &data, sizeof(uint32_t));
-}
-
-/*
- * Read a uint32_t from <fp> into <data).
- */
-size_t uint32ReadFromFP(FILE *fp, uint32_t *data)
-{
-    return read_FP_BE(fp, data, sizeof(uint32_t));
-}
-
-/*
- * Write a uint32_t to <fp> from <data).
- */
-size_t uint32WriteToFP(FILE *fp, uint32_t data)
-{
-    return write_FP_BE(fp, &data, sizeof(uint32_t));
-}
-
-/*
  * Print an ASCII representation of <data> to <fp>.
  */
 void uint32Print(FILE *fp, uint32_t data, int indent)
 {
     fprintf(fp, "%" PRIu32, data);
-}
-
-/*
- * Read an int32_t from <fd> into <data).
- */
-size_t int32ReadFromFD(int fd, int32_t *data)
-{
-    return read_FD_BE(fd, data, sizeof(uint32_t));
-}
-
-/*
- * Write an int32_t to <fd> from <data).
- */
-size_t int32WriteToFD(int fd, int32_t data)
-{
-    return write_FD_BE(fd, &data, sizeof(int32_t));
-}
-
-/*
- * Read an int32_t from <fp> into <data).
- */
-size_t int32ReadFromFP(FILE *fp, int32_t *data)
-{
-    return read_FP_BE(fp, data, sizeof(int32_t));
-}
-
-/*
- * Write an int32_t to <fp> from <data).
- */
-size_t int32WriteToFP(FILE *fp, int32_t data)
-{
-    return write_FP_BE(fp, &data, sizeof(int32_t));
 }
 
 /*
@@ -1927,75 +1240,11 @@ void int32Print(FILE *fp, int32_t data, int indent)
 }
 
 /*
- * Read a uint64_t from <fd> into <data).
- */
-size_t uint64ReadFromFD(int fd, uint64_t *data)
-{
-    return read_FD_BE(fd, data, sizeof(uint64_t));
-}
-
-/*
- * Write a uint64_t to <fd> from <data).
- */
-size_t uint64WriteToFD(int fd, uint64_t data)
-{
-    return write_FD_BE(fd, &data, sizeof(uint64_t));
-}
-
-/*
- * Read a uint64_t from <fp> into <data).
- */
-size_t uint64ReadFromFP(FILE *fp, uint64_t *data)
-{
-    return read_FP_BE(fp, data, sizeof(uint64_t));
-}
-
-/*
- * Write a uint64_t to <fp> from <data).
- */
-size_t uint64WriteToFP(FILE *fp, uint64_t data)
-{
-    return write_FP_BE(fp, &data, sizeof(uint64_t));
-}
-
-/*
  * Print an ASCII representation of <data> to <fp>.
  */
 void uint64Print(FILE *fp, uint64_t data, int indent)
 {
     fprintf(fp, "%" PRIu64, data);
-}
-
-/*
- * Read an int64_t from <fd> into <data).
- */
-size_t int64ReadFromFD(int fd, int64_t *data)
-{
-    return read_FD_BE(fd, data, sizeof(int64_t));
-}
-
-/*
- * Write an int64_t to <fd> from <data).
- */
-size_t int64WriteToFD(int fd, int64_t data)
-{
-    return write_FD_BE(fd, &data, sizeof(int64_t));
-}
-
-/*
- * Read an int64_t from <fp> into <data).
- */
-size_t int64ReadFromFP(FILE *fp, int64_t *data)
-{
-    return read_FP_BE(fp, data, sizeof(int64_t));
-}
-
-/*
- * Write an int64_t to <fp> from <data).
- */
-size_t int64WriteToFP(FILE *fp, int64_t data)
-{
-    return write_FP_BE(fp, &data, sizeof(int64_t));
 }
 
 /*
@@ -2005,7 +1254,46 @@ void int64Print(FILE *fp, int64_t data, int indent)
 {
     fprintf(fp, "%" PRId64, data);
 }
-#endif
+
+/*
+ * Print an ASCII representation of <data> to <fp>.
+ */
+void boolPrint(FILE *fp, bool data, int indent)
+{
+    fprintf(fp, "%s", data ? "true" : "false");
+}
+
+/*
+ * Print an ASCII representation of <data> to <fp>.
+ */
+void float32Print(FILE *fp, float data, int indent)
+{
+    fprintf(fp, "%g", data);
+}
+
+/*
+ * Print an ASCII representation of <data> to <fp>.
+ */
+void float64Print(FILE *fp, double data, int indent)
+{
+    fprintf(fp, "%g", data);
+}
+
+/*
+ * Print an ASCII representation of <str> to <fp>.
+ */
+void astringPrint(FILE *fp, const astring *str, int indent)
+{
+    fprintf(fp, "\"%s\"", str->data);
+}
+
+/*
+ * Print an ASCII representation of <str> to <fp>.
+ */
+void ustringPrint(FILE *fp, const ustring *str, int indent)
+{
+    fprintf(fp, "\"%ls\"", str->data);
+}
 
 #ifdef TEST
 int main(int argc, char *argv[])
