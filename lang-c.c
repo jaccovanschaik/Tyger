@@ -1,6 +1,6 @@
 /* lang-c.c: Generate C code.
  *
- * Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-10-24
  *
  * This software is distributed under the terms of the MIT license. See
@@ -1908,81 +1908,80 @@ int emit_c_hdr(const char *out_file, const char *in_file,
     }
 
     for (def = listHead(definitions); def; def = listNext(def)) {
-        if (def->type == DT_CONST) {
+        if (def->type == DT_CONST || def->builtin) {
             continue;
         }
-        else if (!def->builtin) {
-            if (do_packsize) {
-                emit_packsize_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-            if (do_pack) {
-                emit_pack_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-            if (do_unpack) {
-                emit_unpack_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-            if (do_clear) {
-                emit_clear_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-            if (do_destroy) {
-                emit_destroy_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-            if (do_print) {
-                emit_print_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-#if 0
-            if (do_wrap && def->type == DT_STRUCT) {
-                emit_wrap_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-            if (do_unwrap && def->type == DT_STRUCT) {
-                emit_unwrap_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-            if (do_read_fd) {
-                emit_read_signature(fp, def, &file_attr[FILE_ID_FD]);
-                fprintf(fp, ";\n");
-            }
-            if (do_write_fd) {
-                emit_write_signature(fp, def, &file_attr[FILE_ID_FD]);
-                fprintf(fp, ";\n");
-            }
-            if (do_read_fp) {
-                emit_read_signature(fp, def, &file_attr[FILE_ID_FP]);
-                fprintf(fp, ";\n");
-            }
-            if (do_write_fp) {
-                emit_write_signature(fp, def, &file_attr[FILE_ID_FP]);
-                fprintf(fp, ";\n");
-            }
-            if (do_create && def->type == DT_STRUCT) {
-                emit_create_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-            if (do_set && def->type == DT_STRUCT) {
-                emit_set_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-            if (do_copy) {
-                emit_copy_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-            if (do_mx_send) {
-                emit_mx_send_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-            if (do_mx_bcast) {
-                emit_mx_bcast_signature(fp, def);
-                fprintf(fp, ";\n");
-            }
-#endif
+
+        if (do_packsize) {
+            emit_packsize_signature(fp, def);
+            fprintf(fp, ";\n");
         }
+        if (do_pack) {
+            emit_pack_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_unpack) {
+            emit_unpack_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_clear) {
+            emit_clear_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_destroy) {
+            emit_destroy_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_print) {
+            emit_print_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+#if 0
+        if (do_wrap && def->type == DT_STRUCT) {
+            emit_wrap_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_unwrap && def->type == DT_STRUCT) {
+            emit_unwrap_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_read_fd) {
+            emit_read_signature(fp, def, &file_attr[FILE_ID_FD]);
+            fprintf(fp, ";\n");
+        }
+        if (do_write_fd) {
+            emit_write_signature(fp, def, &file_attr[FILE_ID_FD]);
+            fprintf(fp, ";\n");
+        }
+        if (do_read_fp) {
+            emit_read_signature(fp, def, &file_attr[FILE_ID_FP]);
+            fprintf(fp, ";\n");
+        }
+        if (do_write_fp) {
+            emit_write_signature(fp, def, &file_attr[FILE_ID_FP]);
+            fprintf(fp, ";\n");
+        }
+        if (do_create && def->type == DT_STRUCT) {
+            emit_create_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_set && def->type == DT_STRUCT) {
+            emit_set_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_copy) {
+            emit_copy_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_mx_send) {
+            emit_mx_send_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_mx_bcast) {
+            emit_mx_bcast_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+#endif
     }
 
     fprintf(fp, "\n#endif\n");

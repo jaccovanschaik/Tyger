@@ -1,6 +1,6 @@
 # Makefile: Makefile for tyger.
 #
-# Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
+# Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
 # Created:   2016-08-24
 #
 # This software is distributed under the terms of the MIT license. See
@@ -198,7 +198,7 @@ Objects.py: test/Objects.tgr tyger
 
 clean:
 	rm -rf *.o *.pyc __pycache__ tyger \
-            core vgcore.* tyger.tgz libtyger.a libtyger.so \
+            core core-* vgcore.* tyger.tgz libtyger.a libtyger.so \
             tokenizer-test libtyger-test \
             test_objects Objects.c Objects.h Objects.py \
             version.h tokentype.c tokentype.h deftype.c deftype.h \

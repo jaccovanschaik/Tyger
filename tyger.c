@@ -1,6 +1,6 @@
 /* tyger.c: Tyger type generator.
  *
- * Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-25
  *
  * This software is distributed under the terms of the MIT license. See
@@ -57,16 +57,16 @@ static void make_int_types(List *definitions)
     int is_signed;
     int size;
 
+    Buffer name_buf = { };
+
     for (is_signed = 0; is_signed <= 1; is_signed++) {
         for (size = 1; size <= 8; size <<= 1) {
-            Buffer *name_buf = bufCreate();
-
-            bufSetF(name_buf, "%sint%d", is_signed ? "" : "u", 8 * size);
-
             def = calloc(1, sizeof(*def));
 
+            bufSetF(&name_buf, "%sint%d", is_signed ? "" : "u", 8 * size);
+
             def->type = DT_INT;
-            def->name = bufFinish(name_buf);
+            def->name = bufDetach(&name_buf);
             def->builtin = true;
             def->int_def.size = size;
             def->int_def.is_signed = is_signed;
