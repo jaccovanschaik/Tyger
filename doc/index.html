@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
-  <!-- vim: set textwidth=100: -->
+  <!-- vim: set columns=100 textwidth=100: -->
   <head>
     <title>Tyger</title>
     <style>
@@ -56,7 +56,7 @@
   <body>
     <pre>** Documentation for Tyger.
 **
-** Copyright: (c) 2017-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
+** Copyright: (c) 2017-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
 **
 ** This software is distributed under the terms of the MIT license. See
 ** http://www.opensource.org/licenses/mit-license.php for details.</pre>
@@ -107,20 +107,9 @@ Options:
           --c-packsize  Generate packsize functions
           --c-pack      Generate pack functions
           --c-unpack    Generate unpack functions
-          --c-wrap      Generate wrap functions
-          --c-unwrap    Generate unwrap functions
-          --c-read-fd   Generate functions to read from an fd
-          --c-write-fd  Generate functions to write to an fd
-          --c-read-fp   Generate functions to read from an FP
-          --c-write-fp  Generate functions to write to an FP
-          --c-print-fp  Generate print functions
-          --c-create    Generate create functions
-          --c-set       Generate set functions
-          --c-copy      Generate copy functions
           --c-clear     Generate clear functions
           --c-destroy   Generate destroy functions
-          --c-mx-send   Generate MX send functions
-          --c-mx-bcast  Generate MX broadcast functions
+          --c-print     Generate print functions
 
         Switches accepted by the Python code generator
           --py-pack     Generate pack functions
@@ -132,8 +121,9 @@ Options:
       Normally, Tyger will be called with the name of an input file containing type descriptions,
       one or more options telling it what output files to generate, and a number of options telling
       it which functions to generate for each type and each language. Tyger tries to be smart about
-      the used include files (when generating C code) or imported modules (when generating Python
-      code) so you don't need to provide include files or modules unless they are required.
+      which header files it includes (when generating C code) or modules it imports (when generating
+      Python code) so it will only add <code>#include</code> or <code>import</code> statements to
+      the generated code if they are required.
     </p>
     <h2>Languages</h2>
     <p>
@@ -246,14 +236,21 @@ Options:
     </p>
     <h3>Structures</h3>
     <p>
-      These are abstract types containing multiple internal fields.
+      These are abstract types containing multiple internal fields. Fields may be designated
+      optional by prefixing the field with the keyword "opt".
     </p>
     <p>
-      In C these are translated to <code>typedef struct</code> definitions. In Python they are
-      translated to classes that have a class member for each field.
+      In C these are translated to <code>typedef struct</code> definitions. For each field the
+      struct contains, a struct member is added. If a field is optional, a pointer to a struct
+      member is added. If an optional field is not present this pointer is set to NULL.
     </p>
     <p>
-      They are serialized by simply serializing each field in turn.
+      In Python, structs are translated to classes that have a member variable for each field.
+    </p>
+    <p>
+      They are serialized by simply serializing each field in turn. Optional fields are preceded by
+      a byte set to 1 if the field is present (in which case it follows immediately) or 0 if it
+      isn't.
     </p>
     <h3>Unions</h3>
     <p>
@@ -309,14 +306,12 @@ Options:
       type "make test" and look at the generated code (<code>Objects.c</code>,
       <code>Objects.h</code> and <code>Objects.py</code>).
     </p>
-    <h3>Deriving types from a built-in type</h3>
+    <h3>Aliases</h3>
     <p>
-      Built-in types are the various <code>bool</code>, <code>int</code>, <code>float</code> and
-      <code>string</code> types. You can created a new type derived from these using the following
-      syntax:
+      New types can be aliased from existing ones with the following syntax:
     </p>
     <p>
-      <pre>&lt;new_type_name&gt; = &lt;builtin_type_name&gt;</pre>
+      <pre>&lt;new_type_name&gt; = &lt;existing_type_name&gt;</pre>
     </p>
     <p>
       For example, to define a new type called <code>Coordinate</code> and make it a signed 32-bit
@@ -339,14 +334,15 @@ Options:
     </p>
     <p>
       So if you wanted to define a type called <code>Object</code> that contains an ASCII string
-      <code>ident</code>, a Unicode string <code>creator</code>, a boolean <code>visible</code> and
-      a field named <code>shape</code> with type <code>Shape</code>, you'd do that as follows:
+      <code>name</code>, an optional Unicode string <code>creator</code>, a boolean
+      <code>visible</code> and a field named <code>shape</code> with type <code>Shape</code>, you'd
+      do that as follows:
     </p>
     <pre>Object = struct {
-    astring ident
-    ustring creator
-    bool    visible
-    Shape   shape
+    astring     name
+    opt ustring creator
+    bool        visible
+    Shape       shape
 }</pre>
     <h3>Defining an enumeration</h3>
     <p>
@@ -595,7 +591,7 @@ Options:
           <code>--c-mx-send</code>
         </p>
         <p>
-          Generate MX send functions
+          Generate <a href="https://www.jaccovanschaik.net/MX/">MX</a> send functions
         </p>
       </li>
       <li>
@@ -603,7 +599,7 @@ Options:
           <code>--c-mx-bcast</code>
         </p>
         <p>
-          Generate MX broadcast functions
+          Generate <a href="https://www.jaccovanschaik.net/MX/">MX</a> broadcast functions
         </p>
       </li>
     </ul>
@@ -643,7 +639,7 @@ Options:
           <code>--py-mx-send</code>
         </p>
         <p>
-          Generate MX send functions
+          Generate <a href="https://www.jaccovanschaik.net/MX/">MX</a> send functions
         </p>
       </li>
       <li>
@@ -651,7 +647,7 @@ Options:
           <code>--py-mx-bcast</code>
         </p>
         <p>
-          Generate MX broadcast functions
+          Generate <a href="https://www.jaccovanschaik.net/MX/">MX</a> broadcast functions
         </p>
       </li>
     </ul>
