@@ -4,7 +4,7 @@
 '''
   tyger.py: Python runtime module for Tyger.
 
-  Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
+  Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
   Created:   2016-11-25
 
   This software is distributed under the terms of the MIT license. See
