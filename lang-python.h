@@ -3,7 +3,7 @@
 
 /* lang-python.h: Generate Python code.
  *
- * Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-12-08
  *
  * This software is distributed under the terms of the MIT license. See

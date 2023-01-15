@@ -208,7 +208,7 @@ veryclean: clean
 	rm -f tags
 
 tags:
-	ctags -R --c-kinds=+p /usr/include $(JVS_TOP)/include .
+	ctags -R /usr/include $(JVS_TOP)/Projects/libjvs .
 
 commit:
 	@echo "\033[7mGit status:\033[0m"

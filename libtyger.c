@@ -1,6 +1,6 @@
 /* libtyger.c: Run-time portion for the Tyger type generator.
  *
- * Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-31
  *
  * This software is distributed under the terms of the MIT license. See
@@ -31,8 +31,7 @@ static int   indent_length = 0;
 // =============================== Internals ===============================
 
 /*
- * Resize <buf>, which currently has size <size>, so that it can hold at
- * least <requirement> bytes.
+ * Resize <buf> so that it can hold at least <req> bytes.
  *
  * If the size is insufficient it will be doubled until it is. If it is
  * currently 0, it will be initialized to 1024.
@@ -99,7 +98,7 @@ const char *indent(int level)
 
 /* =============================== "Length" functions ===============================
  *
- * Return the number of used bytes in <pos>, counted from <pos>.
+ * Return the number of used bytes in <buf>, counted from <pos>.
  */
 size_t bufferLen(const buffer *buf, size_t pos)
 {

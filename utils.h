@@ -3,7 +3,7 @@
 
 /* utils.h: Utility functions.
  *
- * Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-10-06
  *
  * This software is distributed under the terms of the MIT license. See

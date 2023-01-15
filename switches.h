@@ -3,7 +3,7 @@
 
 /* switches.h: Descriptions for command lines switches.
  *
- * Copyright: (c) 2016-2022 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-12-15
  *
  * This software is distributed under the terms of the MIT license. See
