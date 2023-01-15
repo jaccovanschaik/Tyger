@@ -267,8 +267,8 @@ int main(int argc, char *argv[])
 
     file_arg = optParse(options, argc, argv);
 
-    if (file_arg == -1) {
-        usage(argv[0], NULL, 1);
+    if (file_arg < 0) {
+        usage(argv[0], optErrors(options), 1);
     }
     else if (optIsSet(options, "version")) {
         fprintf(stdout, "%s\n", VERSION);

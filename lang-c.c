@@ -31,20 +31,22 @@
 static int do_packsize = 0;
 static int do_pack = 0;
 static int do_unpack = 0;
+static int do_clear = 0;
+static int do_destroy = 0;
+static int do_print = 0;
+#if 0
 static int do_wrap = 0;
 static int do_unwrap = 0;
 static int do_read_fd = 0;
-// static int do_write_fd = 0;
+static int do_write_fd = 0;
 static int do_read_fp = 0;
 static int do_write_fp = 0;
-static int do_print = 0;
 static int do_create = 0;
 static int do_set = 0;
 static int do_copy = 0;
-static int do_clear = 0;
-static int do_destroy = 0;
 static int do_mx_send = 0;
 static int do_mx_bcast = 0;
+#endif
 
 static Switch switches[] = {
     { "--c-packsize", &do_packsize, "Generate packsize functions" },
@@ -1410,8 +1412,6 @@ static void emit_create_body(FILE *fp, Definition *def)
          struct_item; struct_item = listNext(struct_item))
     {
         fprintf(fp, ", %s", struct_item->name);
-#if 0
-#endif
     }
 
     fprintf(fp, ");\n\n");
@@ -1835,15 +1835,7 @@ static void emit_mx_bcast_body(FILE *fp, Definition *def)
 
 static void set_dependencies(void)
 {
-    if (do_wrap)    do_pack = TRUE;
-    if (do_unwrap)  do_unpack = TRUE;
-    if (do_create)  { do_copy = TRUE; do_set  = TRUE; }
-    if (do_set)     do_copy = TRUE;
-    if (do_copy)    do_clear = TRUE;
     if (do_destroy) do_clear = TRUE;
-
-    if (do_mx_send)  do_pack = TRUE;
-    if (do_mx_bcast) do_pack = TRUE;
 }
 
 /*
@@ -1890,13 +1882,10 @@ int emit_c_hdr(const char *out_file, const char *in_file,
     fprintf(fp, "#include <stdlib.h>\t/* size_t */\n");
     fprintf(fp, "#include <stdint.h>\t/* int types */\n");
     fprintf(fp, "#include <stdbool.h>\t/* bool */\n");
-    fprintf(fp, "#include <wchar.h>\t/* wchar_t */\n\n");
+    fprintf(fp, "#include <wchar.h>\t/* wchar_t */\n");
+    fprintf(fp, "#include <string.h>\t/* memset */\n");
 
-    if (do_mx_send || do_mx_bcast) {
-        fprintf(fp, "\n#include <libmx.h>\t/* MX functions. */\n");
-    }
-
-    fprintf(fp, "\n#include \"libtyger.h\"\t/* Tyger functions. */\n\n");
+    fprintf(fp, "\n#include \"libtyger.h\"\n\n");
 
     for (def = listHead(definitions); def; def = listNext(def)) {
         if (def->type == DT_CONST) {
@@ -2018,6 +2007,7 @@ int emit_c_src(const char *out_file, const char *in_file,
             prog_name, in_file, time_str);
     fprintf(fp, " */\n\n");
 
+#if 0
     if (do_copy) {
         fprintf(fp, "#include <assert.h>\t/* assert */\n");
     }
@@ -2029,12 +2019,15 @@ int emit_c_src(const char *out_file, const char *in_file,
     if (do_unpack || do_read_fd || do_read_fp || do_copy) {
         fprintf(fp, "#include <string.h>\t/* memset */\n");
     }
+#endif
 
     fprintf(fp, "#include <stdlib.h>\t/* size_t */\n");
 
+#if 0
     if (do_mx_send || do_mx_bcast) {
         fprintf(fp, "\n#include <libmx.h>\t/* MX functions. */\n");
     }
+#endif
 
     fprintf(fp, "\n#include \"libtyger.h\"\t/* Tyger functions. */\n");
 
