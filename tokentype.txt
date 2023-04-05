@@ -12,4 +12,6 @@ oparen
 cparen
 colon
 equals
+inc_entry
+inc_exit
 eof

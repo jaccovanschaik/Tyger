@@ -41,6 +41,18 @@ static void expected(tkType type, tkToken *token, Buffer *error)
             tokentype_enum_to_string(token->type));
 }
 
+static Definition *create_def(const char *name, const char *file, int line, int level)
+{
+    Definition *def = calloc(1, sizeof(*def));
+
+    def->name  = strdup(name);
+    def->file  = strdup(file);
+    def->line  = line;
+    def->level = level;
+
+    return def;
+}
+
 static Definition *find_def(List *defs, const char *name)
 {
     Definition *def;
@@ -127,6 +139,8 @@ static int process_const(Definition *def, List *defs, tkToken **token, Buffer *e
 
     Definition *type_def;
 
+    def->type = DT_CONST;
+
     if (expect_string(token, TT_USTRING, &item_type, error) != 0) {
         fprintf(stderr, "Got const type \"%s\"\n", item_type);
         return 1;
@@ -155,8 +169,6 @@ static int process_const(Definition *def, List *defs, tkToken **token, Buffer *e
         return 1;
     }
 
-    def->type = DT_CONST;
-
     def->const_def.const_type = type_def;
 
     listAppendTail(defs, def);
@@ -169,6 +181,8 @@ static int process_array(Definition *def, List *defs, tkToken **token, Buffer *e
     char *item_type, *item_name;
 
     Definition *item_def;
+
+    def->type = DT_ARRAY;
 
     if (expect_token(token, TT_OPAREN, error) != 0) {
         return 1;
@@ -193,8 +207,6 @@ static int process_array(Definition *def, List *defs, tkToken **token, Buffer *e
         return 1;
     }
 
-    def->type = DT_ARRAY;
-
     def->array_def.item_type = item_def;
     def->array_def.item_name = strdup(item_name);
 
@@ -210,6 +222,8 @@ static int process_struct(Definition *def, List *defs, tkToken **token, Buffer *
     }
 
     bool optional = false;
+
+    def->type = DT_STRUCT;
 
     while ((*token)->type == TT_USTRING) {
         char *elem_name;
@@ -264,8 +278,6 @@ static int process_struct(Definition *def, List *defs, tkToken **token, Buffer *
         return 1;
     }
 
-    def->type = DT_STRUCT;
-
     listAppendTail(defs, def);
 
     return 0;
@@ -278,6 +290,8 @@ static int process_enum(Definition *def, List *defs, tkToken **token, Buffer *er
     if (expect_token(token, TT_OBRACE, error) != 0) {
         return 1;
     }
+
+    def->type = DT_ENUM;
 
     while ((*token)->type == TT_USTRING) {
         char *item_name = (*token)->s;
@@ -310,8 +324,6 @@ static int process_enum(Definition *def, List *defs, tkToken **token, Buffer *er
         return 1;
     }
 
-    def->type = DT_ENUM;
-
     if (max_value >= (1 << 24))
         def->enum_def.num_bytes = 4;
     else if (max_value >= (1 << 16))
@@ -330,6 +342,8 @@ static int process_union(Definition *def, List *defs, tkToken **token, Buffer *e
 {
     char *discr_type, *discr_name;
     Definition *discr_def;
+
+    def->type = DT_UNION;
 
     if (expect_token(token, TT_OPAREN, error) != 0) {
         return 1;
@@ -356,8 +370,6 @@ static int process_union(Definition *def, List *defs, tkToken **token, Buffer *e
     else if (expect_token(token, TT_OBRACE, error) != 0) {
         return 1;
     }
-
-    def->type = DT_UNION;
 
     def->union_def.discr_def = discr_def;
     def->union_def.discr_name = strdup(discr_name);
@@ -426,6 +438,7 @@ char *parse(const char *filename, List *definitions)
     }
 
     State state = ST_INITIAL;
+    int inc_level = 0;
 
     token = listHead(&tokens);
 
@@ -436,15 +449,28 @@ char *parse(const char *filename, List *definitions)
 
         switch(state) {
         case ST_INITIAL:
-            if (token->type == TT_USTRING) {
-                cur_def = calloc(1, sizeof(*cur_def));
-                cur_def->name = strdup(token->s);
-                token = listNext(token);
+            if (token->type == TT_INC_ENTRY) {
+                inc_level++;
+
+                if (inc_level == 1 && find_def(definitions, token->s) == NULL) {
+                    Definition *inc_def = create_def(token->s, token->file, token->line, inc_level);
+                    inc_def->type = DT_INCLUDE;
+                    listAppendTail(definitions, inc_def);
+                }
+            }
+            else if (token->type == TT_INC_EXIT) {
+                inc_level--;
+            }
+            else if (token->type == TT_USTRING) {
+                cur_def = create_def(token->s, token->file, token->line, inc_level);
                 state = ST_NAME;
             }
             else {
                 expected(TT_USTRING, token, &error);
             }
+
+            token = listNext(token);
+
             break;
         case ST_NAME:
             if (token->type == TT_EQUALS) {

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SHAPE_TGR
+#define SHAPE_TGR
 
 #include "Primitives.tgr"
 
@@ -19,3 +20,5 @@ Shape = union(ShapeType shape_type) {
     ST_SPHERE:  Sphere  sphere
     ST_NONE:    void
 }
+
+#endif

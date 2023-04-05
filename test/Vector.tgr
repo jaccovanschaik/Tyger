@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VECTOR_TGR
+#define VECTOR_TGR
 
 #include "Coordinate.tgr"
 
@@ -11,3 +12,5 @@ Vector = struct {
     Coordinate y
     Coordinate z
 }
+
+#endif

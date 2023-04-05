@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <libgen.h>
 
 #include <libjvs/list.h>
 #include <libjvs/utils.h>
@@ -167,6 +168,8 @@ static void emit_class(FILE *fp, Definition *def)
 
 static void emit_packer(FILE *fp, Definition *def)
 {
+    if (def->builtin || def->level > 0) return;
+
     if (def->type == DT_ALIAS) {
         ifprintf(fp, 0, "class %sPacker(%sPacker):\n", def->name, def->alias_def.alias->name);
         ifprintf(fp, 1, "pass\n\n");
@@ -369,8 +372,8 @@ static void emit_packer(FILE *fp, Definition *def)
             ifprintf(fp, 2, "return value\n\n");
         }
     }
-
-    if (!def->builtin && def->type != DT_CONST) {
+    else if (def->type == DT_INT || def->type == DT_BOOL || def->type == DT_FLOAT ||
+             def->type == DT_ASTRING || def->type == DT_USTRING) {
         if (do_mx_send) {
             ifprintf(fp, 1, "@staticmethod\n");
             ifprintf(fp, 1, "def sendMX(mx, fd, msg_type, msg_ver, value):\n");
@@ -424,6 +427,15 @@ int emit_python_src(const char *out_file,
     fprintf(fp, "from tyger import *\n\n");
 
     for (def = listHead(definitions); def; def = listNext(def)) {
+        char *base = basename(def->name);
+        char *period = strchr(base, '.');
+
+        if (def->type == DT_INCLUDE && def->level == 1) {
+            fprintf(fp, "from %.*s import *\n", (int) (period - base), base);
+        }
+    }
+
+    for (def = listHead(definitions); def; def = listNext(def)) {
         if (def->type != DT_CONST) continue;
 
         fprintf(fp, "%s = ", def->name);
@@ -450,10 +462,10 @@ int emit_python_src(const char *out_file,
     }
 
     for (def = listHead(definitions); def; def = listNext(def)) {
-        if (def->type != DT_CONST) {
-            emit_class(fp, def);
-            emit_packer(fp, def);
-        }
+        if (def->type == DT_CONST || def->level > 0) continue;
+
+        emit_class(fp, def);
+        emit_packer(fp, def);
     }
 
     return 0;

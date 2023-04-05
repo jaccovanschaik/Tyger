@@ -307,6 +307,8 @@ static void emit_typedef(FILE *fp, Definition *def)
         fprintf(fp, "} %s;\n", def->name);
 
         break;
+    case DT_INCLUDE:
+        break;
     default:
         fprintf(stderr, "%s: Unexpected definition type %d (%s).\n",
                 __func__, def->type, deftype_enum_to_string(def->type));
@@ -316,7 +318,7 @@ static void emit_typedef(FILE *fp, Definition *def)
 
 static void emit_packsize_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST || def->builtin) return;
+    if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin) return;
 
     if (has_constant_pack_size(def)) {
         fprintf(fp, "\n/*\n");
@@ -489,7 +491,7 @@ static void emit_packsize_body(FILE *fp, Definition *def)
 
 static void emit_pack_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST || def->builtin) return;
+    if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin) return;
 
     fprintf(fp,
             "\n/*\n"
@@ -633,7 +635,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
 
 static void emit_unpack_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST || def->builtin) return;
+    if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin) return;
 
     fprintf(fp,
             "\n/*\n"
@@ -648,7 +650,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
     StructItem *struct_item;
     UnionItem *union_item;
 
-    if (def->type == DT_CONST || def->builtin) return;
+    if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin) return;
 
     fprintf(fp, "\n{\n");
 
@@ -752,7 +754,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
 
 static void emit_print_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST || def->builtin) return;
+    if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin) return;
 
     fprintf(fp, "\n/*\n");
     fprintf(fp, " * Print an ASCII representation of <data> to <fp>.\n");
@@ -909,7 +911,7 @@ static void emit_print_body(FILE *fp, Definition *def)
 
 static void emit_clear_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST || def->builtin) return;
+    if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin) return;
 
     fprintf(fp, "\n/*\n");
     fprintf(fp, " * Clear an already used %s.\n", def->name);
@@ -990,7 +992,7 @@ static void emit_clear_body(FILE *fp, Definition *def)
 
 static void emit_destroy_signature(FILE *fp, Definition *def)
 {
-    if (def->type == DT_CONST || def->builtin) return;
+    if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin) return;
 
     fprintf(fp, "\n/*\n");
     fprintf(fp, " * Destroy an already used %s.\n", def->name);
@@ -1062,16 +1064,28 @@ int emit_c_hdr(const char *out_file, const char *in_file,
     fprintf(fp, "\n#include \"libtyger.h\"\n\n");
 
     for (def = listHead(definitions); def; def = listNext(def)) {
-        if (def->type == DT_CONST) {
+        char *base = basename(def->name);
+        char *period = strchr(base, '.');
+
+        if (def->type == DT_INCLUDE && def->level == 1) {
+            fprintf(fp, "#include \"%.*s.h\"\n", (int) (period - base), base);
+        }
+    }
+
+    for (def = listHead(definitions); def; def = listNext(def)) {
+        if (def->builtin || def->level > 0) {
+            continue;
+        }
+        else if (def->type == DT_CONST) {
             emit_const_declaration(fp, def);
         }
-        else if (!def->builtin) {
+        else {
             emit_typedef(fp, def);
         }
     }
 
     for (def = listHead(definitions); def; def = listNext(def)) {
-        if (def->type == DT_CONST || def->builtin) {
+        if (def->type == DT_CONST || def->builtin || def->level > 0) {
             continue;
         }
 
@@ -1142,12 +1156,17 @@ int emit_c_src(const char *out_file, const char *in_file,
     fprintf(fp, "\n#include \"%s\"\n\n", associated_header_file(out_file));
 
     for (def = listHead(definitions); def; def = listNext(def)) {
-        if (def->type == DT_CONST) {
+        if (def->level != 0) {
+            continue;
+        }
+        else if (def->type == DT_CONST) {
             emit_const_definition(fp, def);
         }
     }
 
     for (def = listHead(definitions); def; def = listNext(def)) {
+        if (def->level != 0) continue;
+
         if (!def->builtin) {
             if (do_packsize) {
                 emit_packsize_signature(fp, def);

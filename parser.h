@@ -88,9 +88,12 @@ typedef struct {
 
 struct Definition {
     ListNode _node;
-    char *name;
-    bool builtin;
     DefinitionType type;
+    char *name;
+    char *file;
+    int line;
+    int level;
+    bool builtin;
     union {
         ConstDefinition const_def;
         IntDefinition int_def;

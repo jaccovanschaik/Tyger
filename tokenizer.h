@@ -39,7 +39,7 @@ void tokClear(List *tokens);
  * Create tokens from the stream given by <fp> and put them in <tokens>.
  * Returns an error message if something went wrong, otherwise returns NULL.
  */
-char *tokStream(FILE *fp, List *tokens);
+char *tokStream(FILE *fp, const char *filename, List *tokens);
 
 /*
  * Create tokens from string <text>. Returns an error message if something went

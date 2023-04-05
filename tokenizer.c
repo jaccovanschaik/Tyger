@@ -35,14 +35,6 @@ typedef enum {
     STATE_ESCAPE
 } State;
 
-/* Scratch pad to build tokens. */
-typedef struct {
-    char *file;
-    int line;
-    int column;
-    Buffer buffer;
-} Scratch;
-
 /* Type of input. */
 typedef enum {
     INPUT_FP,
@@ -58,60 +50,35 @@ typedef struct {
     };
 } Input;
 
-/*
- * Initialize scratch pad for a token on <line> and <column>.
- */
-static void init_scratch(Scratch *scratch, const char *file, int line, int column)
-{
-    bufClear(&scratch->buffer);
-
-    if (scratch->file != NULL) free(scratch->file);
-
-    scratch->file = strdup(file);
-    scratch->line = line;
-    scratch->column = column;
-}
-
-/*
- * Add character <c> to <scratch>.
- */
-static void add_to_scratch(Scratch *scratch, char c)
-{
-    bufAddC(&scratch->buffer, c);
-}
-
-/*
- * Start building a token in <scratch> with character <c> on <line> and <column>.
- */
-static void start_scratch(Scratch *scratch, const char *file, int line, int column, char c)
-{
-    init_scratch(scratch, file, line, column);
-
-    add_to_scratch(scratch, c);
-}
+typedef enum {
+    FLAG_INCLUDE_ENTRY = 1 << 0,
+    FLAG_INCLUDE_EXIT  = 1 << 1,
+    FLAG_SYSTEM_FILE   = 1 << 2,
+    FLAG_EXTERN_C      = 1 << 3
+} LinemarkerFlag;
 
 /*
  * Add a token of type <type> to <tokens>, using data from <scratch>.
  */
-static int add_token(Scratch *scratch, tkType type, List *tokens)
+static int add_token(const char *str, const char *file, int line, int column,
+        tkType type, List *tokens)
 {
     tkToken *token = NULL;
 
     char *endptr;
-    const char *text = bufGet(&scratch->buffer);
-    int len = bufLen(&scratch->buffer);
+    int len = strlen(str);
 
     if (type == TT_DOUBLE) {
-        double value = strtod(text, &endptr);
-        if (endptr == text + len) {
+        double value = strtod(str, &endptr);
+        if (endptr == str + len) {
             token = calloc(1, sizeof(*token));
             token->type = TT_DOUBLE;
             token->d = value;
         }
     }
     else if (type == TT_LONG) {
-        long value = strtol(text, &endptr, 0);
-        if (endptr == text + len) {
+        long value = strtol(str, &endptr, 0);
+        if (endptr == str + len) {
             token = calloc(1, sizeof(*token));
             token->type = TT_LONG;
             token->l = value;
@@ -120,17 +87,18 @@ static int add_token(Scratch *scratch, tkType type, List *tokens)
     else if (type == TT_USTRING || type == TT_DSTRING || type == TT_SSTRING) {
         token = calloc(1, sizeof(*token));
         token->type = type;
-        token->s = strdup(text);
+        token->s = strdup(str);
     }
     else {
         token = calloc(1, sizeof(*token));
         token->type = type;
+        token->s = strdup(str);
     }
 
     if (token != NULL) {
-        token->file = strdup(scratch->file);
-        token->line = scratch->line;
-        token->column = scratch->column;
+        token->file = strdup(file);
+        token->line = line;
+        token->column = column;
 
         listAppendTail(tokens, token);
 
@@ -241,17 +209,43 @@ static int tok_unget(Input *in, int c)
 }
 
 /*
+ * Parse a cpp line marker (aka. '#-line'). The line is in <scratch>
+ */
+static int parse_linemarker(const Buffer *scratch, char *file, int *line,
+        LinemarkerFlag *flags, Buffer *error)
+{
+    const char *stmt = bufGet(scratch);
+
+    int n, r = sscanf(stmt, "# %d \"%[^\"]\"%n", line, file, &n);
+
+    if (r != 2) return 1;
+
+    *flags = 0;
+
+    const char *p = stmt + n;
+    int flag;
+
+    while (sscanf(p, " %d%n", &flag, &n) == 1) {
+        *flags |= 1 << (flag - 1);
+        p += n;
+    }
+
+    return 0;
+}
+
+/*
  * Create tokens from <in> and put them into <tokens>. <filename> specifies the
  * stream we're reading from. Returns an error message if something went wrong,
  * otherwise returns NULL.
  */
 static char *tokenize(Input *in, const char *filename, List *tokens)
 {
-    int line = 1, column = 0, c;
+    int line = 1, curr_column = 1, start_column, c;
     char file[PATH_MAX];
+    bool preamble_done = false;
 
     Buffer error = { 0 };
-    Scratch scratch = { 0 };
+    Buffer scratch = { 0 };
 
     State old_state, state = STATE_SPACE;
 
@@ -264,95 +258,74 @@ static char *tokenize(Input *in, const char *filename, List *tokens)
 
         c = tok_get(in);
 
-        if (c == '\n') {
-            line++;
-            column = 0;
-        }
-        else {
-            column++;
-        }
-
         switch(state) {
         case STATE_SPACE:
+            bufClear(&scratch);
+            start_column = curr_column;
+
             if (isdigit(c)) {
-                start_scratch(&scratch, file, line, column, c);
+                bufSetC(&scratch, c);
                 state = STATE_LONG;
             }
             else if (c == '.') {
-                start_scratch(&scratch, file, line, column, c);
+                bufSetC(&scratch, c);
                 state = STATE_DOUBLE;
             }
             else if (isalpha(c)) {
-                start_scratch(&scratch, file, line, column, c);
+                bufSetC(&scratch, c);
                 state = STATE_USTRING;
             }
             else if (c == '"') {
-                init_scratch(&scratch, file, line, column);
                 state = STATE_DSTRING;
             }
             else if (c == '\'') {
-                init_scratch(&scratch, file, line, column);
                 state = STATE_SSTRING;
             }
             else if (c == '#') {
-                start_scratch(&scratch, file, line, column, c);
+                bufSetC(&scratch, c);
                 state = STATE_LINEMARKER;
             }
             else if (c == '(') {
-                scratch.line = line;
-                scratch.column = column;
-                add_token(&scratch, TT_OPAREN, tokens);
+                add_token(bufGet(&scratch), file, line, start_column, TT_OPAREN, tokens);
             }
             else if (c == ')') {
-                scratch.line = line;
-                scratch.column = column;
-                add_token(&scratch, TT_CPAREN, tokens);
+                add_token(bufGet(&scratch), file, line, start_column, TT_CPAREN, tokens);
             }
             else if (c == '{') {
-                scratch.line = line;
-                scratch.column = column;
-                add_token(&scratch, TT_OBRACE, tokens);
+                add_token(bufGet(&scratch), file, line, start_column, TT_OBRACE, tokens);
             }
             else if (c == '}') {
-                scratch.line = line;
-                scratch.column = column;
-                add_token(&scratch, TT_CBRACE, tokens);
+                add_token(bufGet(&scratch), file, line, start_column, TT_CBRACE, tokens);
             }
             else if (c == '=') {
-                scratch.line = line;
-                scratch.column = column;
-                add_token(&scratch, TT_EQUALS, tokens);
+                add_token(bufGet(&scratch), file, line, start_column, TT_EQUALS, tokens);
             }
             else if (c == ':') {
-                scratch.line = line;
-                scratch.column = column;
-                add_token(&scratch, TT_COLON, tokens);
+                add_token(bufGet(&scratch), file, line, start_column, TT_COLON, tokens);
             }
             else if (c != EOF && !isspace(c)) {
-                bufSetF(&error, "%d:%d: unexpected character '%c' (ascii %d).",
-                        line, column, c, c);
+                bufSetF(&error,
+                        "%d:%d: unexpected character '%c' (ascii %d).", line, start_column, c, c);
             }
             break;
         case STATE_LONG:
             if (c == '.' || tolower(c) == 'e') {
-                add_to_scratch(&scratch, c);
+                bufAddC(&scratch, c);
                 state = STATE_DOUBLE;
             }
             else if (isxdigit(c) || tolower(c) == 'x') {
-                add_to_scratch(&scratch, c);
+                bufAddC(&scratch, c);
             }
             else if (isalpha(c)) {
-                bufSetF(&error, "%d:%d: badly formatted number.",
-                        scratch.line, scratch.column);
+                bufSetF(&error, "%d:%d: badly formatted number.", line, start_column);
             }
-            else if (add_token(&scratch, TT_LONG, tokens) != 0) {
-                bufSetF(&error, "%d:%d: badly formatted number.",
-                        scratch.line, scratch.column);
+            else if (add_token(bufGet(&scratch), file, line, start_column, TT_LONG, tokens) != 0) {
+                bufSetF(&error, "%d:%d: badly formatted number.", line, start_column);
             }
             else {
                 if (!isspace(c)) {
                     tok_unget(in, c);
-                    column--;
+                    curr_column--;
                 }
 
                 state = STATE_SPACE;
@@ -360,20 +333,18 @@ static char *tokenize(Input *in, const char *filename, List *tokens)
             break;
         case STATE_DOUBLE:
             if (isdigit(c) || tolower(c) == 'e') {
-                add_to_scratch(&scratch, c);
+                bufAddC(&scratch, c);
             }
             else if (isalpha(c) || c == '.') {
-                bufSetF(&error, "%d:%d: badly formatted number.",
-                        scratch.line, scratch.column);
+                bufSetF(&error, "%d:%d: badly formatted number.", line, start_column);
             }
-            else if (add_token(&scratch, TT_DOUBLE, tokens) != 0) {
-                bufSetF(&error, "%d:%d: badly formatted number.",
-                        scratch.line, scratch.column);
+            else if (add_token(bufGet(&scratch), file, line, start_column, TT_DOUBLE, tokens) != 0) {
+                bufSetF(&error, "%d:%d: badly formatted number.", line, start_column);
             }
             else {
                 if (!isspace(c)) {
                     tok_unget(in, c);
-                    column--;
+                    curr_column--;
                 }
 
                 state = STATE_SPACE;
@@ -381,14 +352,14 @@ static char *tokenize(Input *in, const char *filename, List *tokens)
             break;
         case STATE_USTRING:
             if (isalnum(c) || c == '_') {
-                add_to_scratch(&scratch, c);
+                bufAddC(&scratch, c);
             }
             else {
-                add_token(&scratch, TT_USTRING, tokens);
+                add_token(bufGet(&scratch), file, line, start_column, TT_USTRING, tokens);
 
                 if (!isspace(c)) {
                     tok_unget(in, c);
-                    column--;
+                    curr_column--;
                 }
 
                 state = STATE_SPACE;
@@ -398,7 +369,7 @@ static char *tokenize(Input *in, const char *filename, List *tokens)
         case STATE_SSTRING:
             if ((state == STATE_DSTRING && c == '"') ||
                 (state == STATE_SSTRING && c == '\'')) {
-                add_token(&scratch,
+                add_token(bufGet(&scratch), file, line, start_column,
                         state == STATE_DSTRING ? TT_DSTRING : TT_SSTRING, tokens);
 
                 state = STATE_SPACE;
@@ -408,48 +379,57 @@ static char *tokenize(Input *in, const char *filename, List *tokens)
                 state = STATE_ESCAPE;
             }
             else if (c == EOF) {
-                bufSetF(&error, "%d:%d: unterminated string.",
-                        scratch.line, scratch.column);
+                bufSetF(&error, "%d:%d: unterminated string.", line, start_column);
             }
             else {
-                add_to_scratch(&scratch, c);
+                bufAddC(&scratch, c);
             }
             break;
         case STATE_LINEMARKER:
             if (c == '\n' || c == EOF) {
-                if (sscanf(bufGet(&scratch.buffer), "# %d \"%[^\"]\"",
-                        &line, file) != 2) {
-                    fprintf(stderr, "Failed parsing string \"%s\"\n",
-                            bufGet(&scratch.buffer));
+                char marker_file[PATH_MAX];
+                int  marker_line;
+                LinemarkerFlag flags;
+
+                if (parse_linemarker(&scratch, marker_file, &marker_line, &flags, &error) != 0) {
+                    bufSetF(&error, "%d:%d: failed parsing line marker \"%s\"\n",
+                            line, start_column, bufGet(&scratch));
                 }
-
-                column = 0;
-
-#if DEBUG
-                fprintf(stderr, "Line %d in \"%s\"\n", scratch.line, file);
-#endif
+                else {
+                    if (preamble_done) {
+                        if (flags & FLAG_INCLUDE_ENTRY) {
+                            add_token(marker_file, file, line, start_column, TT_INC_ENTRY, tokens);
+                        }
+                        else if (flags & FLAG_INCLUDE_EXIT) {
+                            add_token(marker_file, file, line, start_column, TT_INC_EXIT, tokens);
+                        }
+                    }
+                    else if (marker_line == 1 && strcmp(marker_file, filename) == 0) {
+                        preamble_done = true;
+                    }
+                }
 
                 state = STATE_SPACE;
             }
             else {
-                add_to_scratch(&scratch, c);
+                bufAddC(&scratch, c);
             }
             break;
         case STATE_ESCAPE:
             if (c == '\\') {
-                add_to_scratch(&scratch, '\\');
+                bufAddC(&scratch, '\\');
             }
             else if (c == 'n') {
-                add_to_scratch(&scratch, '\n');
+                bufAddC(&scratch, '\n');
             }
             else if (c == 'r') {
-                add_to_scratch(&scratch, '\r');
+                bufAddC(&scratch, '\r');
             }
             else if (c == 't') {
-                add_to_scratch(&scratch, '\t');
+                bufAddC(&scratch, '\t');
             }
             else {
-                add_to_scratch(&scratch, c);
+                bufAddC(&scratch, c);
             }
 
             state = old_state;
@@ -460,17 +440,18 @@ static char *tokenize(Input *in, const char *filename, List *tokens)
         if (c == EOF) {
             break;
         }
+        else if (c == '\n') {
+            line++;
+            curr_column = 1;
+        }
+        else {
+            curr_column++;
+        }
     }
 
-    free(scratch.file);
-    scratch.file = NULL;
+    bufRewind(&scratch);
 
-    bufRewind(&scratch.buffer);
-
-    scratch.file = strdup(filename);
-    scratch.line = line;
-    scratch.column = column;
-    add_token(&scratch, TT_EOF, tokens);
+    add_token(bufGet(&scratch), filename, line, curr_column, TT_EOF, tokens);
 
 #if DEBUG
     dump_token_list(tokens);
@@ -492,7 +473,7 @@ static char *tokenize(Input *in, const char *filename, List *tokens)
  * Create tokens from the stream given by <fp> and put them in <tokens>.
  * Returns an error message if something went wrong, otherwise returns NULL.
  */
-char *tokStream(FILE *fp, List *tokens)
+char *tokStream(FILE *fp, const char *filename, List *tokens)
 {
     char *r;
     Input *in = calloc(1, sizeof(*in));
@@ -500,7 +481,7 @@ char *tokStream(FILE *fp, List *tokens)
     in->type = INPUT_FP;
     in->fp = fp;
 
-    r = tokenize(in, "<stream>", tokens);
+    r = tokenize(in, filename ? filename : "<stream>", tokens);
 
     free(in);
 
@@ -543,7 +524,7 @@ char *tokFile(const char *filename, List *output)
     if ((fp = popen(bufGet(cmdline), "r")) == NULL) {
         r = strdup(strerror(errno));
     }
-    else if ((msg = tokStream(fp, output)) != NULL) {
+    else if ((msg = tokStream(fp, filename, output)) != NULL) {
         r = msg;
     }
     else if (pclose(fp) != 0) {

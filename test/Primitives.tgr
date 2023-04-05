@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PRIMITIVES_TGR
+#define PRIMITIVES_TGR
 
 #include "Coordinate.tgr"
 #include "Vector.tgr"
@@ -27,3 +28,5 @@ Sphere = struct {
     Vector c
     Coordinate r
 }
+
+#endif

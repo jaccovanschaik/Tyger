@@ -1,7 +1,10 @@
-#pragma once
+#ifndef COORDINATE_TGR
+#define COORDINATE_TGR
 
 /*
  * Definition of a Coordinate.
  */
 
 Coordinate = int32
+
+#endif

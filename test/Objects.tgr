@@ -1,3 +1,6 @@
+#ifndef OBJECTS_TGR
+#define OBJECTS_TGR
+
 #include "Shape.tgr"
 
 Object = struct {
@@ -10,3 +13,5 @@ Object = struct {
 Objects = array(Object object)
 
 ListOfNames = array(ustring name)
+
+#endif
