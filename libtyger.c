@@ -1171,34 +1171,6 @@ int main(int argc, char *argv[])
     assert(bufLen(&buf) == 4);
     assert(memcmp(bufGet(&buf), "\x00\x00\x01\x00", 4) == 0);
 
-#if 0
--    astr = astringCreate("Hoi");
--    assert(astringPackSize(astr) == 7);
--
--    assert(astringPack(astr, &buf) == &buf);
--    assert(buf.len == 7);
--    assert(buf.cap >= 7);
--    assert(memcmp(bufferGet(&buf, 0), "\x00\x00\x00\x03Hoi", 7) == 0);
--
--    assert(astringUnpack(&buf, 0, astr) == 7);
--    assert(strcmp(astringGet(astr), "Hoi") == 0);
--
--    bufferClear(&buf);
--
--    ustr = ustringCreate(L"αß¢");
--    assert(ustringPackSize(ustr) == 10);
--
--    assert(ustringPack(ustr, &buf) == &buf);
--    assert(buf.len == 10);
--    assert(buf.cap >= 10);
--    assert(memcmp(buf.data, "\x00\x00\x00\x06\xCE\xB1\xC3\x9F\xC2\xA2", 10) == 0);
--
--    assert(ustringUnpack(&buf, 0, ustr) == 10);
--    assert(wcscmp(ustringGet(ustr), L"αß¢") == 0);
--
--    bufferClear(&buf);
-#endif
-
     astring *as = asCreate("Hoi");
 
     assert(astringPack(as, &buf) == &buf);
