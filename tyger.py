@@ -131,7 +131,7 @@ class astringPacker(object):
 
     return str(data)
 
-class ustringPacker(object):
+class wstringPacker(object):
   @staticmethod
   def pack(value):
     utf8 = value.encode('utf-8')
@@ -167,8 +167,8 @@ if __name__ == '__main__':
   s = U"αß¢"
   print("s = %s" % s)
 
-  buf = ustringPacker.pack(s)
+  buf = wstringPacker.pack(s)
   print("packed:\n", repr(buf))
 
-  s, offset = ustringPacker.unpack(buf)
+  s, offset = wstringPacker.unpack(buf)
   print("unpacked: s =", s, ", offset =", offset)

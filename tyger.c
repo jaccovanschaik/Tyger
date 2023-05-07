@@ -38,14 +38,14 @@ static void make_astring_type(List *definitions)
     listAppendTail(definitions, def);
 }
 
-static void make_ustring_type(List *definitions)
+static void make_wstring_type(List *definitions)
 {
     Definition *def;
 
     def = calloc(1, sizeof(*def));
 
-    def->type = DT_USTRING;
-    def->name = strdup("ustring");
+    def->type = DT_WSTRING;
+    def->name = strdup("wstring");
     def->builtin = true;
 
     listAppendTail(definitions, def);
@@ -291,7 +291,7 @@ int main(int argc, char *argv[])
     }
 
     make_astring_type(&definitions);
-    make_ustring_type(&definitions);
+    make_wstring_type(&definitions);
     make_int_types(&definitions);
     make_bool_type(&definitions);
     make_float_types(&definitions);

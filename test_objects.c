@@ -26,8 +26,8 @@ static void fill_objects(Objects *objects)
     objects->count = 4;
     objects->object = calloc(objects->count, sizeof(Object));
 
-    objects->object[0].name = astringMake("A line");
-    objects->object[0].creator = ustringCreate(L"Øve");
+    objects->object[0].name = asMake("A line");
+    objects->object[0].creator = wsCreate(L"Øve");
     objects->object[0].visible = true;
     objects->object[0].shape.shape_type = ST_LINE;
     objects->object[0].shape.line.sv.x = 1;
@@ -37,8 +37,8 @@ static void fill_objects(Objects *objects)
     objects->object[0].shape.line.dv.y = 5;
     objects->object[0].shape.line.dv.z = 6;
 
-    objects->object[1].name = astringMake("A polygon");
-    objects->object[1].creator = ustringCreate(L"Björk");
+    objects->object[1].name = asMake("A polygon");
+    objects->object[1].creator = wsCreate(L"Björk");
     objects->object[1].visible = true;
     objects->object[1].shape.shape_type = ST_POLYGON;
     objects->object[1].shape.polygon.count = 3;
@@ -57,8 +57,8 @@ static void fill_objects(Objects *objects)
     objects->object[1].shape.polygon.vector[2].y =  0;
     objects->object[1].shape.polygon.vector[2].z =  2;
 
-    objects->object[2].name = astringMake("A plane");
-    objects->object[2].creator = ustringCreate(L"José");
+    objects->object[2].name = asMake("A plane");
+    objects->object[2].creator = wsCreate(L"José");
     objects->object[2].visible = false;
     objects->object[2].shape.shape_type = ST_PLANE;
     objects->object[2].shape.plane.sv.x =  1;
@@ -68,7 +68,7 @@ static void fill_objects(Objects *objects)
     objects->object[2].shape.plane.nv.y = -2;
     objects->object[2].shape.plane.nv.z = -3;
 
-    objects->object[3].name = astringMake("A sphere");
+    objects->object[3].name = asMake("A sphere");
     objects->object[3].creator = NULL;
     objects->object[3].visible = false;
     objects->object[3].shape.shape_type = ST_SPHERE;
@@ -86,8 +86,8 @@ static int check_objects(const Objects *objects)
 
     make_sure_that(objects->count == 4);
 
-    make_sure_that(strcmp(astringGet(&objects->object[0].name), "A line") == 0);
-    make_sure_that(wcscmp(ustringGet(objects->object[0].creator), L"Øve") == 0);
+    make_sure_that(strcmp(asGet(&objects->object[0].name), "A line") == 0);
+    make_sure_that(wcscmp(wsGet(objects->object[0].creator), L"Øve") == 0);
     make_sure_that(objects->object[0].visible == true);
     make_sure_that(objects->object[0].shape.shape_type == ST_LINE);
     make_sure_that(objects->object[0].shape.line.sv.x == 1);
@@ -97,8 +97,8 @@ static int check_objects(const Objects *objects)
     make_sure_that(objects->object[0].shape.line.dv.y == 5);
     make_sure_that(objects->object[0].shape.line.dv.z == 6);
 
-    make_sure_that(strcmp(astringGet(&objects->object[1].name), "A polygon") == 0);
-    make_sure_that(wcscmp(ustringGet(objects->object[1].creator), L"Björk") == 0);
+    make_sure_that(strcmp(asGet(&objects->object[1].name), "A polygon") == 0);
+    make_sure_that(wcscmp(wsGet(objects->object[1].creator), L"Björk") == 0);
     make_sure_that(objects->object[1].visible == true);
     make_sure_that(objects->object[1].shape.shape_type == ST_POLYGON);
     make_sure_that(objects->object[1].shape.polygon.count == 3);
@@ -112,8 +112,8 @@ static int check_objects(const Objects *objects)
     make_sure_that(objects->object[1].shape.polygon.vector[2].y ==  0);
     make_sure_that(objects->object[1].shape.polygon.vector[2].z ==  2);
 
-    make_sure_that(strcmp(astringGet(&objects->object[2].name), "A plane") == 0);
-    make_sure_that(wcscmp(ustringGet(objects->object[2].creator), L"José") == 0);
+    make_sure_that(strcmp(asGet(&objects->object[2].name), "A plane") == 0);
+    make_sure_that(wcscmp(wsGet(objects->object[2].creator), L"José") == 0);
     make_sure_that(objects->object[2].visible == false);
     make_sure_that(objects->object[2].shape.shape_type == ST_PLANE);
     make_sure_that(objects->object[2].shape.plane.sv.x ==  1);
@@ -123,7 +123,7 @@ static int check_objects(const Objects *objects)
     make_sure_that(objects->object[2].shape.plane.nv.y == -2);
     make_sure_that(objects->object[2].shape.plane.nv.z == -3);
 
-    make_sure_that(strcmp(astringGet(&objects->object[3].name), "A sphere") == 0);
+    make_sure_that(strcmp(asGet(&objects->object[3].name), "A sphere") == 0);
     make_sure_that(objects->object[3].creator == NULL);
     make_sure_that(objects->object[3].visible == false);
     make_sure_that(objects->object[3].shape.shape_type == ST_SPHERE);
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 {
     int errors = 0;
     size_t pos;
-    buffer buf = { };
+    Buffer buf = { };
 
     Objects original = { 0 };
     Objects unpacked = { 0 };
@@ -167,13 +167,13 @@ int main(int argc, char *argv[])
 
     ObjectsPack(&original, &buf);
 
-    hexdump(stderr, (const char *) buf.data, buf.len);
+    hexdump(stderr, (const char *) buf.data, bufLen(&buf));
 
-    make_sure_that(buf.len == 197);
+    make_sure_that(bufLen(&buf) == 197);
 
 #if DEBUG
-    fprintf(stdout, "size = %lu\n", buf.len);
-    hexdump(stdout, (char *) buf.data, buf.len);
+    fprintf(stdout, "size = %lu\n", bufLen(&buf));
+    hexdump(stdout, (char *) buf.data, bufLen(&buf));
 #endif
 
     make_sure_that(memcmp(buf.data,
@@ -234,7 +234,7 @@ int main(int argc, char *argv[])
                 "\x00\x00\x00\x02"      /* Y coordinate of centre */
                 "\x00\x00\x00\x03"      /* Z coordinate of centre */
                 "\x00\x00\x00\x0A"      /* radius */
-                , buf.len) == 0);
+                , bufLen(&buf)) == 0);
 
     /* Unpack into a new Objects struct and check it's the same. */
 
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
 
     // ObjectsClear(&original);
     ObjectsClear(&unpacked);
-    bufferClear(&buf);
+    bufClear(&buf);
 
     /* Copy to a third Objects struct and check that's the same too. */
 

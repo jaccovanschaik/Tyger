@@ -159,7 +159,7 @@ static int process_const(Definition *def, List *defs, tkToken **token, Buffer *e
     else if (type_def->type == DT_FLOAT) {
         if (expect_float(token, &def->const_def.value.d, error) != 0) return 1;
     }
-    else if (type_def->type == DT_ASTRING || type_def->type == DT_USTRING) {
+    else if (type_def->type == DT_ASTRING || type_def->type == DT_WSTRING) {
         if (expect_string(token, TT_DSTRING, &def->const_def.value.s, error) != 0) return 1;
     }
     else {

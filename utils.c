@@ -72,5 +72,5 @@ int is_void_type(Definition *def)
  */
 int is_string_type(Definition *def)
 {
-    return def->type == DT_USTRING || def->type == DT_ASTRING;
+    return def->type == DT_WSTRING || def->type == DT_ASTRING;
 }

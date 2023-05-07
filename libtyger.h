@@ -16,28 +16,14 @@
 extern "C" {
 #endif
 
+#include <libjvs/buffer.h>
+#include <libjvs/astring.h>
+#include <libjvs/wstring.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-
-typedef struct {
-    uint8_t *data;      // Buffer data.
-    size_t len;         // Number of bytes used.
-    size_t cap;         // Number of bytes allocated.
-} buffer;
-
-typedef struct {
-    char *data;         // String contents.
-    size_t len;         // Number of characters used.
-    size_t cap;         // Number of characters allocated.
-} astring;
-
-typedef struct {
-    wchar_t *data;      // String contents.
-    size_t len;         // Number of characters used.
-    size_t cap;         // Number of characters allocated.
-} ustring;
 
 /* =============================== Indent handling ===============================
  *
@@ -49,33 +35,6 @@ void setIndent(const char *str);
  * Return an indentation string for level <level>.
  */
 const char *indent(int level);
-
-/* =============================== "Length" functions ===============================
- *
- * Return the number of used bytes in <pos>, counted from <pos>.
- */
-size_t bufferLen(const buffer *buf, size_t pos);
-
-/* =============================== "Get" functions ===============================
- *
- * Get a pointer to the contents of <buf>, starting at <pos>.
- */
-const uint8_t *bufferGet(const buffer *buf, size_t pos);
-
-/*
- * Get the byte at <pos> in <buf>.
- */
-uint8_t bufferGetC(const buffer *buf, size_t pos);
-
-/*
- * Get a pointer to the contents of <astr>.
- */
-const char *astringGet(const astring *astr);
-
-/*
- * Get a pointer to the contents of <astr>.
- */
-const wchar_t *ustringGet(const ustring *ustr);
 
 /* =============================== "Clear" functions ===============================
  *
@@ -136,17 +95,10 @@ void float64Clear(double *data);
 /*
  * Clear the contents of <buf>.
  */
-void bufferClear(buffer *buf);
+void bufClear(Buffer *buf);
 
-/*
- * Clear the contents of <astr>.
- */
-astring *astringClear(astring *astr);
-
-/*
- * Clear the contents of <ustr>.
- */
-ustring *ustringClear(ustring *ustr);
+extern void (*astringClear)(astring *);
+extern void (*wstringClear)(wstring *);
 
 /* =============================== "Destroy" functions ===============================
  *
@@ -204,109 +156,12 @@ void float32Destroy(float *data);
  */
 void float64Destroy(double *data);
 
-/*
- * Destroy buffer <buf>.
- */
-void bufferDestroy(buffer *buf);
-
-/*
- * Destroy astring <astr>.
- */
-void astringDestroy(astring *astr);
-
-/*
- * Destroy ustring <ustr>.
- */
-void ustringDestroy(ustring *ustr);
-
-/* =============================== "Add" functions ===============================
+/* =============================== "Destroy" functions ===============================
  *
- * Add <add_data>, which has size <add_size> to <buf>.
+ * Destroy the contents of <data>.
  */
-buffer *bufferAdd(buffer *buf, const void *add_data, size_t add_size);
-
-/*
- * Add the character <add_data> to <buf>.
- */
-buffer *bufferAddC(buffer *buf, uint8_t add_data);
-
-/*
- * Add the string at <data>, which has size <data_len> to <astr>.
- */
-astring *astringAdd(astring *astr, const char *data, size_t data_len);
-
-/*
- * Add the string at <data>, which has size <data_len> to <ustr>.
- */
-ustring *ustringAdd(ustring *ustr, const wchar_t *data, size_t data_len);
-
-/*
- * Add the zero-terminated string at <data> to <astr>.
- */
-astring *astringAddZ(astring *astr, const char *data);
-
-/*
- * Add the zero-terminated string at <data> to <ustr>.
- */
-ustring *ustringAddZ(ustring *ustr, const wchar_t *data);
-
-/* =============================== "Rewind" functions ===============================
- *
- * Rewind <astr> back to the beginning.
- */
-astring *astringRewind(astring *astr);
-
-/*
- * Rewind <ustr> back to the beginning.
- */
-ustring *ustringRewind(ustring *ustr);
-
-/* =============================== "Set" functions ===============================
- *
- * Set <astr> to the string starting at <data>, which has length <data_len>.
- */
-astring *astringSet(astring *astr, const char *data, size_t data_len);
-
-/*
- * Set <ustr> to the string starting at <data>, which has length <data_len>.
- */
-ustring *ustringSet(ustring *ustr, const wchar_t *data, size_t data_len);
-
-/*
- * Set <astr> to the null-terminated string starting at <data>.
- */
-astring *astringSetZ(astring *astr, const char *data);
-
-/*
- * Set <ustr> to the null-terminated string starting at <data>.
- */
-ustring *ustringSetZ(ustring *ustr, const wchar_t *data);
-
-/* =============================== "Make" functions ===============================
- *
- * Make a new astring with the given null-terminated string as its original contents and return it
- * by value.
- */
-astring astringMake(const char *str);
-
-/*
- * Make a new astring with the given null-terminated string as its original contents and return it
- * by value.
- */
-ustring ustringMake(const wchar_t *str);
-
-/* =============================== "Create" functions ===============================
- *
- * Create a new astring with the given null-terminated string as its original contents and return a
- * pointer to it.
- */
-astring *astringCreate(const char *str);
-
-/*
- * Create a new ustring with the given null-terminated string as its original contents and return a
- * pointer to it.
- */
-ustring *ustringCreate(const wchar_t *str);
+extern void (*astringDestroy)(astring *);
+extern void (*wstringDestroy)(wstring *);
 
 /* =============================== "PackSize" functions ===============================
  *
@@ -372,169 +227,169 @@ size_t astringPackSize(const astring *str);
 /*
  * Return the number of bytes required to pack the wchar_t *pointed to by <data>.
  */
-size_t ustringPackSize(const ustring *str);
+size_t wstringPackSize(const wstring *str);
 
 /* =============================== "Pack" functions ===============================
  *
  * Pack the least-significant <num_bytes> of <data> into <buf>, updating
  * <size> and <pos>.
  */
-buffer *uintPack(unsigned int data, size_t num_bytes, buffer *buf);
+Buffer *uintPack(unsigned int data, size_t num_bytes, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-buffer *uint8Pack(uint8_t data, buffer *buf);
+Buffer *uint8Pack(uint8_t data, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-buffer *uint16Pack(uint16_t data, buffer *buf);
+Buffer *uint16Pack(uint16_t data, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-buffer *uint32Pack(uint32_t data, buffer *buf);
+Buffer *uint32Pack(uint32_t data, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-buffer *uint64Pack(uint64_t data, buffer *buf);
+Buffer *uint64Pack(uint64_t data, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-buffer *int8Pack(int8_t data, buffer *buf);
+Buffer *int8Pack(int8_t data, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-buffer *int16Pack(int16_t data, buffer *buf);
+Buffer *int16Pack(int16_t data, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-buffer *int32Pack(int32_t data, buffer *buf);
+Buffer *int32Pack(int32_t data, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-buffer *int64Pack(int64_t data, buffer *buf);
+Buffer *int64Pack(int64_t data, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-buffer *float32Pack(const float data, buffer *buf);
+Buffer *float32Pack(const float data, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-buffer *float64Pack(const double data, buffer *buf);
+Buffer *float64Pack(const double data, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-buffer *boolPack(const bool data, buffer *buf);
+Buffer *boolPack(const bool data, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-buffer *astringPack(const astring *str, buffer *buf);
+Buffer *astringPack(const astring *str, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which currently has size <size>, enlarging it if
  * necessary. Return the number of bytes added to <buf>.
  */
-buffer *ustringPack(const ustring *str, buffer *buf);
+Buffer *wstringPack(const wstring *str, Buffer *buf);
 
 /* =============================== "Unpack" functions ===============================
  *
  * Unpack <num_bytes> from buf (which has size <size>) and fill <data> with them.
  */
-size_t uintUnpack(size_t num_bytes, const buffer *buf, size_t pos, unsigned int *data);
+size_t uintUnpack(size_t num_bytes, const Buffer *buf, size_t pos, unsigned int *data);
 
 /*
  * Unpack a uint8 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t uint8Unpack(const buffer *buf, size_t pos, uint8_t *data);
+size_t uint8Unpack(const Buffer *buf, size_t pos, uint8_t *data);
 
 /*
  * Unpack a uint16 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t uint16Unpack(const buffer *buf, size_t pos, uint16_t *data);
+size_t uint16Unpack(const Buffer *buf, size_t pos, uint16_t *data);
 
 /*
  * Unpack a uint32 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t uint32Unpack(const buffer *buf, size_t pos, uint32_t *data);
+size_t uint32Unpack(const Buffer *buf, size_t pos, uint32_t *data);
 
 /*
  * Unpack a uint64 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t uint64Unpack(const buffer *buf, size_t pos, uint64_t *data);
+size_t uint64Unpack(const Buffer *buf, size_t pos, uint64_t *data);
 
 /*
  * Unpack an int8 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t int8Unpack(const buffer *buf, size_t pos, int8_t *data);
+size_t int8Unpack(const Buffer *buf, size_t pos, int8_t *data);
 
 /*
  * Unpack an int16 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t int16Unpack(const buffer *buf, size_t pos, int16_t *data);
+size_t int16Unpack(const Buffer *buf, size_t pos, int16_t *data);
 
 /*
  * Unpack an int32 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t int32Unpack(const buffer *buf, size_t pos, int32_t *data);
+size_t int32Unpack(const Buffer *buf, size_t pos, int32_t *data);
 
 /*
  * Unpack an int64 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t int64Unpack(const buffer *buf, size_t pos, int64_t *data);
+size_t int64Unpack(const Buffer *buf, size_t pos, int64_t *data);
 
 /*
  * Unpack a bool from <buf> (which has size <size>) and put it at the
  * address pointed to by <data>.
  */
-size_t boolUnpack(const buffer *buf, size_t pos, bool *data);
+size_t boolUnpack(const Buffer *buf, size_t pos, bool *data);
 
 /*
  * Unpack a float (aka. float32) from <buf> (which has size <size>) and put it at <data>. Return the
  * new <pos>.
  */
-size_t float32Unpack(const buffer *buf, size_t pos, float *data);
+size_t float32Unpack(const Buffer *buf, size_t pos, float *data);
 
 /*
  * Unpack a double (aka. float64) from <buf> (which has size <size>) and put it at <data>. Return
  * the new <pos>.
  */
-size_t float64Unpack(const buffer *buf, size_t pos, double *data);
+size_t float64Unpack(const Buffer *buf, size_t pos, double *data);
 
 /*
  * Unpack an char *from <buf> (which has size <size>) and put it at the
  * address pointed to by <data>.
  */
-size_t astringUnpack(const buffer *buf, size_t pos, astring *data);
+size_t astringUnpack(const Buffer *buf, size_t pos, astring *data);
 
 /*
  * Unpack a UTF-8 encoded Unicode string from <buf> (which has size <size>), write it to a newly
  * allocated wide-character string whose starting address is written to <wchar_str>, and return the
  * number of bytes consumed from <buf>.
  */
-size_t ustringUnpack(const buffer *buf, size_t pos, ustring *data);
+size_t wstringUnpack(const Buffer *buf, size_t pos, wstring *data);
 
 /* =============================== "Copy" functions ===============================
  *
@@ -545,7 +400,7 @@ void astringCopy(char **dst, const char *src);
 /*
  * Copy string <src> to <dst>.
  */
-void ustringCopy(wchar_t **dst, const wchar_t *src);
+void wstringCopy(wchar_t **dst, const wchar_t *src);
 
 /* =============================== "Print" functions ===============================
  *
@@ -608,7 +463,7 @@ void astringPrint(FILE *fp, const astring *str, int indent);
 /*
  * Print an ASCII representation of <str> to <fp>.
  */
-void ustringPrint(FILE *fp, const ustring *str, int indent);
+void wstringPrint(FILE *fp, const wstring *str, int indent);
 
 #ifdef __cplusplus
 }

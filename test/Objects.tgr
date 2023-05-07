@@ -5,13 +5,13 @@
 
 Object = struct {
     astring     name
-    opt ustring creator
+    opt wstring creator
     bool        visible
     Shape       shape
 }
 
 Objects = array(Object object)
 
-ListOfNames = array(ustring name)
+ListOfNames = array(wstring name)
 
 #endif

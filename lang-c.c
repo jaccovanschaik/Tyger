@@ -114,8 +114,8 @@ static const char *equivalent_c_type(const Definition *def)
     else if (def->type == DT_ASTRING) {
         return "astring ";
     }
-    else if (def->type == DT_USTRING) {
-        return "ustring ";
+    else if (def->type == DT_WSTRING) {
+        return "wstring ";
     }
     else if (def->type == DT_BOOL) {
         return "bool ";
@@ -137,7 +137,7 @@ static bool is_pass_by_value(Definition *def)
     case DT_STRUCT:
     case DT_UNION:
     case DT_ASTRING:
-    case DT_USTRING:
+    case DT_WSTRING:
         return false;
     case DT_ALIAS:
         return is_pass_by_value(def->alias_def.alias);
@@ -174,7 +174,7 @@ static bool has_constant_pack_size(Definition *def)
 
         return true;
     case DT_ASTRING:
-    case DT_USTRING:
+    case DT_WSTRING:
     case DT_ARRAY:
         return false;
     case DT_ALIAS:
@@ -210,19 +210,19 @@ static void emit_const_definition(FILE *fp, Definition *def)
         ifprintf(fp, 0, "const %s%s = {\n",
                 equivalent_c_type(def->const_def.const_type), def->name);
         ifprintf(fp, 1, ".data = \"%s\",\n", def->const_def.value.s);
-        ifprintf(fp, 1, ".len  = %ld,\n", strlen(def->const_def.value.s));
-        ifprintf(fp, 1, ".cap  = %ld,\n", strlen(def->const_def.value.s) + 1);
+        ifprintf(fp, 1, ".used = %ld,\n", strlen(def->const_def.value.s));
+        ifprintf(fp, 1, ".size = %ld,\n", strlen(def->const_def.value.s) + 1);
         ifprintf(fp, 0, "};\n");
         break;
-    case DT_USTRING:
+    case DT_WSTRING:
         utf8_to_wchar((uint8_t *) def->const_def.value.s,
                 strlen(def->const_def.value.s), &wchar_len);
 
         ifprintf(fp, 0, "const %s%s = {\n",
                 equivalent_c_type(def->const_def.const_type), def->name);
         ifprintf(fp, 1, ".data = L\"%s\",\n", def->const_def.value.s);
-        ifprintf(fp, 1, ".len  = %ld,\n", wchar_len);
-        ifprintf(fp, 1, ".cap  = %ld,\n", wchar_len + 1);
+        ifprintf(fp, 1, ".used = %ld,\n", wchar_len);
+        ifprintf(fp, 1, ".size = %ld,\n", wchar_len + 1);
         ifprintf(fp, 0, "};\n");
         break;
     case DT_BOOL:
@@ -506,12 +506,12 @@ static void emit_pack_signature(FILE *fp, Definition *def)
 
     if (is_pass_by_value(def)) {
         fprintf(fp,
-                "buffer *%sPack(%s data, buffer *buf)",
+                "Buffer *%sPack(%s data, Buffer *buf)",
                 def->name, def->name);
     }
     else {
         fprintf(fp,
-                "buffer *%sPack(const %s *data, buffer *buf)",
+                "Buffer *%sPack(const %s *data, Buffer *buf)",
                 def->name, def->name);
     }
 }
@@ -641,7 +641,7 @@ static void emit_unpack_signature(FILE *fp, Definition *def)
             "\n/*\n"
             " * Unpack <data> from <buf>, which is <size> bytes in size.\n"
             " */\n");
-    fprintf(fp, "size_t %sUnpack(const buffer *buf, size_t pos, %s *data)",
+    fprintf(fp, "size_t %sUnpack(const Buffer *buf, size_t pos, %s *data)",
             def->name, def->name);
 }
 
@@ -1056,13 +1056,6 @@ int emit_c_hdr(const char *out_file, const char *in_file,
             prog_name, in_file, time_str);
     fprintf(fp, " */\n\n");
 
-    fprintf(fp, "#include <stdlib.h>\t/* size_t */\n");
-    fprintf(fp, "#include <stdint.h>\t/* int types */\n");
-    fprintf(fp, "#include <stdbool.h>\t/* bool */\n");
-    fprintf(fp, "#include <wchar.h>\t/* wchar_t */\n");
-
-    fprintf(fp, "\n#include \"libtyger.h\"\n\n");
-
     for (def = listHead(definitions); def; def = listNext(def)) {
         char *base = basename(def->name);
         char *period = strchr(base, '.');
@@ -1071,6 +1064,16 @@ int emit_c_hdr(const char *out_file, const char *in_file,
             fprintf(fp, "#include \"%.*s.h\"\n", (int) (period - base), base);
         }
     }
+
+    fprintf(fp, "\n");
+    fprintf(fp, "#include <libtyger.h>\n");
+    fprintf(fp, "#include <libjvs/astring.h>\n");
+    fprintf(fp, "#include <libjvs/wstring.h>\n");
+
+    fprintf(fp, "#include <stdlib.h>\t/* size_t */\n");
+    fprintf(fp, "#include <stdint.h>\t/* int types */\n");
+    fprintf(fp, "#include <stdbool.h>\t/* bool */\n");
+    fprintf(fp, "#include <wchar.h>\t/* wchar_t */\n");
 
     for (def = listHead(definitions); def; def = listNext(def)) {
         if (def->builtin || def->level > 0) {

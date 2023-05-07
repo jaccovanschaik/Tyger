@@ -70,9 +70,12 @@ libtyger.so: libtyger.o utf8.o
 	$(CC) $(CFLAGS) -MM -MG -MF $@ $<
 
 OBJECT_TGR = $(wildcard test/*.tgr)
+OBJECT_SRC = $(patsubst %.tgr,%.c,$(OBJECT_TGR))
 OBJECT_HDR = $(patsubst %.tgr,%.h,$(OBJECT_TGR))
 OBJECT_OBJ = $(patsubst %.tgr,%.o,$(OBJECT_TGR))
 OBJECT_PY  = $(patsubst %.tgr,%.py,$(OBJECT_TGR))
+
+.PRECIOUS: $(OBJECT_SRC) $(OBJECT_HDR)
 
 test_objects.o: test_objects.c $(OBJECT_HDR)
 

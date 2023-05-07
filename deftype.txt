@@ -3,7 +3,7 @@ int
 bool
 float
 astring
-ustring
+wstring
 alias
 array
 struct

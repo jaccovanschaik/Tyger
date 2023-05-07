@@ -60,7 +60,7 @@ static const char *interface_type(Definition *def)
         return "float";
     case DT_ASTRING:
         return "str";
-    case DT_USTRING:
+    case DT_WSTRING:
         return "unicode";
     case DT_ARRAY:
         return "list";
@@ -373,7 +373,7 @@ static void emit_packer(FILE *fp, Definition *def)
         }
     }
     else if (def->type == DT_INT || def->type == DT_BOOL || def->type == DT_FLOAT ||
-             def->type == DT_ASTRING || def->type == DT_USTRING) {
+             def->type == DT_ASTRING || def->type == DT_WSTRING) {
         if (do_mx_send) {
             ifprintf(fp, 1, "@staticmethod\n");
             ifprintf(fp, 1, "def sendMX(mx, fd, msg_type, msg_ver, value):\n");
@@ -453,7 +453,7 @@ int emit_python_src(const char *out_file,
         case DT_ASTRING:
             fprintf(fp, "\"%s\"\n\n", def->const_def.value.s);
             break;
-        case DT_USTRING:
+        case DT_WSTRING:
             fprintf(fp, "u\"%s\"\n\n", def->const_def.value.s);
             break;
         default:
