@@ -26,7 +26,7 @@ static void fill_objects(Objects *objects)
     objects->count = 4;
     objects->object = calloc(objects->count, sizeof(Object));
 
-    objects->object[0].name = asMake("A line");
+    asInit(&objects->object[0].name, "A line");
     objects->object[0].creator = wsCreate(L"Øve");
     objects->object[0].visible = true;
     objects->object[0].shape.shape_type = ST_LINE;
@@ -37,7 +37,7 @@ static void fill_objects(Objects *objects)
     objects->object[0].shape.line.dv.y = 5;
     objects->object[0].shape.line.dv.z = 6;
 
-    objects->object[1].name = asMake("A polygon");
+    asInit(&objects->object[1].name, "A polygon");
     objects->object[1].creator = wsCreate(L"Björk");
     objects->object[1].visible = true;
     objects->object[1].shape.shape_type = ST_POLYGON;
@@ -57,7 +57,7 @@ static void fill_objects(Objects *objects)
     objects->object[1].shape.polygon.vector[2].y =  0;
     objects->object[1].shape.polygon.vector[2].z =  2;
 
-    objects->object[2].name = asMake("A plane");
+    asInit(&objects->object[2].name, "A plane");
     objects->object[2].creator = wsCreate(L"José");
     objects->object[2].visible = false;
     objects->object[2].shape.shape_type = ST_PLANE;
@@ -68,7 +68,7 @@ static void fill_objects(Objects *objects)
     objects->object[2].shape.plane.nv.y = -2;
     objects->object[2].shape.plane.nv.z = -3;
 
-    objects->object[3].name = asMake("A sphere");
+    asInit(&objects->object[3].name, "A sphere");
     objects->object[3].creator = NULL;
     objects->object[3].visible = false;
     objects->object[3].shape.shape_type = ST_SPHERE;
