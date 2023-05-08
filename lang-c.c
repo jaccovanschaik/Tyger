@@ -343,6 +343,33 @@ static void emit_packsize_signature(FILE *fp, Definition *def)
     }
 }
 
+static void emit_packsize_call(FILE *fp, Definition *def,
+        const char *name, int indent, bool is_optional)
+{
+    if (is_optional) {
+        if (has_constant_pack_size(def)) {
+            ifprintf(fp, indent, "size += %sPackSize();\n", def->name);
+        }
+        else if (is_scalar(def)) {
+            ifprintf(fp, indent, "size += %sPackSize(*data->%s);\n", def->name, name);
+        }
+        else {
+            ifprintf(fp, indent, "size += %sPackSize(data->%s);\n", def->name, name);
+        }
+    }
+    else {
+        if (has_constant_pack_size(def)) {
+            ifprintf(fp, indent, "size += %sPackSize();\n", def->name);
+        }
+        else if (is_scalar(def)) {
+            ifprintf(fp, indent, "size += %sPackSize(data->%s);\n", def->name, name);
+        }
+        else {
+            ifprintf(fp, indent, "size += %sPackSize(&data->%s);\n", def->name, name);
+        }
+    }
+}
+
 static void emit_packsize_body(FILE *fp, Definition *def)
 {
     StructItem *struct_item;
@@ -401,37 +428,12 @@ static void emit_packsize_body(FILE *fp, Definition *def)
                 ifprintf(fp, 1, "size += uint8PackSize();\n");
                 ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
 
-                if (has_constant_pack_size(struct_item->def)) {
-                    ifprintf(fp, 2, "size += %sPackSize();\n",
-                            struct_item->def->name);
-                }
-                else if (is_scalar(struct_item->def)) {
-                    ifprintf(fp, 2, "size += %sPackSize(*data->%s);\n",
-                            struct_item->def->name,
-                            struct_item->name);
-                }
-                else {
-                    ifprintf(fp, 2, "size += %sPackSize(data->%s);\n",
-                            struct_item->def->name,
-                            struct_item->name);
-                }
+                emit_packsize_call(fp, struct_item->def, struct_item->name, 2, true);
+
                 ifprintf(fp, 1, "}\n");
             }
             else {
-                if (has_constant_pack_size(struct_item->def)) {
-                    ifprintf(fp, 1, "size += %sPackSize();\n",
-                            struct_item->def->name);
-                }
-                else if (is_scalar(struct_item->def)) {
-                    ifprintf(fp, 1, "size += %sPackSize(data->%s);\n",
-                            struct_item->def->name,
-                            struct_item->name);
-                }
-                else {
-                    ifprintf(fp, 1, "size += %sPackSize(&data->%s);\n",
-                            struct_item->def->name,
-                            struct_item->name);
-                }
+                emit_packsize_call(fp, struct_item->def, struct_item->name, 1, false);
             }
         }
 
@@ -454,23 +456,7 @@ static void emit_packsize_body(FILE *fp, Definition *def)
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                if (has_constant_pack_size(union_item->def)) {
-                    ifprintf(fp, 2, "size += %sPackSize();%s",
-                            union_item->def->name,
-                            listNext(union_item) == NULL ? "\n\n" : "\n");
-                }
-                else if (is_scalar(union_item->def)) {
-                    ifprintf(fp, 2, "size += %sPackSize(data->%s);%s",
-                            union_item->def->name,
-                            union_item->name,
-                            listNext(union_item) == NULL ? "\n\n" : "\n");
-                }
-                else {
-                    ifprintf(fp, 2, "size += %sPackSize(&data->%s);%s",
-                            union_item->def->name,
-                            union_item->name,
-                            listNext(union_item) == NULL ? "\n\n" : "\n");
-                }
+                emit_packsize_call(fp, union_item->def, union_item->name, 2, false);
             }
 
             ifprintf(fp, 2, "break;\n");
