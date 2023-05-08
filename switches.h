@@ -12,9 +12,11 @@
  * vim: textwidth=100 columns=100
  */
 
+#include <stdbool.h>
+
 typedef struct {
     const char *option;
-    int *enabled;
+    bool *enabled;
     const char *description;
 } Switch;
 

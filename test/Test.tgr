@@ -20,7 +20,7 @@ i64c = const int64  7
 u64c = const uint64 8
 f32c = const float32 9
 f64c = const float64 10.0
-ustc = const wstring "Häłłø"
+wstc = const wstring "Häłłø"
 astc = const astring "Hallo"
 
 // Aliases for every builtin type.
@@ -35,7 +35,7 @@ u64a = uint64
 f32a = float32
 f64a = float64
 asta = astring
-usta = wstring
+wsta = wstring
 
 Substruct = struct {
     int8    i8
@@ -48,7 +48,7 @@ Substruct = struct {
     uint64  u64
     float32 f32
     float64 f64
-    wstring ustr
+    wstring wstr
     astring astr
 }
 
@@ -66,7 +66,7 @@ Struct = struct {
     opt uint64  u64o
     opt float32 f32o
     opt float64 f64o
-    opt wstring ustro
+    opt wstring wstro
     opt astring astro
 }
 
@@ -100,7 +100,7 @@ Union = union(UnionType union_type) {
     UINT64_T:   uint64  u64
     FLOAT32_T:  float32 f32
     FLOAT64_T:  float64 f64
-    USTRING_T:  wstring ustr
+    USTRING_T:  wstring wstr
     ASTRING_T:  astring astr
     STRUCT_T:   Struct  s
     VOID:       void
@@ -117,7 +117,7 @@ I64Array    = array(int64   i64)
 U64Array    = array(uint64  u64)
 F32Array    = array(float32 f32)
 F64Array    = array(float64 f64)
-WStrArray   = array(wstring ustr)
+WStrArray   = array(wstring wstr)
 AStrArray   = array(astring astr)
 StructArray = array(Struct  s)
 UnionArray  = array(Union   u)

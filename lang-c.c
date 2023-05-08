@@ -15,6 +15,7 @@
 #include <libgen.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <assert.h>
 #include <wchar.h>
@@ -28,12 +29,14 @@
 #include "utf8.h"
 #include "lang-c.h"
 
-static int do_packsize = 0;
-static int do_pack = 0;
-static int do_unpack = 0;
-static int do_clear = 0;
-static int do_destroy = 0;
-static int do_print = 0;
+static bool do_packsize = false;
+static bool do_pack     = false;
+static bool do_unpack   = false;
+static bool do_clear    = false;
+static bool do_destroy  = false;
+static bool do_print    = false;
+static bool do_copy     = false;
+static bool do_dup      = false;
 
 static Switch switches[] = {
     { "--c-packsize", &do_packsize, "Generate packsize functions" },
@@ -42,6 +45,8 @@ static Switch switches[] = {
     { "--c-clear",    &do_clear,    "Generate clear functions" },
     { "--c-destroy",  &do_destroy,  "Generate destroy functions" },
     { "--c-print",    &do_print,    "Generate print functions" },
+    { "--c-copy",     &do_copy,     "Generate copy functions" },
+    { "--c-dup",      &do_dup,      "Generate dup functions" },
 };
 
 static int num_switches = sizeof(switches) / sizeof(switches[0]);
@@ -895,6 +900,136 @@ static void emit_print_body(FILE *fp, Definition *def)
     fprintf(fp, "}\n");
 }
 
+static void emit_copy_signature(FILE *fp, Definition *def)
+{
+    if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin || is_scalar(def)) return;
+
+    fprintf(fp, "\n/*\n");
+    fprintf(fp, " * Deep-copy %s <src> to <dst>.\n", def->name);
+    fprintf(fp, " */\n");
+    fprintf(fp, "void %sCopy(%s *dst, const %s *src)", def->name, def->name, def->name);
+}
+
+static void emit_copy_body(FILE *fp, Definition *def)
+{
+    StructItem *struct_item;
+
+    if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin || is_scalar(def)) return;
+
+    fprintf(fp, "\n{\n");
+
+    switch(def->type) {
+    case DT_ALIAS:
+        ifprintf(fp, 1, "%sCopy(dst, src);\n", def->alias_def.alias->name);
+        break;
+    case DT_ARRAY:
+        ifprintf(fp, 1, "%sClear(dst);\n\n", def->name);
+
+        ifprintf(fp, 1, "dst->count = src->count;\n\n");
+
+        ifprintf(fp, 1, "dst->%s = calloc(dst->count, sizeof(%s));\n\n",
+                def->array_def.item_name, equivalent_c_type(def->array_def.item_type));
+
+        ifprintf(fp, 1, "for (int i = 0; i < dst->count; i++) {\n");
+
+        if (is_scalar(def->array_def.item_type)) {
+            ifprintf(fp, 2, "dst->%s[i] = src->%s[i];\n",
+                    def->array_def.item_name, def->array_def.item_name);
+        }
+        else {
+            ifprintf(fp, 2, "%sCopy(dst->%s + i, src->%s + i);\n",
+                    def->array_def.item_type->name,
+                    def->array_def.item_name, def->array_def.item_name);
+        }
+        ifprintf(fp, 1, "}\n");
+        break;
+    case DT_STRUCT:
+        ifprintf(fp, 1, "%sClear(dst);\n", def->name);
+
+        for (struct_item = listHead(&def->struct_def.items);
+             struct_item; struct_item = listNext(struct_item))
+        {
+            fprintf(fp, "\n");
+
+            if (struct_item->optional) {
+                ifprintf(fp, 1, "if (src->%s != NULL) {\n", struct_item->name);
+                if (is_scalar(struct_item->def)) {
+                    ifprintf(fp, 2, "dst->%s = calloc(1, sizeof(%s));\n",
+                            struct_item->name, equivalent_c_type(struct_item->def));
+                    ifprintf(fp, 2, "*dst->%s = *src->%s;\n",
+                            struct_item->name, struct_item->name);
+                }
+                else {
+                    ifprintf(fp, 2, "dst->%s = %sDup(src->%s);\n",
+                            struct_item->name, struct_item->def->name, struct_item->name);
+                }
+                ifprintf(fp, 1, "}\n");
+            }
+            else {
+                if (is_scalar(struct_item->def)) {
+                    ifprintf(fp, 1, "dst->%s = src->%s;\n",
+                            struct_item->name, struct_item->name);
+                }
+                else {
+                    ifprintf(fp, 1, "%sCopy(&dst->%s, &src->%s);\n",
+                            struct_item->def->name, struct_item->name, struct_item->name);
+                }
+            }
+        }
+        break;
+    case DT_UNION:
+#if 0
+        ifprintf(fp, 1, "switch(data->%s) {\n",
+                def->union_def.discr_name);
+
+        for (union_item = listHead(&def->union_def.items);
+             union_item; union_item = listNext(union_item)) {
+            ifprintf(fp, 1, "case %s:\n", union_item->value);
+            if (!is_void_type(union_item->def)) {
+                ifprintf(fp, 2, "%sClear(&data->%s);\n",
+                        union_item->def->name,
+                        union_item->name);
+            }
+            ifprintf(fp, 2, "break;\n");
+        }
+
+        ifprintf(fp, 1, "}\n");
+#endif
+        break;
+    default:
+        fprintf(stderr, "%s: Unexpected definition type %d (%s).\n",
+                __func__, def->type, deftype_enum_to_string(def->type));
+        abort();
+    }
+
+    fprintf(fp, "}\n");
+}
+
+static void emit_dup_signature(FILE *fp, Definition *def)
+{
+    if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin || is_scalar(def)) return;
+
+    fprintf(fp, "\n/*\n");
+    fprintf(fp, " * Duplicate %s <data> and return a pointer to the duplicate.\n", def->name);
+    fprintf(fp, " */\n");
+    fprintf(fp, "%s *%sDup(%s *data)", def->name, def->name, def->name);
+}
+
+static void emit_dup_body(FILE *fp, Definition *def)
+{
+    if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin || is_scalar(def)) return;
+
+    fprintf(fp, "\n{\n");
+
+    ifprintf(fp, 1, "%s *new_data = calloc(1, sizeof(%s));\n\n", def->name, def->name);
+
+    ifprintf(fp, 1, "%sCopy(new_data, data);\n\n", def->name);
+
+    ifprintf(fp, 1, "return new_data;\n");
+
+    fprintf(fp, "}\n");
+}
+
 static void emit_clear_signature(FILE *fp, Definition *def)
 {
     if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin) return;
@@ -999,6 +1134,8 @@ static void emit_destroy_body(FILE *fp, Definition *def)
 static void set_dependencies(void)
 {
     if (do_destroy) do_clear = TRUE;
+    if (do_dup)     do_copy  = TRUE;
+    if (do_copy)    do_clear = TRUE;
 }
 
 /*
@@ -1102,6 +1239,14 @@ int emit_c_hdr(const char *out_file, const char *in_file,
             emit_print_signature(fp, def);
             fprintf(fp, ";\n");
         }
+        if (do_copy) {
+            emit_copy_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_dup) {
+            emit_dup_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
     }
 
     fprintf(fp, "\n#endif\n");
@@ -1135,14 +1280,15 @@ int emit_c_src(const char *out_file, const char *in_file,
     fprintf(fp, " * GENERATED CODE. DO NOT EDIT.\n");
     fprintf(fp, " *\n");
     fprintf(fp, " * Generated by %s from \"%s\" on %s", prog_name, in_file, time_str);
-    fprintf(fp, " */\n\n");
-
-    fprintf(fp, "#include <string.h>\t/* memset */\n");
-    fprintf(fp, "#include <stdlib.h>\t/* size_t */\n");
-
-    fprintf(fp, "\n#include \"libtyger.h\"\t/* Tyger functions. */\n");
-
-    fprintf(fp, "\n#include \"%s\"\n\n", associated_header_file(out_file));
+    fprintf(fp, " */\n");
+    fprintf(fp, "\n");
+    fprintf(fp, "#include \"%s\"\n", associated_header_file(out_file));
+    fprintf(fp, "\n");
+    fprintf(fp, "#include <libtyger.h>\t\t/* Tyger functions. */\n");
+    fprintf(fp, "#include <libjvs/utils.h>\t/* memdup */\n");
+    fprintf(fp, "\n");
+    fprintf(fp, "#include <string.h>\t\t/* memset */\n");
+    fprintf(fp, "#include <stdlib.h>\t\t/* size_t */\n");
 
     for (def = listHead(definitions); def; def = listNext(def)) {
         if (def->level != 0) {
@@ -1180,6 +1326,14 @@ int emit_c_src(const char *out_file, const char *in_file,
             if (do_print) {
                 emit_print_signature(fp, def);
                 emit_print_body(fp, def);
+            }
+            if (do_copy) {
+                emit_copy_signature(fp, def);
+                emit_copy_body(fp, def);
+            }
+            if (do_dup) {
+                emit_dup_signature(fp, def);
+                emit_dup_body(fp, def);
             }
         }
     }

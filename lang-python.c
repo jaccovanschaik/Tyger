@@ -9,24 +9,24 @@
  * vim: textwidth=100 columns=100
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <libgen.h>
-
-#include <libjvs/list.h>
-#include <libjvs/utils.h>
-
 #include "switches.h"
 #include "parser.h"
 #include "utils.h"
 #include "lang-python.h"
 
-static int do_pack = 0;
-static int do_unpack = 0;
-static int do_recv = 0;
-static int do_mx_send = 0;
-static int do_mx_bcast = 0;
+#include <libjvs/list.h>
+#include <libjvs/utils.h>
+
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <libgen.h>
+
+static bool do_pack     = false;
+static bool do_unpack   = false;
+static bool do_recv     = false;
+static bool do_mx_send  = false;
+static bool do_mx_bcast = false;
 
 static Switch switches[] = {
     { "--py-pack",     &do_pack,     "Generate pack functions" },

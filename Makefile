@@ -45,6 +45,7 @@ libtyger.so: libtyger.o utf8.o
             --c-clear \
             --c-destroy \
             --c-print \
+            --c-dup \
             $<
 
 %.h: %.tgr tyger
@@ -55,6 +56,7 @@ libtyger.so: libtyger.o utf8.o
             --c-clear \
             --c-destroy \
             --c-print \
+            --c-dup \
             $<
 
 %.py: %.tgr tyger

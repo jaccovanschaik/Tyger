@@ -28,6 +28,15 @@ static int   indent_length = 0;
 
 #define SWAP(from, to) do { char temp = to; to = from; from = temp; } while (0)
 
+/* =============================== Aliases ===============================
+ *
+ * Aliases for functions from libjvs.
+ */
+void (*astringDestroy)(astring *) = asDestroy;
+void (*wstringDestroy)(wstring *) = wsDestroy;
+void (*astringClear)(astring *) = asClear;
+void (*wstringClear)(wstring *) = wsClear;
+
 /* =============================== Indent handling ===============================
  *
  * Set the indentation string.
@@ -75,12 +84,6 @@ const char *indent(int level)
 
 /* =============================== "Clear" functions ===============================
  *
- * Aliases for functions from libjvs.
- */
-void (*astringClear)(astring *) = asClear;
-void (*wstringClear)(wstring *) = wsClear;
-
-/*
  * Clear the contents of <data>.
  */
 void uint8Clear(uint8_t *data)
@@ -170,12 +173,6 @@ void float64Clear(double *data)
 
 /* =============================== "Destroy" functions ===============================
  *
- * Aliases for functions from libjvs.
- */
-void (*astringDestroy)(astring *) = asDestroy;
-void (*wstringDestroy)(wstring *) = wsDestroy;
-
-/*
  * Destroy the contents of <data>.
  */
 void uint8Destroy(uint8_t *data)
@@ -851,33 +848,27 @@ size_t wstringUnpack(const Buffer *buf, size_t pos, wstring *data)
  *
  * Copy string <src> to <dst>.
  */
-void astringCopy(char **dst, const char *src)
+void astringCopy(astring *dst, const astring *src)
 {
     assert(dst != NULL);
     assert(src != NULL);
 
-    if (*dst != NULL) {
-        free(*dst);
-        *dst = NULL;
-    }
+    asClear(dst);
 
-    *dst = strdup(src);
+    asAdd(dst, asGet(src), asLen(src));
 }
 
 /*
  * Copy string <src> to <dst>.
  */
-void wstringCopy(wchar_t **dst, const wchar_t *src)
+void wstringCopy(wstring *dst, const wstring *src)
 {
     assert(dst != NULL);
     assert(src != NULL);
 
-    if (*dst != NULL) {
-        free(*dst);
-        *dst = NULL;
-    }
+    wsClear(dst);
 
-    *dst = wcsdup(src);
+    wsAdd(dst, wsGet(src), wsLen(src));
 }
 
 /* =============================== "Print" functions ===============================
@@ -980,6 +971,23 @@ void astringPrint(FILE *fp, const astring *as, int indent)
 void wstringPrint(FILE *fp, const wstring *ws, int indent)
 {
     fprintf(fp, "\"%ls\"", wsGet(ws));
+}
+
+/* =============================== "Dup" functions ===============================
+ *
+ * Duplicate astring <str>.
+ */
+astring *astringDup(astring *str)
+{
+    return asCreate("%s", asGet(str));
+}
+
+/*
+ * Duplicate wstring <str>.
+ */
+wstring *wstringDup(wstring *str)
+{
+    return wsCreate(L"%s", wsGet(str));
 }
 
 #ifdef TEST

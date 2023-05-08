@@ -17,6 +17,7 @@
 #include <libjvs/list.h>
 
 #include <stdbool.h>
+#include <stdlib.h>
 
 typedef struct Definition Definition;
 

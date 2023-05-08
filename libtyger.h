@@ -25,6 +25,15 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+/* =============================== Aliases ===============================
+ *
+ * Aliases for functions from libjvs.
+ */
+extern void (*astringClear)(astring *);
+extern void (*wstringClear)(wstring *);
+extern void (*astringDestroy)(astring *);
+extern void (*wstringDestroy)(wstring *);
+
 /* =============================== Indent handling ===============================
  *
  * Set the indentation string.
@@ -92,14 +101,6 @@ void float32Clear(float *data);
  */
 void float64Clear(double *data);
 
-/*
- * Clear the contents of <buf>.
- */
-void bufClear(Buffer *buf);
-
-extern void (*astringClear)(astring *);
-extern void (*wstringClear)(wstring *);
-
 /* =============================== "Destroy" functions ===============================
  *
  * Destroy the contents of <data>.
@@ -155,13 +156,6 @@ void float32Destroy(float *data);
  * Destroy the contents of <data>.
  */
 void float64Destroy(double *data);
-
-/* =============================== "Destroy" functions ===============================
- *
- * Destroy the contents of <data>.
- */
-extern void (*astringDestroy)(astring *);
-extern void (*wstringDestroy)(wstring *);
 
 /* =============================== "PackSize" functions ===============================
  *
@@ -222,12 +216,12 @@ size_t float64PackSize(void);
 /*
  * Return the number of bytes required to pack the char *pointed to by <data>.
  */
-size_t astringPackSize(const astring *str);
+size_t astringPackSize(const astring *as);
 
 /*
  * Return the number of bytes required to pack the wchar_t *pointed to by <data>.
  */
-size_t wstringPackSize(const wstring *str);
+size_t wstringPackSize(const wstring *ws);
 
 /* =============================== "Pack" functions ===============================
  *
@@ -306,13 +300,13 @@ Buffer *boolPack(const bool data, Buffer *buf);
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *astringPack(const astring *str, Buffer *buf);
+Buffer *astringPack(const astring *as, Buffer *buf);
 
 /*
  * Add <data> to position <pos> in <buf>, which currently has size <size>, enlarging it if
  * necessary. Return the number of bytes added to <buf>.
  */
-Buffer *wstringPack(const wstring *str, Buffer *buf);
+Buffer *wstringPack(const wstring *ws, Buffer *buf);
 
 /* =============================== "Unpack" functions ===============================
  *
@@ -379,7 +373,7 @@ size_t float32Unpack(const Buffer *buf, size_t pos, float *data);
 size_t float64Unpack(const Buffer *buf, size_t pos, double *data);
 
 /*
- * Unpack an char *from <buf> (which has size <size>) and put it at the
+ * Unpack a char from <buf> (which has size <size>) and put it at the
  * address pointed to by <data>.
  */
 size_t astringUnpack(const Buffer *buf, size_t pos, astring *data);
@@ -395,12 +389,12 @@ size_t wstringUnpack(const Buffer *buf, size_t pos, wstring *data);
  *
  * Copy string <src> to <dst>.
  */
-void astringCopy(char **dst, const char *src);
+void astringCopy(astring *dst, const astring *src);
 
 /*
  * Copy string <src> to <dst>.
  */
-void wstringCopy(wchar_t **dst, const wchar_t *src);
+void wstringCopy(wstring *dst, const wstring *src);
 
 /* =============================== "Print" functions ===============================
  *
@@ -458,12 +452,23 @@ void float64Print(FILE *fp, double data, int indent);
 /*
  * Print an ASCII representation of <str> to <fp>.
  */
-void astringPrint(FILE *fp, const astring *str, int indent);
+void astringPrint(FILE *fp, const astring *as, int indent);
 
 /*
  * Print an ASCII representation of <str> to <fp>.
  */
-void wstringPrint(FILE *fp, const wstring *str, int indent);
+void wstringPrint(FILE *fp, const wstring *ws, int indent);
+
+/* =============================== "Dup" functions ===============================
+ *
+ * Duplicate astring <str>.
+ */
+astring *astringDup(astring *str);
+
+/*
+ * Duplicate wstring <str>.
+ */
+wstring *wstringDup(wstring *str);
 
 #ifdef __cplusplus
 }
