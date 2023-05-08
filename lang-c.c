@@ -125,7 +125,7 @@ static const char *equivalent_c_type(const Definition *def)
     }
 }
 
-static bool is_pass_by_value(Definition *def)
+static bool is_scalar(Definition *def)
 {
     switch(def->type) {
     case DT_INT:
@@ -140,7 +140,7 @@ static bool is_pass_by_value(Definition *def)
     case DT_WSTRING:
         return false;
     case DT_ALIAS:
-        return is_pass_by_value(def->alias_def.alias);
+        return is_scalar(def->alias_def.alias);
     default:
         return false;
     }
@@ -327,7 +327,7 @@ static void emit_packsize_signature(FILE *fp, Definition *def)
         fprintf(fp, " */\n");
         fprintf(fp, "size_t %sPackSize(void)", def->name);
     }
-    else if (is_pass_by_value(def)) {
+    else if (is_scalar(def)) {
         fprintf(fp, "\n/*\n");
         fprintf(fp, " * Return the number of bytes required to pack %s "
                     "<data>.\n", def->name);
@@ -373,7 +373,7 @@ static void emit_packsize_body(FILE *fp, Definition *def)
         else {
             ifprintf(fp, 1, "for (int i = 0; i < data->count; i++) {\n");
 
-            if (is_pass_by_value(def->array_def.item_type)) {
+            if (is_scalar(def->array_def.item_type)) {
                 ifprintf(fp, 2, "size += %sPackSize(data->%s[i]);\n",
                         def->array_def.item_type->name,
                         def->array_def.item_name);
@@ -405,7 +405,7 @@ static void emit_packsize_body(FILE *fp, Definition *def)
                     ifprintf(fp, 2, "size += %sPackSize();\n",
                             struct_item->def->name);
                 }
-                else if (is_pass_by_value(struct_item->def)) {
+                else if (is_scalar(struct_item->def)) {
                     ifprintf(fp, 2, "size += %sPackSize(*data->%s);\n",
                             struct_item->def->name,
                             struct_item->name);
@@ -422,7 +422,7 @@ static void emit_packsize_body(FILE *fp, Definition *def)
                     ifprintf(fp, 1, "size += %sPackSize();\n",
                             struct_item->def->name);
                 }
-                else if (is_pass_by_value(struct_item->def)) {
+                else if (is_scalar(struct_item->def)) {
                     ifprintf(fp, 1, "size += %sPackSize(data->%s);\n",
                             struct_item->def->name,
                             struct_item->name);
@@ -459,7 +459,7 @@ static void emit_packsize_body(FILE *fp, Definition *def)
                             union_item->def->name,
                             listNext(union_item) == NULL ? "\n\n" : "\n");
                 }
-                else if (is_pass_by_value(union_item->def)) {
+                else if (is_scalar(union_item->def)) {
                     ifprintf(fp, 2, "size += %sPackSize(data->%s);%s",
                             union_item->def->name,
                             union_item->name,
@@ -504,7 +504,7 @@ static void emit_pack_signature(FILE *fp, Definition *def)
             " * position. The number of bytes written is returned.\n"
             " */\n");
 
-    if (is_pass_by_value(def)) {
+    if (is_scalar(def)) {
         fprintf(fp,
                 "Buffer *%sPack(%s data, Buffer *buf)",
                 def->name, def->name);
@@ -537,7 +537,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
 
-        if (is_pass_by_value(def->array_def.item_type)) {
+        if (is_scalar(def->array_def.item_type)) {
             ifprintf(fp, 2, "%sPack(data->%s[i], buf);\n",
                     def->array_def.item_type->name,
                     def->array_def.item_name);
@@ -560,7 +560,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
                 ifprintf(fp, 1, "uint8Pack(data->%s ? 1 : 0, buf);\n", struct_item->name);
                 ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
 
-                if (is_pass_by_value(struct_item->def)) {
+                if (is_scalar(struct_item->def)) {
                     ifprintf(fp, 2, "%sPack(*data->%s, buf);\n",
                             struct_item->def->name,
                             struct_item->name);
@@ -574,7 +574,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
                 ifprintf(fp, 1, "}\n");
             }
             else {
-                if (is_pass_by_value(struct_item->def)) {
+                if (is_scalar(struct_item->def)) {
                     ifprintf(fp, 1, "%sPack(data->%s, buf);\n",
                             struct_item->def->name,
                             struct_item->name);
@@ -606,7 +606,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                if (is_pass_by_value(union_item->def)) {
+                if (is_scalar(union_item->def)) {
                     ifprintf(fp, 2, "%sPack(data->%s, buf);\n",
                             union_item->def->name,
                             union_item->name);
@@ -760,7 +760,7 @@ static void emit_print_signature(FILE *fp, Definition *def)
     fprintf(fp, " * Print an ASCII representation of <data> to <fp>.\n");
     fprintf(fp, " */\n");
 
-    if (is_pass_by_value(def)) {
+    if (is_scalar(def)) {
         fprintf(fp, "void %sPrint(FILE *fp, %s data, int level)", def->name, def->name);
     }
     else {
@@ -791,7 +791,7 @@ static void emit_print_body(FILE *fp, Definition *def)
         ifprintf(fp, 2, "fprintf(fp, \"%%s%s: \", indent(level));\n",
                 def->array_def.item_name);
 
-        if (is_pass_by_value(def->array_def.item_type)) {
+        if (is_scalar(def->array_def.item_type)) {
             ifprintf(fp, 2, "%sPrint(fp, data->%s[i], level);\n",
                     def->array_def.item_type->name,
                     def->array_def.item_name);
@@ -821,7 +821,7 @@ static void emit_print_body(FILE *fp, Definition *def)
 
                 if (struct_item->optional) {
                     ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
-                    if (is_pass_by_value(struct_item->def)) {
+                    if (is_scalar(struct_item->def)) {
                         ifprintf(fp, 2, "%sPrint(fp, *data->%s, level);\n",
                                 struct_item->def->name,
                                 struct_item->name);
@@ -837,7 +837,7 @@ static void emit_print_body(FILE *fp, Definition *def)
                     ifprintf(fp, 1, "}\n");
                 }
                 else {
-                    if (is_pass_by_value(struct_item->def)) {
+                    if (is_scalar(struct_item->def)) {
                         ifprintf(fp, 1, "%sPrint(fp, data->%s, level);\n",
                                 struct_item->def->name,
                                 struct_item->name);
@@ -882,7 +882,7 @@ static void emit_print_body(FILE *fp, Definition *def)
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                if (is_pass_by_value(union_item->def)) {
+                if (is_scalar(union_item->def)) {
                     ifprintf(fp, 2, "%sPrint(fp, data->%s, level);\n",
                             union_item->def->name,
                             union_item->name);
