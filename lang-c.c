@@ -138,12 +138,6 @@ static bool is_scalar(Definition *def)
     case DT_FLOAT:
     case DT_ENUM:
         return true;
-    case DT_ARRAY:
-    case DT_STRUCT:
-    case DT_UNION:
-    case DT_ASTRING:
-    case DT_WSTRING:
-        return false;
     case DT_ALIAS:
         return is_scalar(def->alias_def.alias);
     default:
@@ -631,6 +625,7 @@ static void emit_unpack_signature(FILE *fp, Definition *def)
     fprintf(fp,
             "\n/*\n"
             " * Unpack <data> from <buf>, which is <size> bytes in size.\n"
+            " * Returns the new position.\n"
             " */\n");
     fprintf(fp, "size_t %sUnpack(const Buffer *buf, size_t pos, %s *data)",
             def->name, def->name);
@@ -913,6 +908,7 @@ static void emit_copy_signature(FILE *fp, Definition *def)
 static void emit_copy_body(FILE *fp, Definition *def)
 {
     StructItem *struct_item;
+    UnionItem *union_item;
 
     if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin || is_scalar(def)) return;
 
@@ -978,23 +974,29 @@ static void emit_copy_body(FILE *fp, Definition *def)
         }
         break;
     case DT_UNION:
-#if 0
-        ifprintf(fp, 1, "switch(data->%s) {\n",
+        ifprintf(fp, 1, "%sClear(dst);\n\n", def->name);
+
+        ifprintf(fp, 1, "dst->%s = src->%s;\n\n",
+                def->union_def.discr_name, def->union_def.discr_name);
+
+        ifprintf(fp, 1, "switch(src->%s) {\n",
                 def->union_def.discr_name);
 
         for (union_item = listHead(&def->union_def.items);
              union_item; union_item = listNext(union_item)) {
             ifprintf(fp, 1, "case %s:\n", union_item->value);
-            if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "%sClear(&data->%s);\n",
-                        union_item->def->name,
-                        union_item->name);
+            if (is_scalar(union_item->def)) {
+                ifprintf(fp, 2, "dst->%s = src->%s;\n",
+                            union_item->name, union_item->name);
+            }
+            else if (!is_void_type(union_item->def)) {
+                ifprintf(fp, 2, "%sCopy(&dst->%s, &src->%s);\n",
+                        union_item->def->name, union_item->name, union_item->name);
             }
             ifprintf(fp, 2, "break;\n");
         }
 
         ifprintf(fp, 1, "}\n");
-#endif
         break;
     default:
         fprintf(stderr, "%s: Unexpected definition type %d (%s).\n",
