@@ -32,21 +32,21 @@
 static bool do_packsize = false;
 static bool do_pack     = false;
 static bool do_unpack   = false;
-static bool do_clear    = false;
-static bool do_destroy  = false;
-static bool do_print    = false;
 static bool do_copy     = false;
 static bool do_dup      = false;
+static bool do_print    = false;
+static bool do_clear    = false;
+static bool do_destroy  = false;
 
 static Switch switches[] = {
     { "--c-packsize", &do_packsize, "Generate packsize functions" },
     { "--c-pack",     &do_pack,     "Generate pack functions" },
     { "--c-unpack",   &do_unpack,   "Generate unpack functions" },
-    { "--c-clear",    &do_clear,    "Generate clear functions" },
-    { "--c-destroy",  &do_destroy,  "Generate destroy functions" },
-    { "--c-print",    &do_print,    "Generate print functions" },
     { "--c-copy",     &do_copy,     "Generate copy functions" },
     { "--c-dup",      &do_dup,      "Generate dup functions" },
+    { "--c-print",    &do_print,    "Generate print functions" },
+    { "--c-clear",    &do_clear,    "Generate clear functions" },
+    { "--c-destroy",  &do_destroy,  "Generate destroy functions" },
 };
 
 static int num_switches = sizeof(switches) / sizeof(switches[0]);

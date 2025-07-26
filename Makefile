@@ -1,6 +1,6 @@
 # Makefile: Makefile for tyger.
 #
-# Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
+# Copyright: (c) 2016-2025 Jacco van Schaik (jacco@jaccovanschaik.net)
 # Created:   2016-08-24
 #
 # This software is distributed under the terms of the MIT license. See
@@ -181,6 +181,12 @@ clean:
             version.h tokentype.c tokentype.h deftype.c deftype.h \
             test/*.c test/*.h test/*.py test/*.pyc test/*.d test/*.o \
             Test.c Test.h Test.py
+
+update:
+	git stash push
+	git pull
+	-git stash pop
+	make install
 
 veryclean: clean
 	rm -f tags
