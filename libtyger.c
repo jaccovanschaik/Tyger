@@ -1,6 +1,6 @@
 /* libtyger.c: Run-time portion for the Tyger type generator.
  *
- * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2025 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-31
  *
  * This software is distributed under the terms of the MIT license. See
@@ -610,13 +610,7 @@ size_t uint8Unpack(const Buffer *buf, size_t pos, uint8_t *data)
 
     assert(bufLen(buf) - pos >= pack_size);
 
-    *data = 0;
-
-    for (int i = 0; i < pack_size; i++, pos++) {
-        *data <<= 8;
-
-        *data |= bufGetC(buf, pos);
-    }
+    *data = bufGetC(buf, pos++);
 
     return pos;
 }
