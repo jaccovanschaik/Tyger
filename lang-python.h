@@ -3,7 +3,7 @@
 
 /* lang-python.h: Generate Python code.
  *
- * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2025 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-12-08
  *
  * This software is distributed under the terms of the MIT license. See
@@ -11,6 +11,10 @@
  *
  * vim: textwidth=100 columns=100
  */
+
+#include "switches.h"
+
+#include <libjvs/list.h>
 
 /*
  * Return the switches that the C language generator accepts.

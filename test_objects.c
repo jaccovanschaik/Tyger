@@ -1,6 +1,6 @@
 /* test_objects.c: Tests for generated C code.
  *
- * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2025 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-09-14
  *
  * This software is distributed under the terms of the MIT license. See
@@ -16,8 +16,11 @@
 #include <locale.h>
 
 #include <libjvs/utils.h>
+#include <libjvs/astring.h>
+#include <libjvs/wstring.h>
 
 #include "Objects.h"
+#include "Shape.h"
 
 #define DEBUG 1
 
@@ -158,14 +161,14 @@ int main(int argc, char *argv[])
     fill_objects(&original);
 
 #if DEBUG
-    ObjectsPrint(stdout, &original, 0);
+    print_Objects(stdout, &original, 0);
 #endif
 
     errors += check_objects(&original);
 
     /* Check Objects packing. */
 
-    ObjectsPack(&original, &buf);
+    pack_Objects(&original, &buf);
 
     hexdump(stderr, (const char *) buf.data, bufLen(&buf));
 
@@ -236,20 +239,20 @@ int main(int argc, char *argv[])
                 "\x00\x00\x00\x0A"      /* radius */
                 , bufLen(&buf)) == 0);
 
-    /* Unpack into a new Objects struct and check it's the same. */
+    /* unpack_ into a new Objects struct and check it's the same. */
 
-    pos = ObjectsUnpack(&buf, 0, &unpacked);
+    pos = unpack_Objects(&buf, 0, &unpacked);
 
     make_sure_that(pos == 197);
 
 #if DEBUG
-    ObjectsPrint(stdout, &unpacked, 0);
+    print_Objects(stdout, &unpacked, 0);
 #endif
 
     errors += check_objects(&unpacked);
 
-    // ObjectsClear(&original);
-    ObjectsClear(&unpacked);
+    // clear_Objects(&original);
+    clear_Objects(&unpacked);
     bufClear(&buf);
 
     /* Copy to a third Objects struct and check that's the same too. */
@@ -259,9 +262,9 @@ int main(int argc, char *argv[])
 
     errors += check_objects(&copy);
 
-    ObjectsClear(&original);
-    ObjectsClear(&unpacked);
-    ObjectsClear(&copy);
+    clear_Objects(&original);
+    clear_Objects(&unpacked);
+    clear_Objects(&copy);
 
     free(buf);
 

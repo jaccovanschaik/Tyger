@@ -3,7 +3,7 @@
 
 /* lang-c.h: Generate C code.
  *
- * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2025 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-10-06
  *
  * This software is distributed under the terms of the MIT license. See
@@ -13,6 +13,7 @@
  */
 
 #include <libjvs/list.h>
+#include "switches.h"
 
 /*
  * Return the switches that the C language generator accepts.

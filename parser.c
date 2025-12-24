@@ -1,6 +1,6 @@
 /* parser.c: Parser for Tyger files.
  *
- * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2025 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-25
  *
  * This software is distributed under the terms of the MIT license. See
@@ -396,7 +396,7 @@ static int process_union(Definition *def, List *defs, tkToken **token, Buffer *e
                     (*token)->file, (*token)->line, (*token)->column, item_type);
             return 1;
         }
-        else if ((item_def->type == DT_VOID)) {
+        else if (item_def->type == DT_VOID) {
             item->def = item_def;
             item->name = NULL;
 
