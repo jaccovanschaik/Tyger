@@ -39,7 +39,7 @@ libtyger.so: libtyger.o utf8.o
 
 %.c: %.tgr tyger
 	./tyger -c $@ \
-            --c-packsize \
+            --c-size \
             --c-pack \
             --c-unpack \
             --c-clear \
@@ -50,7 +50,7 @@ libtyger.so: libtyger.o utf8.o
 
 %.h: %.tgr tyger
 	./tyger -h $@ \
-            --c-packsize \
+            --c-size \
             --c-pack \
             --c-unpack \
             --c-clear \
@@ -106,7 +106,7 @@ Test.o: Test.c Test.h
 
 Test.c: test/Test.tgr tyger
 	./tyger -c Test.c \
-            --c-packsize \
+            --c-size \
             --c-pack \
             --c-unpack \
             --c-clear \
@@ -116,7 +116,7 @@ Test.c: test/Test.tgr tyger
 
 Test.h: test/Test.tgr tyger
 	./tyger -h Test.h \
-            --c-packsize \
+            --c-size \
             --c-pack \
             --c-unpack \
             --c-clear \

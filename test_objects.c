@@ -141,8 +141,11 @@ static int check_objects(const Objects *objects)
 int main(int argc, char *argv[])
 {
     int errors = 0;
-    size_t pos;
-    Buffer buf = { };
+
+    char *buf = NULL;
+    size_t size, pos;
+
+    // Buffer buf = { };
 
     Objects original = { 0 };
     Objects unpacked = { 0 };
@@ -168,18 +171,18 @@ int main(int argc, char *argv[])
 
     /* Check Objects packing. */
 
-    pack_Objects(&original, &buf);
+    pack_Objects(&original, &buf, &size, &pos);
 
-    hexdump(stderr, (const char *) buf.data, bufLen(&buf));
+    hexdump(stderr, buf, pos);
 
-    make_sure_that(bufLen(&buf) == 197);
+    make_sure_that(pos == 197);
 
 #if DEBUG
-    fprintf(stdout, "size = %lu\n", bufLen(&buf));
-    hexdump(stdout, (char *) buf.data, bufLen(&buf));
+    fprintf(stdout, "size = %lu\n", pos);
+    hexdump(stdout, (char *) buf, pos);
 #endif
 
-    make_sure_that(memcmp(buf.data,
+    make_sure_that(memcmp(buf,
                 "\x00\x00\x00\x04"      /* Number of objects */
                                         /* Object 1: */
                 "\x00\x00\x00\x06"      /* Object name length */
@@ -237,11 +240,13 @@ int main(int argc, char *argv[])
                 "\x00\x00\x00\x02"      /* Y coordinate of centre */
                 "\x00\x00\x00\x03"      /* Z coordinate of centre */
                 "\x00\x00\x00\x0A"      /* radius */
-                , bufLen(&buf)) == 0);
+                , pos) == 0);
 
     /* unpack_ into a new Objects struct and check it's the same. */
 
-    pos = unpack_Objects(&buf, 0, &unpacked);
+    pos = 0;
+
+    pos = unpack_Objects(buf, size, &pos, &unpacked);
 
     make_sure_that(pos == 197);
 
@@ -253,7 +258,8 @@ int main(int argc, char *argv[])
 
     // clear_Objects(&original);
     clear_Objects(&unpacked);
-    bufClear(&buf);
+
+    free(buf);
 
     /* Copy to a third Objects struct and check that's the same too. */
 

@@ -29,7 +29,7 @@
 #include "utf8.h"
 #include "lang-c.h"
 
-static bool do_packsize = false;
+static bool do_size     = false;
 static bool do_pack     = false;
 static bool do_unpack   = false;
 static bool do_copy     = false;
@@ -39,7 +39,7 @@ static bool do_clear    = false;
 static bool do_destroy  = false;
 
 static Switch switches[] = {
-    { "--c-packsize", &do_packsize, "Generate packsize functions" },
+    { "--c-size",     &do_size,     "Generate size functions" },
     { "--c-pack",     &do_pack,     "Generate pack functions" },
     { "--c-unpack",   &do_unpack,   "Generate unpack functions" },
     { "--c-copy",     &do_copy,     "Generate copy functions" },
@@ -196,17 +196,17 @@ static void emit_const_definition(FILE *fp, Definition *def)
 
     switch (def->const_def.const_type->type) {
     case DT_INT:
-        fprintf(fp, "const %s%s = ",
+        fprintf(fp, "\nconst %s%s = ",
                 equivalent_c_type(def->const_def.const_type), def->name);
         fprintf(fp, "%ld;\n", def->const_def.value.l);
         break;
     case DT_FLOAT:
-        fprintf(fp, "const %s%s = ",
+        fprintf(fp, "\nconst %s%s = ",
                 equivalent_c_type(def->const_def.const_type), def->name);
         fprintf(fp, "%g;\n", def->const_def.value.d);
         break;
     case DT_ASTRING:
-        ifprintf(fp, 0, "const %s%s = {\n",
+        ifprintf(fp, 0, "\nconst %s%s = {\n",
                 equivalent_c_type(def->const_def.const_type), def->name);
         ifprintf(fp, 1, ".data = \"%s\",\n", def->const_def.value.s);
         ifprintf(fp, 1, ".used = %ld,\n", strlen(def->const_def.value.s));
@@ -217,7 +217,7 @@ static void emit_const_definition(FILE *fp, Definition *def)
         utf8_to_wchar((uint8_t *) def->const_def.value.s,
                 strlen(def->const_def.value.s), &wchar_len);
 
-        ifprintf(fp, 0, "const %s%s = {\n",
+        ifprintf(fp, 0, "\nconst %s%s = {\n",
                 equivalent_c_type(def->const_def.const_type), def->name);
         ifprintf(fp, 1, ".data = L\"%s\",\n", def->const_def.value.s);
         ifprintf(fp, 1, ".used = %ld,\n", wchar_len);
@@ -225,7 +225,7 @@ static void emit_const_definition(FILE *fp, Definition *def)
         ifprintf(fp, 0, "};\n");
         break;
     case DT_BOOL:
-        fprintf(fp, "const %s%s = ",
+        fprintf(fp, "\nconst %s%s = ",
                 equivalent_c_type(def->const_def.const_type), def->name);
         fprintf(fp, "%s;\n", def->const_def.value.l ? "true" : "false");
         break;
@@ -315,7 +315,7 @@ static void emit_typedef(FILE *fp, Definition *def)
     }
 }
 
-static void emit_packsize_signature(FILE *fp, Definition *def)
+static void emit_size_signature(FILE *fp, Definition *def)
 {
     if (def->type == DT_CONST || def->type == DT_INCLUDE || def->builtin) return;
 
@@ -342,7 +342,7 @@ static void emit_packsize_signature(FILE *fp, Definition *def)
     }
 }
 
-static void emit_packsize_call(FILE *fp, Definition *def,
+static void emit_size_call(FILE *fp, Definition *def,
         const char *name, int indent, bool is_optional)
 {
     if (is_optional) {
@@ -369,7 +369,7 @@ static void emit_packsize_call(FILE *fp, Definition *def,
     }
 }
 
-static void emit_packsize_body(FILE *fp, Definition *def)
+static void emit_size_body(FILE *fp, Definition *def)
 {
     StructItem *struct_item;
     UnionItem *union_item;
@@ -427,12 +427,12 @@ static void emit_packsize_body(FILE *fp, Definition *def)
                 ifprintf(fp, 1, "size += size_uint8();\n");
                 ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
 
-                emit_packsize_call(fp, struct_item->def, struct_item->name, 2, true);
+                emit_size_call(fp, struct_item->def, struct_item->name, 2, true);
 
                 ifprintf(fp, 1, "}\n");
             }
             else {
-                emit_packsize_call(fp, struct_item->def, struct_item->name, 1, false);
+                emit_size_call(fp, struct_item->def, struct_item->name, 1, false);
             }
         }
 
@@ -455,7 +455,7 @@ static void emit_packsize_body(FILE *fp, Definition *def)
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                emit_packsize_call(fp, union_item->def, union_item->name, 2, false);
+                emit_size_call(fp, union_item->def, union_item->name, 2, false);
             }
 
             ifprintf(fp, 2, "break;\n");
@@ -491,12 +491,12 @@ static void emit_pack_signature(FILE *fp, Definition *def)
 
     if (is_scalar(def)) {
         fprintf(fp,
-                "Buffer *pack_%s(%s data, Buffer *buf)",
+                "Buffer *pack_%s(%s data, char **buf, size_t *size, size_t *pos)",
                 def->name, def->name);
     }
     else {
         fprintf(fp,
-                "Buffer *pack_%s(const %s *data, Buffer *buf)",
+                "Buffer *pack_%s(const %s *data, char **buf, size_t *size, size_t *pos)",
                 def->name, def->name);
     }
 }
@@ -512,23 +512,23 @@ static void emit_pack_body(FILE *fp, Definition *def)
 
     switch(def->type) {
     case DT_ALIAS:
-        ifprintf(fp, 1, "return pack_%s(data, buf);\n",
+        ifprintf(fp, 1, "return pack_%s(data, buf, size, pos);\n",
                 def->alias_def.alias->name);
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n");
         ifprintf(fp, 1,
-                "pack_uint32(data->count, buf);\n\n");
+                "pack_uint32(data->count, buf, size, pos);\n\n");
 
         ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
 
         if (is_scalar(def->array_def.item_type)) {
-            ifprintf(fp, 2, "pack_%s(data->%s[i], buf);\n",
+            ifprintf(fp, 2, "pack_%s(data->%s[i], buf, size, pos);\n",
                     def->array_def.item_type->name,
                     def->array_def.item_name);
         }
         else {
-            ifprintf(fp, 2, "pack_%s(data->%s + i, buf);\n",
+            ifprintf(fp, 2, "pack_%s(data->%s + i, buf, size, pos);\n",
                     def->array_def.item_type->name,
                     def->array_def.item_name);
         }
@@ -542,16 +542,16 @@ static void emit_pack_body(FILE *fp, Definition *def)
 
             if (struct_item->optional) {
                 fputc('\n', fp);
-                ifprintf(fp, 1, "pack_uint8(data->%s ? 1 : 0, buf);\n", struct_item->name);
+                ifprintf(fp, 1, "pack_uint8(data->%s ? 1 : 0, buf, size, pos);\n", struct_item->name);
                 ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
 
                 if (is_scalar(struct_item->def)) {
-                    ifprintf(fp, 2, "pack_%s(*data->%s, buf);\n",
+                    ifprintf(fp, 2, "pack_%s(*data->%s, buf, size, pos);\n",
                             struct_item->def->name,
                             struct_item->name);
                 }
                 else {
-                    ifprintf(fp, 2, "pack_%s(data->%s, buf);\n",
+                    ifprintf(fp, 2, "pack_%s(data->%s, buf, size, pos);\n",
                             struct_item->def->name,
                             struct_item->name);
                 }
@@ -560,12 +560,12 @@ static void emit_pack_body(FILE *fp, Definition *def)
             }
             else {
                 if (is_scalar(struct_item->def)) {
-                    ifprintf(fp, 1, "pack_%s(data->%s, buf);\n",
+                    ifprintf(fp, 1, "pack_%s(data->%s, buf, size, pos);\n",
                             struct_item->def->name,
                             struct_item->name);
                 }
                 else {
-                    ifprintf(fp, 1, "pack_%s(&data->%s, buf);\n",
+                    ifprintf(fp, 1, "pack_%s(&data->%s, buf, size, pos);\n",
                             struct_item->def->name,
                             struct_item->name);
                 }
@@ -577,10 +577,10 @@ static void emit_pack_body(FILE *fp, Definition *def)
         ifprintf(fp, 1, "return buf;\n");
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "return pack_uint(data, %ld, buf);\n", def->enum_def.num_bytes);
+        ifprintf(fp, 1, "return pack_uint(data, %ld, buf, size, pos);\n", def->enum_def.num_bytes);
         break;
     case DT_UNION:
-        ifprintf(fp, 1, "pack_%s(data->%s, buf);\n\n",
+        ifprintf(fp, 1, "pack_%s(data->%s, buf, size, pos);\n\n",
                 def->union_def.discr_def->name,
                 def->union_def.discr_name);
         ifprintf(fp, 1, "switch(data->%s) {\n",
@@ -592,12 +592,12 @@ static void emit_pack_body(FILE *fp, Definition *def)
 
             if (!is_void_type(union_item->def)) {
                 if (is_scalar(union_item->def)) {
-                    ifprintf(fp, 2, "pack_%s(data->%s, buf);\n",
+                    ifprintf(fp, 2, "pack_%s(data->%s, buf, size, pos);\n",
                             union_item->def->name,
                             union_item->name);
                 }
                 else {
-                    ifprintf(fp, 2, "pack_%s(&data->%s, buf);\n",
+                    ifprintf(fp, 2, "pack_%s(&data->%s, buf, size, pos);\n",
                             union_item->def->name,
                             union_item->name);
                 }
@@ -627,7 +627,7 @@ static void emit_unpack_signature(FILE *fp, Definition *def)
             " * Unpack <data> from <buf>, which is <size> bytes in size.\n"
             " * Returns the new position.\n"
             " */\n");
-    fprintf(fp, "size_t unpack_%s(const Buffer *buf, size_t pos, %s *data)",
+    fprintf(fp, "size_t unpack_%s(const char *buf, size_t size, size_t *pos, %s *data)",
             def->name, def->name);
 }
 
@@ -642,7 +642,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
 
     switch(def->type) {
     case DT_ALIAS:
-        ifprintf(fp, 1, "return unpack_%s(buf, pos, data);\n", def->alias_def.alias->name);
+        ifprintf(fp, 1, "return unpack_%s(buf, size, pos, data);\n", def->alias_def.alias->name);
         break;
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n");
@@ -1217,8 +1217,8 @@ int emit_c_hdr(const char *out_file, const char *in_file,
             continue;
         }
 
-        if (do_packsize) {
-            emit_packsize_signature(fp, def);
+        if (do_size) {
+            emit_size_signature(fp, def);
             fprintf(fp, ";\n");
         }
         if (do_pack) {
@@ -1305,9 +1305,9 @@ int emit_c_src(const char *out_file, const char *in_file,
         if (def->level != 0) continue;
 
         if (!def->builtin) {
-            if (do_packsize) {
-                emit_packsize_signature(fp, def);
-                emit_packsize_body(fp, def);
+            if (do_size) {
+                emit_size_signature(fp, def);
+                emit_size_body(fp, def);
             }
             if (do_pack) {
                 emit_pack_signature(fp, def);

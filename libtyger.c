@@ -28,6 +28,26 @@ static int   indent_length = 0;
 
 #define SWAP(from, to) do { char temp = to; to = from; from = temp; } while (0)
 
+static void reserve(size_t num_bytes, char **buf, size_t *size, size_t pos)
+{
+    size_t new_size = *size;
+
+    while (pos + num_bytes > new_size) {
+        if (new_size == 0) {
+            new_size = 1024;
+        }
+        else {
+            new_size *= 2;
+        }
+    }
+
+    if (new_size != *size) {
+        *size = new_size;
+
+        *buf = realloc(*buf, *size);
+    }
+}
+
 /* =============================== Aliases ===============================
  *
  * Aliases for functions from libjvs.
@@ -378,20 +398,18 @@ size_t size_wstring(const wstring *ws)
  * Pack the least-significant <num_bytes> of <data> into <buf>, updating
  * <size> and <pos>.
  */
-Buffer *pack_uint(unsigned int data, size_t num_bytes, Buffer *buf)
+Buffer *pack_uint(unsigned int data, size_t num_bytes, char **buf, size_t *size, size_t *pos)
 {
     for (int i = num_bytes - 1; i >= 0; i--) {
-        bufAddC(buf, (data >> (8 * i)) & 0xFF);
+        pack_uint8((data >> (8 * i)) & 0xFF, buf, size, pos);
     }
-
-    return buf;
 }
 
 /*
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *pack_uint8(uint8_t data, Buffer *buf)
+Buffer *pack_uint8(uint8_t data, char **buf, size_t *size, size_t *pos)
 {
     size_t pack_size = size_uint8();
 
@@ -406,7 +424,7 @@ Buffer *pack_uint8(uint8_t data, Buffer *buf)
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *pack_uint16(uint16_t data, Buffer *buf)
+Buffer *pack_uint16(uint16_t data, char **buf, size_t *size, size_t *pos)
 {
     size_t pack_size = size_uint16();
 
@@ -421,7 +439,7 @@ Buffer *pack_uint16(uint16_t data, Buffer *buf)
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *pack_uint32(uint32_t data, Buffer *buf)
+Buffer *pack_uint32(uint32_t data, char **buf, size_t *size, size_t *pos)
 {
     size_t pack_size = size_uint32();
 
@@ -436,7 +454,7 @@ Buffer *pack_uint32(uint32_t data, Buffer *buf)
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *pack_uint64(uint64_t data, Buffer *buf)
+Buffer *pack_uint64(uint64_t data, char **buf, size_t *size, size_t *pos)
 {
     size_t pack_size = size_uint64();
 
@@ -451,7 +469,7 @@ Buffer *pack_uint64(uint64_t data, Buffer *buf)
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *pack_int8(int8_t data, Buffer *buf)
+Buffer *pack_int8(int8_t data, char **buf, size_t *size, size_t *pos)
 {
     return pack_uint8(data, buf);
 }
@@ -460,7 +478,7 @@ Buffer *pack_int8(int8_t data, Buffer *buf)
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *pack_int16(int16_t data, Buffer *buf)
+Buffer *pack_int16(int16_t data, char **buf, size_t *size, size_t *pos)
 {
     return pack_uint16(data, buf);
 }
@@ -469,7 +487,7 @@ Buffer *pack_int16(int16_t data, Buffer *buf)
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *pack_int32(int32_t data, Buffer *buf)
+Buffer *pack_int32(int32_t data, char **buf, size_t *size, size_t *pos)
 {
     return pack_uint32(data, buf);
 }
@@ -478,7 +496,7 @@ Buffer *pack_int32(int32_t data, Buffer *buf)
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *pack_int64(int64_t data, Buffer *buf)
+Buffer *pack_int64(int64_t data, char **buf, size_t *size, size_t *pos)
 {
     return pack_uint64(data, buf);
 }
@@ -487,7 +505,7 @@ Buffer *pack_int64(int64_t data, Buffer *buf)
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *pack_float32(const float data, Buffer *buf)
+Buffer *pack_float32(const float data, char **buf, size_t *size, size_t *pos)
 {
     union {
         float f;
@@ -512,7 +530,7 @@ Buffer *pack_float32(const float data, Buffer *buf)
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *pack_float64(const double data, Buffer *buf)
+Buffer *pack_float64(const double data, char **buf, size_t *size, size_t *pos)
 {
     union {
         double f;
@@ -541,7 +559,7 @@ Buffer *pack_float64(const double data, Buffer *buf)
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *pack_bool(const bool data, Buffer *buf)
+Buffer *pack_bool(const bool data, char **buf, size_t *size, size_t *pos)
 {
     bufAddC(buf, data ? 1 : 0);
 
@@ -552,7 +570,7 @@ Buffer *pack_bool(const bool data, Buffer *buf)
  * Add <data> to position <pos> in <buf>, which has size <size>, enlarging it
  * if necessary.
  */
-Buffer *pack_astring(const astring *as, Buffer *buf)
+Buffer *pack_astring(const astring *as, char **buf, size_t *size, size_t *pos)
 {
     pack_uint32(asLen(as), buf);
 
@@ -565,7 +583,7 @@ Buffer *pack_astring(const astring *as, Buffer *buf)
  * Add <data> to position <pos> in <buf>, which currently has size <size>, enlarging it if
  * necessary. Return the number of bytes added to <buf>.
  */
-Buffer *pack_wstring(const wstring *ws, Buffer *buf)
+Buffer *pack_wstring(const wstring *ws, char **buf, size_t *size, size_t *pos)
 {
     if (wsGet(ws) == NULL || wsLen(ws) == 0) {
         pack_uint32(0, buf);
@@ -586,7 +604,7 @@ Buffer *pack_wstring(const wstring *ws, Buffer *buf)
  *
  * Unpack <num_bytes> from buf (which has size <size>) and fill <data> with them.
  */
-size_t unpack_uint(size_t num_bytes, const Buffer *buf, size_t pos, unsigned int *data)
+size_t unpack_uint(size_t num_bytes, const char *buf, size_t size, size_t *pos, unsigned int *data)
 {
     assert(bufLen(buf) - pos >= num_bytes);
 
@@ -604,7 +622,7 @@ size_t unpack_uint(size_t num_bytes, const Buffer *buf, size_t pos, unsigned int
 /*
  * Unpack a uint8 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t unpack_uint8(const Buffer *buf, size_t pos, uint8_t *data)
+size_t unpack_uint8(const char *buf, size_t size, size_t *pos, uint8_t *data)
 {
     size_t pack_size = size_uint8();
 
@@ -618,7 +636,7 @@ size_t unpack_uint8(const Buffer *buf, size_t pos, uint8_t *data)
 /*
  * Unpack a uint16 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t unpack_uint16(const Buffer *buf, size_t pos, uint16_t *data)
+size_t unpack_uint16(const char *buf, size_t size, size_t *pos, uint16_t *data)
 {
     size_t pack_size = size_uint16();
 
@@ -638,7 +656,7 @@ size_t unpack_uint16(const Buffer *buf, size_t pos, uint16_t *data)
 /*
  * Unpack a uint32 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t unpack_uint32(const Buffer *buf, size_t pos, uint32_t *data)
+size_t unpack_uint32(const char *buf, size_t size, size_t *pos, uint32_t *data)
 {
     size_t pack_size = size_uint32();
 
@@ -658,7 +676,7 @@ size_t unpack_uint32(const Buffer *buf, size_t pos, uint32_t *data)
 /*
  * Unpack a uint64 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t unpack_uint64(const Buffer *buf, size_t pos, uint64_t *data)
+size_t unpack_uint64(const char *buf, size_t size, size_t *pos, uint64_t *data)
 {
     size_t pack_size = size_uint64();
 
@@ -678,7 +696,7 @@ size_t unpack_uint64(const Buffer *buf, size_t pos, uint64_t *data)
 /*
  * Unpack an int8 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t unpack_int8(const Buffer *buf, size_t pos, int8_t *data)
+size_t unpack_int8(const char *buf, size_t size, size_t *pos, int8_t *data)
 {
     return unpack_uint8(buf, pos, (uint8_t *) data);
 }
@@ -686,7 +704,7 @@ size_t unpack_int8(const Buffer *buf, size_t pos, int8_t *data)
 /*
  * Unpack an int16 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t unpack_int16(const Buffer *buf, size_t pos, int16_t *data)
+size_t unpack_int16(const char *buf, size_t size, size_t *pos, int16_t *data)
 {
     return unpack_uint16(buf, pos, (uint16_t *) data);
 }
@@ -694,7 +712,7 @@ size_t unpack_int16(const Buffer *buf, size_t pos, int16_t *data)
 /*
  * Unpack an int32 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t unpack_int32(const Buffer *buf, size_t pos, int32_t *data)
+size_t unpack_int32(const char *buf, size_t size, size_t *pos, int32_t *data)
 {
     return unpack_uint32(buf, pos, (uint32_t *) data);
 }
@@ -702,7 +720,7 @@ size_t unpack_int32(const Buffer *buf, size_t pos, int32_t *data)
 /*
  * Unpack an int64 from position <pos> in <buf> and put it at <data>. Return the new <pos>.
  */
-size_t unpack_int64(const Buffer *buf, size_t pos, int64_t *data)
+size_t unpack_int64(const char *buf, size_t size, size_t *pos, int64_t *data)
 {
     return unpack_uint64(buf, pos, (uint64_t *) data);
 }
@@ -711,7 +729,7 @@ size_t unpack_int64(const Buffer *buf, size_t pos, int64_t *data)
  * Unpack a bool from <buf> (which has size <size>) and put it at the
  * address pointed to by <data>.
  */
-size_t unpack_bool(const Buffer *buf, size_t pos, bool *data)
+size_t unpack_bool(const char *buf, size_t size, size_t *pos, bool *data)
 {
     size_t pack_size = size_bool();
 
@@ -728,7 +746,7 @@ size_t unpack_bool(const Buffer *buf, size_t pos, bool *data)
  * Unpack a float (aka. float32) from <buf> (which has size <size>) and put it at <data>. Return the
  * new <pos>.
  */
-size_t unpack_float32(const Buffer *buf, size_t pos, float *data)
+size_t unpack_float32(const char *buf, size_t size, size_t *pos, float *data)
 {
     size_t req = size_float32();
 
@@ -757,7 +775,7 @@ size_t unpack_float32(const Buffer *buf, size_t pos, float *data)
  * Unpack a double (aka. float64) from <buf> (which has size <size>) and put it at <data>. Return
  * the new <pos>.
  */
-size_t unpack_float64(const Buffer *buf, size_t pos, double *data)
+size_t unpack_float64(const char *buf, size_t size, size_t *pos, double *data)
 {
     size_t req = size_float64();
 
@@ -790,11 +808,11 @@ size_t unpack_float64(const Buffer *buf, size_t pos, double *data)
  * Unpack a char from <buf> (which has size <size>) and put it at the
  * address pointed to by <data>.
  */
-size_t unpack_astring(const Buffer *buf, size_t pos, astring *data)
+size_t unpack_astring(const char *buf, size_t size, size_t *pos, astring *data)
 {
-    size_t packsize_of_string_length = size_uint32();
+    size_t size_of_string_length = size_uint32();
 
-    assert(bufLen(buf) - pos >= packsize_of_string_length);
+    assert(bufLen(buf) - pos >= size_of_string_length);
 
     uint32_t string_length;
 
@@ -814,11 +832,11 @@ size_t unpack_astring(const Buffer *buf, size_t pos, astring *data)
  * allocated wide-character string whose starting address is written to <wchar_str>, and return the
  * number of bytes consumed from <buf>.
  */
-size_t unpack_wstring(const Buffer *buf, size_t pos, wstring *data)
+size_t unpack_wstring(const char *buf, size_t size, size_t *pos, wstring *data)
 {
-    size_t packsize_of_utf8_len = size_uint32();
+    size_t size_of_utf8_len = size_uint32();
 
-    assert(bufLen(buf) - pos >= packsize_of_utf8_len);
+    assert(bufLen(buf) - pos >= size_of_utf8_len);
 
     uint32_t utf8_len;
 
