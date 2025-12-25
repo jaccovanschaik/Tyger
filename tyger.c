@@ -1,6 +1,6 @@
 /* tyger.c: Tyger type generator.
  *
- * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2025 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-25
  *
  * This software is distributed under the terms of the MIT license. See
@@ -95,9 +95,7 @@ static void make_float_types(List *definitions)
     int size;
 
     for (size = 4; size <= 8; size <<= 1) {
-        Buffer *name_buf = bufCreate();
-
-        bufSetF(name_buf, "float%d", 8 * size);
+        Buffer *name_buf = bufCreate("float%d", 8 * size);
 
         def = calloc(1, sizeof(*def));
 

@@ -1,7 +1,7 @@
 /*
  * utf8.c: Handle conversion between UTF-8 and wchar_t.
  *
- * Copyright: (c) 2022-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2022-2025 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2022-08-25
  *
  * This software is distributed under the terms of the MIT license. See
@@ -37,8 +37,11 @@ const uint8_t *wchar_to_utf8(const wchar_t *in, size_t count, uint32_t *size)
     if (conv == NULL) {
         if ((conv = iconv_open("UTF-8//TRANSLIT", "wchar_t")) == (iconv_t) -1) {
             perror("wchar_to_utf8: iconv_open");
-            conv = NULL;
         }
+    }
+
+    if (conv == (iconv_t) -1) {
+        return NULL;
     }
 
     if (out == NULL) {

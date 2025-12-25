@@ -1,6 +1,6 @@
 /* tokenizer.c: Tokenizer for Tyger files.
  *
- * Copyright: (c) 2016-2023 Jacco van Schaik (jacco@jaccovanschaik.net)
+ * Copyright: (c) 2016-2025 Jacco van Schaik (jacco@jaccovanschaik.net)
  * Created:   2016-08-24
  *
  * This software is distributed under the terms of the MIT license. See
@@ -517,9 +517,7 @@ char *tokFile(const char *filename, List *output)
     char *r, *msg;
     FILE *fp;
 
-    Buffer *cmdline = bufCreate();
-
-    bufSetF(cmdline, "cpp -x c++ -traditional-cpp %s", filename);
+    Buffer *cmdline = bufCreate("cpp -x c++ -traditional-cpp %s", filename);
 
     if ((fp = popen(bufGet(cmdline), "r")) == NULL) {
         r = strdup(strerror(errno));

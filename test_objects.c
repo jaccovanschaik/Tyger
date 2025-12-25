@@ -246,8 +246,9 @@ int main(int argc, char *argv[])
 
     pos = 0;
 
-    pos = unpack_Objects(buf, size, &pos, &unpacked);
+    Buffer *err = unpack_Objects(buf, size, &pos, &unpacked);
 
+    make_sure_that(err == NULL);
     make_sure_that(pos == 197);
 
 #if DEBUG

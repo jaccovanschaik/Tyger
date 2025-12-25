@@ -481,13 +481,14 @@ static void emit_pack_signature(FILE *fp, Definition *def)
     fprintf(fp,
             "\n/*\n"
             " * Pack <data> into <buf>, enlarging it if necessary. <data>\n"
-            " * points to the data to write, <buf> is a pointer to a pointer\n"
+            " * %s the data to write, <buf> is a pointer to a pointer\n"
             " * to the start of the buffer, <size> points to its current size\n"
             " * and <pos> points to the position in the buffer where the data is\n"
             " * to be written. The contents of <buf> and <size> are updated\n"
             " * if the buffer is enlarged. <pos> is updated with the new write\n"
-            " * position. The number of bytes written is returned.\n"
-            " */\n");
+            " * position. Returns a pointer to a Buffer containing an error\n"
+            " * message, or NULL if no errors occurred.\n"
+            " */\n", is_scalar(def) ? "is" : "points to");
 
     if (is_scalar(def)) {
         fprintf(fp,
@@ -508,7 +509,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
 
     if (def->type == DT_CONST || def->builtin) return;
 
-    fprintf(fp, "\n{\n");
+    ifprintf(fp, 0, "\n{\n");
 
     switch(def->type) {
     case DT_ALIAS:
@@ -516,73 +517,86 @@ static void emit_pack_body(FILE *fp, Definition *def)
                 def->alias_def.alias->name);
         break;
     case DT_ARRAY:
+        ifprintf(fp, 1, "Buffer *err = NULL;\n");
         ifprintf(fp, 1, "int i;\n");
         ifprintf(fp, 1,
                 "pack_uint32(data->count, buf, size, pos);\n\n");
 
-        ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
+        ifprintf(fp, 1, "for (i = 0; i < data->count && err == NULL; i++) {\n");
 
         if (is_scalar(def->array_def.item_type)) {
-            ifprintf(fp, 2, "pack_%s(data->%s[i], buf, size, pos);\n",
+            ifprintf(fp, 2, "err = pack_%s(data->%s[i], buf, size, pos);\n",
                     def->array_def.item_type->name,
                     def->array_def.item_name);
         }
         else {
-            ifprintf(fp, 2, "pack_%s(data->%s + i, buf, size, pos);\n",
+            ifprintf(fp, 2, "err = pack_%s(data->%s + i, buf, size, pos);\n",
                     def->array_def.item_type->name,
                     def->array_def.item_name);
         }
 
         ifprintf(fp, 1, "}\n\n");
-        ifprintf(fp, 1, "return buf;\n");
+        ifprintf(fp, 1, "return err;\n");
         break;
     case DT_STRUCT:
+        ifprintf(fp, 1, "Buffer *err = NULL;\n\n");
+
         for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item)) {
 
             if (struct_item->optional) {
-                fputc('\n', fp);
-                ifprintf(fp, 1, "pack_uint8(data->%s ? 1 : 0, buf, size, pos);\n", struct_item->name);
-                ifprintf(fp, 1, "if (data->%s) {\n", struct_item->name);
+                ifprintf(fp, 1, "if ((err = pack_uint8(data->%s ? 1 : 0, buf, size, pos)) != NULL) {\n",
+                        struct_item->name);
+                ifprintf(fp, 2, "return err;\n");
+                ifprintf(fp, 1, "}\n\n");
+
+                ifprintf(fp, 1, "if (data->%s && (err = ", struct_item->name);
 
                 if (is_scalar(struct_item->def)) {
-                    ifprintf(fp, 2, "pack_%s(*data->%s, buf, size, pos);\n",
+                    fprintf(fp, "pack_%s(*data->%s, buf, size, pos)) != NULL) {\n",
                             struct_item->def->name,
                             struct_item->name);
                 }
                 else {
-                    ifprintf(fp, 2, "pack_%s(data->%s, buf, size, pos);\n",
+                    fprintf(fp, "pack_%s(data->%s, buf, size, pos)) != NULL) {\n",
                             struct_item->def->name,
                             struct_item->name);
                 }
 
-                ifprintf(fp, 1, "}\n");
+                ifprintf(fp, 2, "return err;\n");
+                ifprintf(fp, 1, "}\n\n");
             }
             else {
                 if (is_scalar(struct_item->def)) {
-                    ifprintf(fp, 1, "pack_%s(data->%s, buf, size, pos);\n",
+                    ifprintf(fp, 1, "if ((err = pack_%s(data->%s, buf, size, pos)) != NULL) {\n",
                             struct_item->def->name,
                             struct_item->name);
                 }
                 else {
-                    ifprintf(fp, 1, "pack_%s(&data->%s, buf, size, pos);\n",
+                    ifprintf(fp, 1, "if ((err = pack_%s(&data->%s, buf, size, pos)) != NULL) {\n",
                             struct_item->def->name,
                             struct_item->name);
                 }
+
+                ifprintf(fp, 2, "return err;\n");
+                ifprintf(fp, 1, "}\n\n");
             }
         }
 
-        fputc('\n', fp);
-
-        ifprintf(fp, 1, "return buf;\n");
+        ifprintf(fp, 1, "return err;\n");
         break;
     case DT_ENUM:
         ifprintf(fp, 1, "return pack_uint(data, %ld, buf, size, pos);\n", def->enum_def.num_bytes);
         break;
     case DT_UNION:
-        ifprintf(fp, 1, "pack_%s(data->%s, buf, size, pos);\n\n",
+        ifprintf(fp, 1, "Buffer *err;\n\n");
+
+        ifprintf(fp, 1, "if ((err = pack_%s(data->%s, buf, size, pos)) != NULL) {\n",
                 def->union_def.discr_def->name,
                 def->union_def.discr_name);
+        ifprintf(fp, 2, "return err;\n");
+        ifprintf(fp, 1, "}\n\n");
+
         ifprintf(fp, 1, "switch(data->%s) {\n",
                 def->union_def.discr_name);
 
@@ -592,12 +606,12 @@ static void emit_pack_body(FILE *fp, Definition *def)
 
             if (!is_void_type(union_item->def)) {
                 if (is_scalar(union_item->def)) {
-                    ifprintf(fp, 2, "pack_%s(data->%s, buf, size, pos);\n",
+                    ifprintf(fp, 2, "err = pack_%s(data->%s, buf, size, pos);\n",
                             union_item->def->name,
                             union_item->name);
                 }
                 else {
-                    ifprintf(fp, 2, "pack_%s(&data->%s, buf, size, pos);\n",
+                    ifprintf(fp, 2, "err = pack_%s(&data->%s, buf, size, pos);\n",
                             union_item->def->name,
                             union_item->name);
                 }
@@ -607,7 +621,7 @@ static void emit_pack_body(FILE *fp, Definition *def)
         }
 
         ifprintf(fp, 1, "}\n\n");
-        ifprintf(fp, 1, "return buf;\n");
+        ifprintf(fp, 1, "return err;\n");
         break;
     default:
         fprintf(stderr, "%s: Unexpected definition type %d (%s).\n",
@@ -627,7 +641,7 @@ static void emit_unpack_signature(FILE *fp, Definition *def)
             " * Unpack <data> from <buf>, which is <size> bytes in size.\n"
             " * Returns the new position.\n"
             " */\n");
-    fprintf(fp, "size_t unpack_%s(const char *buf, size_t size, size_t *pos, %s *data)",
+    fprintf(fp, "Buffer *unpack_%s(const char *buf, size_t size, size_t *pos, %s *data)",
             def->name, def->name);
 }
 
@@ -647,7 +661,10 @@ static void emit_unpack_body(FILE *fp, Definition *def)
     case DT_ARRAY:
         ifprintf(fp, 1, "int i;\n");
         ifprintf(fp, 1, "uint32_t old_count = data->count;\n");
-        ifprintf(fp, 1, "pos = unpack_uint32(buf, pos, &data->count);\n\n");
+        ifprintf(fp, 1, "Buffer *err;\n\n");
+        ifprintf(fp, 1, "if ((err = unpack_uint32(buf, size, pos, &data->count)) != NULL) {\n");
+        ifprintf(fp, 2, "return err;\n");
+        ifprintf(fp, 1, "}\n\n");
 
         ifprintf(fp, 1, "data->%s = realloc(data->%s, data->count * sizeof(%s));\n\n",
                 def->array_def.item_name,
@@ -659,58 +676,78 @@ static void emit_unpack_body(FILE *fp, Definition *def)
             "sizeof(%s) * (data->count - old_count));\n",
                 def->array_def.item_name,
                 equivalent_c_type(def->array_def.item_type));
-        ifprintf(fp, 1, "}\n");
+        ifprintf(fp, 1, "}\n\n");
 
-        ifprintf(fp, 1, "for (i = 0; i < data->count; i++) {\n");
-        ifprintf(fp, 2, "pos = unpack_%s(buf, pos, data->%s + i);\n",
+        ifprintf(fp, 1, "for (i = 0; i < data->count && err == NULL; i++) {\n");
+        ifprintf(fp, 2, "err = unpack_%s(buf, size, pos, data->%s + i);\n",
                 def->array_def.item_type->name, def->array_def.item_name);
 
         ifprintf(fp, 1, "}\n\n");
 
-        ifprintf(fp, 1, "return pos;\n");
+        ifprintf(fp, 1, "return err;\n");
         break;
     case DT_STRUCT:
+        ifprintf(fp, 1, "Buffer *err = NULL;\n\n");
+
         for (struct_item = listHead(&def->struct_def.items);
              struct_item; struct_item = listNext(struct_item))
         {
             if (struct_item->optional) {
-                ifprintf(fp, 1, "uint8_t %s_follows;\n", struct_item->name);
-                ifprintf(fp, 1, "pos = unpack_uint8(buf, pos, &%s_follows);\n\n",
+                ifprintf(fp, 1, "uint8_t %s_follows;\n\n", struct_item->name);
+                ifprintf(fp, 1, "if ((err = unpack_uint8(buf, size, pos, &%s_follows)) != NULL) {\n",
                         struct_item->name);
+                ifprintf(fp, 2, "return err;\n");
+                ifprintf(fp, 1, "}\n\n");
+
                 ifprintf(fp, 1, "if (data->%s != NULL && %s_follows) {\n",
                         struct_item->name, struct_item->name);
-                ifprintf(fp, 2, "pos = unpack_%s(buf, pos, data->%s);\n",
+                ifprintf(fp, 2, "if ((err = unpack_%s(buf, size, pos, data->%s)) != NULL) {\n",
                         struct_item->def->name, struct_item->name);
+                ifprintf(fp, 3, "return err;\n");
+                ifprintf(fp, 2, "}\n");
                 ifprintf(fp, 1, "}\n");
                 ifprintf(fp, 1, "else if (data->%s != NULL && !%s_follows) {\n",
                         struct_item->name, struct_item->name);
-                ifprintf(fp, 2, "destroy_%s(data->%s);\n",
+                ifprintf(fp, 2, "destroy_%s(data->%s);\n\n",
                         struct_item->def->name, struct_item->name);
                 ifprintf(fp, 2, "data->%s = NULL;\n", struct_item->name);
                 ifprintf(fp, 1, "}\n");
                 ifprintf(fp, 1, "else if (data->%s == NULL && %s_follows) {\n",
                         struct_item->name, struct_item->name);
-                ifprintf(fp, 2, "data->%s = calloc(1, sizeof(%s));\n",
+                ifprintf(fp, 2, "data->%s = calloc(1, sizeof(%s));\n\n",
                         struct_item->name, equivalent_c_type(struct_item->def));
-                ifprintf(fp, 2, "pos = unpack_%s(buf, pos, data->%s);\n",
+                ifprintf(fp, 2, "if ((err = unpack_%s(buf, size, pos, data->%s)) != NULL) {\n",
                         struct_item->def->name, struct_item->name);
+                ifprintf(fp, 3, "return err;\n");
+                ifprintf(fp, 2, "}\n");
                 ifprintf(fp, 1, "}\n\n");
             }
             else {
-                ifprintf(fp, 1, "pos = unpack_%s(buf, pos, &data->%s);\n\n",
+                ifprintf(fp, 1, "if ((err = unpack_%s(buf, size, pos, &data->%s)) != NULL) {\n",
                         struct_item->def->name, struct_item->name);
+                ifprintf(fp, 2, "return err;\n");
+                ifprintf(fp, 1, "}\n\n");
             }
         }
 
-        ifprintf(fp, 1, "return pos;\n");
+        ifprintf(fp, 1, "return err;\n");
         break;
     case DT_ENUM:
-        ifprintf(fp, 1, "return unpack_uint(%ld, buf, pos, data);\n", def->enum_def.num_bytes);
+        ifprintf(fp, 1, "Buffer *err;\n");
+        ifprintf(fp, 1, "uint64_t value;\n\n");
+        ifprintf(fp, 1, "if ((err = unpack_uint(%ld, buf, size, pos, &value)) == NULL) {\n", def->enum_def.num_bytes);
+        ifprintf(fp, 2, "*data = value;\n");
+        ifprintf(fp, 1, "}\n\n");
+        ifprintf(fp, 1, "return err;\n");
         break;
     case DT_UNION:
-        ifprintf(fp, 1, "pos = unpack_%s(buf, pos, &data->%s);\n\n",
+        ifprintf(fp, 1, "Buffer *err;\n\n");
+        ifprintf(fp, 1, "if ((err = unpack_%s(buf, size, pos, &data->%s)) != NULL) {\n",
                 def->union_def.discr_def->name,
                 def->union_def.discr_name);
+        ifprintf(fp, 2, "return err;\n");
+        ifprintf(fp, 1, "}\n\n");
+
         ifprintf(fp, 1, "switch(data->%s) {\n",
                 def->union_def.discr_name);
 
@@ -719,7 +756,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
             ifprintf(fp, 1, "case %s:\n", union_item->value);
 
             if (!is_void_type(union_item->def)) {
-                ifprintf(fp, 2, "pos = unpack_%s(buf, pos, &data->%s);\n",
+                ifprintf(fp, 2, "err = unpack_%s(buf, size, pos, &data->%s);\n",
                         union_item->def->name, union_item->name);
             }
 
@@ -727,7 +764,7 @@ static void emit_unpack_body(FILE *fp, Definition *def)
         }
 
         ifprintf(fp, 1, "}\n\n");
-        ifprintf(fp, 1, "return pos;\n");
+        ifprintf(fp, 1, "return err;\n");
         break;
     default:
         fprintf(stderr, "%s: Unexpected definition type %d (%s).\n",
