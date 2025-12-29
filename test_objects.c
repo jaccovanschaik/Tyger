@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
     int errors = 0;
 
     char *buf = NULL;
-    size_t size, pos;
+    size_t size = 0, pos = 0;
 
     // Buffer buf = { };
 

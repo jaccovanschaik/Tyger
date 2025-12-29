@@ -37,6 +37,8 @@ static bool do_dup      = false;
 static bool do_print    = false;
 static bool do_clear    = false;
 static bool do_destroy  = false;
+static bool do_mx_send  = false;
+static bool do_mx_bcast = false;
 
 static Switch switches[] = {
     { "--c-size",     &do_size,     "Generate size functions" },
@@ -47,6 +49,8 @@ static Switch switches[] = {
     { "--c-print",    &do_print,    "Generate print functions" },
     { "--c-clear",    &do_clear,    "Generate clear functions" },
     { "--c-destroy",  &do_destroy,  "Generate destroy functions" },
+    { "--c-mx-send",  &do_mx_send,  "Generate MX send functions" },
+    { "--c-mx-bcast", &do_mx_bcast, "Generate MX broadcast functions" },
 };
 
 static int num_switches = sizeof(switches) / sizeof(switches[0]);
@@ -1170,11 +1174,79 @@ static void emit_destroy_body(FILE *fp, Definition *def)
     fprintf(fp, "}\n");
 }
 
+static void emit_mx_send_signature(FILE *fp, Definition *def)
+{
+    if (def->type == DT_CONST || def->builtin) return;
+
+    fprintf(fp, "\n/*\n");
+    fprintf(fp,
+            " * Send the %s in <data> out over <mx> file descriptor <fd>,\n",
+            def->name);
+    fprintf(fp,
+            " * using message type <type> and message version <version>.\n");
+    fprintf(fp, " */\n");
+    if (is_scalar(def)) {
+        fprintf(fp, "void mx_send_%s(MX *mx, int fd, uint32_t type, "
+                    "uint32_t version, %s data)", def->name, def->name);
+    }
+    else {
+        fprintf(fp, "void mx_send_%s(MX *mx, int fd, uint32_t type, "
+                    "uint32_t version, %s *data)", def->name, def->name);
+    }
+}
+
+static void emit_mx_send_body(FILE *fp, Definition *def)
+{
+    if (def->type == DT_CONST || def->builtin) return;
+
+    fprintf(fp, "\n{\n");
+    ifprintf(fp, 1, "char *buf = NULL;\n");
+    ifprintf(fp, 1, "size_t size = 0, pos = 0;\n\n");
+    ifprintf(fp, 1, "pack_%s(data, &buf, &size, &pos);\n\n", def->name);
+    ifprintf(fp, 1, "mxSend(mx, fd, type, version, buf, pos);\n\n");
+    ifprintf(fp, 1, "free(buf);\n");
+    fprintf(fp, "}\n");
+}
+
+static void emit_mx_bcast_signature(FILE *fp, Definition *def)
+{
+    if (def->type == DT_CONST || def->builtin) return;
+
+    fprintf(fp, "\n/*\n");
+    fprintf(fp, " * Broadcast the %s in <data> to all subscribers to message\n",
+            def->name);
+    fprintf(fp, " * type <type>, using <version> as the message version.\n");
+    fprintf(fp, " */\n");
+    if (is_scalar(def)) {
+        fprintf(fp, "void mx_bcast_%s(MX *mx, uint32_t type, "
+                    "uint32_t version, %s data)", def->name, def->name);
+    }
+    else {
+        fprintf(fp, "void mx_bcast_%s(MX *mx, uint32_t type, "
+                    "uint32_t version, %s *data)", def->name, def->name);
+    }
+}
+
+static void emit_mx_bcast_body(FILE *fp, Definition *def)
+{
+    if (def->type == DT_CONST || def->builtin) return;
+
+    fprintf(fp, "\n{\n");
+    ifprintf(fp, 1, "char *buf = NULL;\n");
+    ifprintf(fp, 1, "size_t size = 0, pos = 0;\n\n");
+    ifprintf(fp, 1, "pack_%s(data, &buf, &size, &pos);\n\n", def->name);
+    ifprintf(fp, 1, "mxBroadcast(mx, type, version, buf, pos);\n\n");
+    ifprintf(fp, 1, "free(buf);\n");
+    fprintf(fp, "}\n");
+}
+
 static void set_dependencies(void)
 {
-    if (do_destroy) do_clear = TRUE;
-    if (do_dup)     do_copy  = TRUE;
-    if (do_copy)    do_clear = TRUE;
+    if (do_destroy)  do_clear = TRUE;
+    if (do_dup)      do_copy  = TRUE;
+    if (do_copy)     do_clear = TRUE;
+    if (do_mx_send)  do_pack  = TRUE;
+    if (do_mx_bcast) do_pack  = TRUE;
 }
 
 /*
@@ -1232,6 +1304,10 @@ int emit_c_hdr(const char *out_file, const char *in_file,
     fprintf(fp, "#include <libjvs/astring.h>\n");
     fprintf(fp, "#include <libjvs/wstring.h>\n");
 
+    if (do_mx_send || do_mx_bcast) {
+        fprintf(fp, "\n#include <libmx.h>\t/* MX functions. */\n");
+    }
+
     fprintf(fp, "#include <stdlib.h>\t/* size_t */\n");
     fprintf(fp, "#include <stdint.h>\t/* int types */\n");
     fprintf(fp, "#include <stdbool.h>\t/* bool */\n");
@@ -1284,6 +1360,14 @@ int emit_c_hdr(const char *out_file, const char *in_file,
         }
         if (do_dup) {
             emit_dup_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_mx_send) {
+            emit_mx_send_signature(fp, def);
+            fprintf(fp, ";\n");
+        }
+        if (do_mx_bcast) {
+            emit_mx_bcast_signature(fp, def);
             fprintf(fp, ";\n");
         }
     }
@@ -1373,6 +1457,14 @@ int emit_c_src(const char *out_file, const char *in_file,
             if (do_dup) {
                 emit_dup_signature(fp, def);
                 emit_dup_body(fp, def);
+            }
+            if (do_mx_send) {
+                emit_mx_send_signature(fp, def);
+                emit_mx_send_body(fp, def);
+            }
+            if (do_mx_bcast) {
+                emit_mx_bcast_signature(fp, def);
+                emit_mx_bcast_body(fp, def);
             }
         }
     }

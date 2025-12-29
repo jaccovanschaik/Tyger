@@ -15,6 +15,10 @@ JVS_TOP=$(HOME)
 JVS_INC=-I$(JVS_TOP)/include
 JVS_LIB=-L$(JVS_TOP)/lib -ljvs
 
+MX_TOP=$(HOME)
+MX_INC=-I$(MX_TOP)/include
+MX_LIB=-L$(MX_TOP)/lib -lmx
+
 CFLAGS = -g -Wall -Wpointer-arith -fPIC -std=gnu99 -Itest $(JVS_INC)
 
 MAKE_ALIB=ar rv
@@ -46,6 +50,8 @@ libtyger.so: libtyger.o utf8.o
             --c-destroy \
             --c-print \
             --c-dup \
+            --c-mx-send \
+            --c-mx-bcast \
             $<
 
 %.h: %.tgr tyger
@@ -57,6 +63,8 @@ libtyger.so: libtyger.o utf8.o
             --c-destroy \
             --c-print \
             --c-dup \
+            --c-mx-send \
+            --c-mx-bcast \
             $<
 
 %.py: %.tgr tyger
@@ -82,7 +90,7 @@ OBJECT_PY  = $(patsubst %.tgr,%.py,$(OBJECT_TGR))
 test_objects.o: test_objects.c $(OBJECT_HDR)
 
 test_objects: test_objects.o $(OBJECT_OBJ) libtyger.a
-	$(CC) $(CFLAGS) -o $@ $^ $(JVS_LIB)
+	$(CC) $(CFLAGS) -o $@ $^ $(JVS_LIB) $(MX_LIB)
 
 test: test-tokenizer test-libtyger test-objects $(OBJECT_PY) Test.o Test.py
 	if command -v python2; then \
@@ -112,6 +120,8 @@ Test.c: test/Test.tgr tyger
             --c-clear \
             --c-destroy \
             --c-print \
+            --c-mx-send \
+            --c-mx-bcast \
             $<
 
 Test.h: test/Test.tgr tyger
@@ -122,6 +132,8 @@ Test.h: test/Test.tgr tyger
             --c-clear \
             --c-destroy \
             --c-print \
+            --c-mx-send \
+            --c-mx-bcast \
             $<
 
 Test.py: test/Test.tgr tyger
